@@ -75,7 +75,7 @@ func processCheckout(job CheckoutJob) {
 	job.Result <- true
 }
 
-func mockPaymentGateway(amount float64) bool {
+func mockPaymentGateway(_ float64) bool {
 	// สถานการณ์จำลองการจ่ายเงินสำเร็จ 100%
 	return true
 }

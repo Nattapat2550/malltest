@@ -1,20 +1,14 @@
-// src/main.jsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
-
+import { store } from './store';
 import App from './App';
-import store from './store';
+import './global.css'; // เรียกใช้ CSS Variables ของคุณที่นี่
 
-import './global.css';
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <Provider store={store}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <App />
     </Provider>
   </React.StrictMode>
 );
