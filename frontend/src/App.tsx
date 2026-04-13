@@ -6,15 +6,12 @@ import Layout from './layouts/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './pages/LandingPage';
 import 'react-quill-new/dist/quill.snow.css';
-import ConcertDetailsPage from './pages/ConcertDetailsPage';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const CheckCodePage = lazy(() => import('./pages/CheckCodePage'));
 const CompleteProfilePage = lazy(() => import('./pages/CompleteProfilePage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
-const ConcertBookPage = lazy(() => import('./pages/ConcertBookPage')); 
-const MyBookingPage = lazy(() => import('./pages/MyBookingPage')); 
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const AdminPage = lazy(() => import('./pages/admin/AdminPage'));
@@ -108,8 +105,7 @@ const App = () => {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
           
-          <Route path="/concerts/:accessCode" element={<ConcertDetailsPage />} />
-          
+
           {/* เพิ่ม Route สำหรับดูหน้ารายละเอียดข้อมูลและแกลเลอรีแบบ Public */}
           <Route path="/documents/:id" element={<DocumentDetailsPage />} />
           
@@ -118,8 +114,6 @@ const App = () => {
 
           <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/concerts" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-          <Route path="/concerts/:id/book" element={<ProtectedRoute><ConcertBookPage /></ProtectedRoute>} />
-          <Route path="/my-bookings" element={<ProtectedRoute><MyBookingPage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/download" element={<ProtectedRoute><DownloadPage /></ProtectedRoute>} />
 
