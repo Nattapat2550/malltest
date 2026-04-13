@@ -83,3 +83,11 @@ func (h *Handler) AdminCarouselDeleteNew(w http.ResponseWriter, r *http.Request)
 	}
 	WriteJSON(w, http.StatusOK, map[string]string{"message": "Deleted successfully"})
 }
+// --- Admin Carousel Management ---
+func (h *Handler) AdminGetCarousel(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+func (h *Handler) AdminUpdateCarousel(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}

@@ -24,3 +24,11 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		"message": "Order placed successfully",
 	})
 }
+// --- Public Order Routes ---
+func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}

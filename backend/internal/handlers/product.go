@@ -32,3 +32,11 @@ func (h *ProductHandler) GetProductByID(w http.ResponseWriter, r *http.Request) 
 		"data":   productID, 
 	})
 }
+// --- Public Product Routes ---
+func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+func (h *Handler) GetProductByID(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}

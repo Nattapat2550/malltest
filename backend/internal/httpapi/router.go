@@ -39,21 +39,25 @@ func NewRouter(cfg config.Config, concertDB *sql.DB) http.Handler {
 		}
 		w.Write([]byte("Shopping Mall API is running"))
 	})
-	r.Get("/favicon.ico", func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	r.Get("/favicon.ico", func(w http.ResponseWriter, req *http.Request) { 
+		w.WriteHeader(http.StatusNoContent) 
+	})
 
-	// เรียกใช้ Route ย่อยที่แยกไปตามไฟล์ต่างๆ (ตัด Concert ออก เพิ่ม Product/Order เข้ามา)
+	// เรียกใช้ Route ย่อยที่แยกไปตามไฟล์ต่างๆ
 	r.Route("/api/auth", setupAuthRoutes(h))
 	r.Route("/api/users", setupUserRoutes(h))
 	r.Route("/api/admin", setupAdminRoutes(h))
 	r.Route("/api/products", setupProductRoutes(h))
 	r.Route("/api/orders", setupOrderRoutes(h))
 
-	// Global / Public Routes (คงไว้ตามระบบเดิม)
+	// Global / Public Routes
 	r.Get("/api/homepage", h.HomepageGet)
 	r.With(h.RequireAdmin).Put("/api/homepage", h.HomepageUpdate)
+	
 	r.Get("/api/carousel", h.CarouselList)
 	r.Get("/api/documents/list", h.DocumentList)
 	r.Get("/api/documents/{id}", h.GetDocumentDetail)
+	
 	r.Get("/api/download/windows", h.DownloadWindows)
 	r.Get("/api/download/android", h.DownloadAndroid)
 	r.Post("/api/appeals", h.SubmitAppeal)
@@ -61,21 +65,17 @@ func NewRouter(cfg config.Config, concertDB *sql.DB) http.Handler {
 	return r
 }
 
-// -----------------------------------------------------------------
-// Route สำหรับ Shopping Mall (คอมเมนต์ไว้ก่อน รอคุณสร้างฟังก์ชันใน handlers)
-// -----------------------------------------------------------------
-
 func setupProductRoutes(h *handlers.Handler) func(chi.Router) {
 	return func(r chi.Router) {
-		// r.Get("/", h.ListProducts)
-		// r.Get("/{id}", h.GetProductByID)
+		r.Get("/", h.ListProducts)
+		r.Get("/{id}", h.GetProductByID)
 	}
 }
 
 func setupOrderRoutes(h *handlers.Handler) func(chi.Router) {
 	return func(r chi.Router) {
-		// r.Use(h.RequireAuth)
-		// r.Post("/checkout", h.Checkout)
-		// r.Get("/my", h.GetMyOrders)
+		r.Use(h.RequireAuth)
+		r.Post("/checkout", h.Checkout)
+		r.Get("/my", h.GetMyOrders)
 	}
 }

@@ -394,3 +394,37 @@ func allowedImageMime(m string) bool {
 		return false
 	}
 }
+// --- Admin User Management ---
+func (h *Handler) AdminGetUsers(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+func (h *Handler) AdminUpdateUserRole(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// --- Admin Product Management ---
+func (h *Handler) AdminGetProducts(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+func (h *Handler) AdminCreateProduct(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+func (h *Handler) AdminUpdateProduct(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+func (h *Handler) AdminDeleteProduct(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// --- Admin Order Management ---
+func (h *Handler) AdminGetAllOrders(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+func (h *Handler) AdminUpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
