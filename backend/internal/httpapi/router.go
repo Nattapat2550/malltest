@@ -37,17 +37,18 @@ func NewRouter(cfg config.Config, concertDB *sql.DB) http.Handler {
 			http.Redirect(w, req, cfg.FrontendURL, http.StatusFound)
 			return
 		}
-		w.Write([]byte("Backend API is running"))
+		w.Write([]byte("Shopping Mall API is running"))
 	})
 	r.Get("/favicon.ico", func(w http.ResponseWriter, req *http.Request) { w.WriteHeader(http.StatusNoContent) })
 
-	// เรียกใช้ Route ย่อยที่แยกไปตามไฟล์ต่างๆ
+	// เรียกใช้ Route ย่อยที่แยกไปตามไฟล์ต่างๆ (ตัด Concert ออก เพิ่ม Product/Order เข้ามา)
 	r.Route("/api/auth", setupAuthRoutes(h))
 	r.Route("/api/users", setupUserRoutes(h))
-	r.Route("/api/concerts", setupConcertRoutes(h))
 	r.Route("/api/admin", setupAdminRoutes(h))
+	r.Route("/api/products", setupProductRoutes(h))
+	r.Route("/api/orders", setupOrderRoutes(h))
 
-	// Global / Public Routes
+	// Global / Public Routes (คงไว้ตามระบบเดิม)
 	r.Get("/api/homepage", h.HomepageGet)
 	r.With(h.RequireAdmin).Put("/api/homepage", h.HomepageUpdate)
 	r.Get("/api/carousel", h.CarouselList)
@@ -58,4 +59,23 @@ func NewRouter(cfg config.Config, concertDB *sql.DB) http.Handler {
 	r.Post("/api/appeals", h.SubmitAppeal)
 
 	return r
+}
+
+// -----------------------------------------------------------------
+// Route สำหรับ Shopping Mall (คอมเมนต์ไว้ก่อน รอคุณสร้างฟังก์ชันใน handlers)
+// -----------------------------------------------------------------
+
+func setupProductRoutes(h *handlers.Handler) func(chi.Router) {
+	return func(r chi.Router) {
+		// r.Get("/", h.ListProducts)
+		// r.Get("/{id}", h.GetProductByID)
+	}
+}
+
+func setupOrderRoutes(h *handlers.Handler) func(chi.Router) {
+	return func(r chi.Router) {
+		// r.Use(h.RequireAuth)
+		// r.Post("/checkout", h.Checkout)
+		// r.Get("/my", h.GetMyOrders)
+	}
 }

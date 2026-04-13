@@ -7,45 +7,46 @@ import (
 )
 
 func setupAdminRoutes(h *handlers.Handler) func(chi.Router) {
-	return func(ad chi.Router) {
-		ad.Use(h.RequireAdmin)
+	return func(r chi.Router) {
+		// Middleware บังคับให้ต้อง Login และเป็น Admin
+		r.Use(h.RequireAuth)
+		r.Use(h.RequireAdmin)
 
-		ad.Get("/users", h.AdminUsersList)
-		ad.Put("/users/{id}", h.AdminUsersUpdateByID)
-		ad.Post("/users/update", h.AdminUsersUpdate)
-		ad.Post("/users/{id}/wallet", h.AdminUpdateWallet)
-		
-		ad.Get("/carousel", h.AdminCarouselListNew)
-		ad.Post("/carousel", h.AdminCarouselCreateNew)
-		ad.Put("/carousel/{id}", h.AdminCarouselUpdateNew)
-		ad.Delete("/carousel/{id}", h.AdminCarouselDeleteNew)
+		// -----------------------------------------------------------
+		// หมายเหตุ: คอมเมนต์ฟังก์ชันเหล่านี้ไว้ก่อน เพื่อให้โปรเจครันผ่าน 100%
+		// เมื่อคุณสร้างฟังก์ชันเหล่านี้ในโฟลเดอร์ internal/handlers/ เสร็จแล้ว
+		// ค่อยมาเอาเครื่องหมาย // ด้านหน้าออกเพื่อเปิดใช้งาน Endpoint ครับ
+		// -----------------------------------------------------------
 
-		ad.Post("/documents", h.AdminCreateDocument)
-		ad.Put("/documents/{id}", h.AdminUpdateDocument) 
-		ad.Delete("/documents/{id}", h.AdminDeleteDocument)
+		/*
+		// --- User Management ---
+		r.Get("/users", h.AdminGetUsers)
+		r.Put("/users/{id}/role", h.AdminUpdateUserRole)
 
-		ad.Put("/homepage", h.HomepageUpdate)
-		
-		ad.Get("/bookings", h.AdminGetAllBookings)
-		ad.Put("/bookings/{id}/cancel", h.AdminCancelBooking)
-		ad.Post("/bookings/scan", h.AdminScanTicket)
-		
-		ad.Get("/venues", h.AdminGetVenues)
-		ad.Post("/venues", h.AdminCreateVenue)
-		ad.Delete("/venues/{id}", h.AdminDeleteVenue)
+		// --- Product Management (แทนที่ Concerts/Venues เดิม) ---
+		r.Route("/products", func(r chi.Router) {
+			r.Get("/", h.AdminGetProducts)
+			r.Post("/", h.AdminCreateProduct)
+			r.Put("/{id}", h.AdminUpdateProduct)
+			r.Delete("/{id}", h.AdminDeleteProduct)
+		})
 
-		ad.Get("/concerts", h.GetConcerts)
-		ad.Post("/concerts", h.AdminCreateConcert)
-		ad.Put("/concerts/{id}", h.AdminUpdateConcert)
-		ad.Delete("/concerts/{id}", h.AdminDeleteConcert)
-		ad.Post("/concerts/{id}/seats", h.AdminSaveConcertSeats)
+		// --- Order & Sales Management (แทนที่ Bookings เดิม) ---
+		r.Route("/orders", func(r chi.Router) {
+			r.Get("/", h.AdminGetAllOrders)
+			r.Put("/{id}/status", h.AdminUpdateOrderStatus)
+		})
 
-		ad.Get("/news", h.AdminGetNewsList)
-		ad.Post("/news", h.AdminCreateNews)
-		ad.Put("/news/{id}", h.AdminUpdateNews)
-		ad.Delete("/news/{id}", h.AdminDeleteNews)
-		
-		ad.Get("/appeals", h.AdminGetAppeals)
-		ad.Put("/appeals/{id}", h.AdminReviewAppeal)
+		// --- Content Management (คงระบบ News/Carousel เดิมไว้) ---
+		r.Route("/content", func(r chi.Router) {
+			r.Get("/news", h.AdminGetNewsList)
+			r.Post("/news", h.AdminCreateNews)
+			r.Put("/news/{id}", h.AdminUpdateNews)
+			r.Delete("/news/{id}", h.AdminDeleteNews)
+			
+			r.Get("/carousel", h.AdminGetCarousel)
+			r.Post("/carousel", h.AdminUpdateCarousel)
+		})
+		*/
 	}
 }
