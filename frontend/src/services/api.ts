@@ -1,17 +1,16 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+// frontend/src/services/api.js
+import axios from 'axios';
 
-export const apiService = {
-  getProducts: async () => {
-    const response = await fetch(`${API_BASE_URL}/products`);
-    if (!response.ok) throw new Error('Failed to fetch products');
-    return response.json();
-  },
-  checkout: async (data: any) => {
-    const response = await fetch(`${API_BASE_URL}/checkout`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    return response.ok;
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://gtyconcerttestbe.onrender.com', 
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-};
+  return config;
+});
+
+export default api;
