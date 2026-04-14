@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+
 	"github.com/go-chi/chi/v5"
 )
 
@@ -73,7 +74,7 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 	newBalance := balance - req.TotalAmount
 	_, err = tx.Exec(`
 		INSERT INTO user_wallets (user_id, balance) VALUES ($1, $2) 
-		ON CONFLICT (user_id) DO UPDATE SET balance = EXCLUDED.balance, updated_at = CURRENT_TIMESTAMP`, 
+		ON CONFLICT (user_id) DO UPDATE SET balance = EXCLUDED.balance, updated_at = CURRENT_TIMESTAMP`,
 		u.ID, newBalance)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to deduct balance: "+err.Error())
@@ -105,7 +106,7 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 			h.writeError(w, http.StatusInternalServerError, "Failed to update stock: "+err.Error())
 			return
 		}
-		
+
 		affected, _ := res.RowsAffected()
 		if affected == 0 {
 			h.writeError(w, http.StatusBadRequest, "สินค้าบางรายการหมด หรือมีสต็อกไม่เพียงพอ")
@@ -126,55 +127,164 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// backend/internal/handlers/order.go
-
-// GetMyOrders ดึงรายการสั่งซื้อทั้งหมดของ User ที่ Logged in อยู่
+// GetMyOrders ดึงรายการสั่งซื้อทั้งหมดของ User ที่ Logged in อยู่ พร้อมรายการสินค้า
 func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
-    // แก้ไข: ใช้ฟังก์ชัน GetUser(r) แบบเดียวกับที่ใช้ใน Checkout
-    u := GetUser(r)
-    if u == nil {
-        h.writeError(w, http.StatusUnauthorized, "ไม่พบข้อมูลผู้ใช้งาน")
-        return
-    }
+	u := GetUser(r)
+	if u == nil {
+		h.writeError(w, http.StatusUnauthorized, "ไม่พบข้อมูลผู้ใช้งาน")
+		return
+	}
 
-    // แก้ไข: ใช้ u.ID ซึ่งเป็น int64 ในการค้นหาใน Database
-    rows, err := h.MallDB.QueryContext(r.Context(), 
-        "SELECT id, total_amount, status, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC", 
-        u.ID)
-    if err != nil {
-        h.writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในการดึงข้อมูล: "+err.Error())
-        return
-    }
-    defer rows.Close()
+	// ดึงรายการคำสั่งซื้อหลัก
+	rows, err := h.MallDB.QueryContext(r.Context(),
+		"SELECT id, total_amount, status, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC",
+		u.ID)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในการดึงข้อมูล: "+err.Error())
+		return
+	}
+	defer rows.Close()
 
-    var orders []map[string]any
-    for rows.Next() {
-        var id int
-        var total float64
-        var status string
-        var createdAt interface{}
-        if err := rows.Scan(&id, &total, &status, &createdAt); err == nil {
-            orders = append(orders, map[string]any{
-                "id":           id,
-                "total_amount": total,
-                "status":       status,
-                "created_at":   createdAt,
-            })
-        }
-    }
+	var orders []map[string]any
+	for rows.Next() {
+		var id int
+		var total float64
+		var status string
+		var createdAt interface{}
 
-    if orders == nil {
-        orders = []map[string]any{}
-    }
+		if err := rows.Scan(&id, &total, &status, &createdAt); err == nil {
+			// ค้นหารายการสินค้า (Items) ที่อยู่ใน Order นี้
+			itemRows, errItem := h.MallDB.QueryContext(r.Context(), `
+				SELECT oi.id, oi.product_id, p.name, oi.quantity, oi.price_at_time, p.image_url
+				FROM order_items oi
+				JOIN products p ON oi.product_id = p.id
+				WHERE oi.order_id = $1`, id)
+			
+			var items []map[string]any
+			if errItem == nil {
+				for itemRows.Next() {
+					var itemId, productId, qty int
+					var productName string
+					var price float64
+					var sqlImageUrl sql.NullString // เผื่อกรณีสินค้าไม่มีรูป
+					
+					if err := itemRows.Scan(&itemId, &productId, &productName, &qty, &price, &sqlImageUrl); err == nil {
+						imgUrl := ""
+						if sqlImageUrl.Valid {
+							imgUrl = sqlImageUrl.String
+						}
+						items = append(items, map[string]any{
+							"id":           itemId,
+							"product_id":   productId,
+							"product_name": productName,
+							"quantity":     qty,
+							"price":        price,
+							"image_url":    imgUrl,
+						})
+					}
+				}
+				itemRows.Close()
+			}
 
-    WriteJSON(w, http.StatusOK, orders)
+			if items == nil {
+				items = []map[string]any{}
+			}
+
+			orders = append(orders, map[string]any{
+				"id":           id,
+				"total_amount": total,
+				"status":       status,
+				"created_at":   createdAt,
+				"items":        items, // แนบ items เข้าไปใน JSON
+			})
+		}
+	}
+
+	if orders == nil {
+		orders = []map[string]any{}
+	}
+
+	WriteJSON(w, http.StatusOK, orders)
+}
+
+// GetOrderByID ดึงข้อมูลคำสั่งซื้อเดี่ยวๆ พร้อมรายละเอียดสินค้า
+func (h *Handler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
+	orderID := chi.URLParam(r, "id")
+	u := GetUser(r)
+	if u == nil {
+		h.writeError(w, http.StatusUnauthorized, "ไม่พบข้อมูลผู้ใช้งาน")
+		return
+	}
+
+	var id int
+	var total float64
+	var status string
+	var createdAt interface{}
+
+	// เช็คว่าเป็นออเดอร์ของ User คนนี้จริงๆ หรือไม่
+	err := h.MallDB.QueryRowContext(r.Context(),
+		"SELECT id, total_amount, status, created_at FROM orders WHERE id = $1 AND user_id = $2",
+		orderID, u.ID).Scan(&id, &total, &status, &createdAt)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			h.writeError(w, http.StatusNotFound, "ไม่พบคำสั่งซื้อ")
+		} else {
+			h.writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาด: "+err.Error())
+		}
+		return
+	}
+
+	// ดึงรายการสินค้า
+	itemRows, err := h.MallDB.QueryContext(r.Context(), `
+		SELECT oi.id, oi.product_id, p.name, oi.quantity, oi.price_at_time, p.image_url
+		FROM order_items oi
+		JOIN products p ON oi.product_id = p.id
+		WHERE oi.order_id = $1`, id)
+	
+	var items []map[string]any
+	if err == nil {
+		for itemRows.Next() {
+			var itemId, productId, qty int
+			var productName string
+			var price float64
+			var sqlImageUrl sql.NullString
+			
+			if err := itemRows.Scan(&itemId, &productId, &productName, &qty, &price, &sqlImageUrl); err == nil {
+				imgUrl := ""
+				if sqlImageUrl.Valid {
+					imgUrl = sqlImageUrl.String
+				}
+				items = append(items, map[string]any{
+					"id":           itemId,
+					"product_id":   productId,
+					"product_name": productName,
+					"quantity":     qty,
+					"price":        price,
+					"image_url":    imgUrl,
+				})
+			}
+		}
+		itemRows.Close()
+	}
+
+	if items == nil {
+		items = []map[string]any{}
+	}
+
+	WriteJSON(w, http.StatusOK, map[string]any{
+		"id":           id,
+		"total_amount": total,
+		"status":       status,
+		"created_at":   createdAt,
+		"items":        items,
+	})
 }
 
 // GetOrderTracking ดึงประวัติการเดินทางของคำสั่งซื้อนั้นๆ
 func (h *Handler) GetOrderTracking(w http.ResponseWriter, r *http.Request) {
 	orderID := chi.URLParam(r, "id")
 	
-    // แก้ไข: ดึง User ด้วย GetUser(r)
 	u := GetUser(r)
 	if u == nil {
 		h.writeError(w, http.StatusUnauthorized, "ไม่พบข้อมูลผู้ใช้งาน")
@@ -182,10 +292,9 @@ func (h *Handler) GetOrderTracking(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ตรวจสอบก่อนว่าเป็นเจ้าของ Order จริงไหม
-	var ownerID int64 // แก้ไข: เปลี่ยนเป็น int64 ให้ตรงกับ u.ID
+	var ownerID int64
 	err := h.MallDB.QueryRow("SELECT user_id FROM orders WHERE id = $1", orderID).Scan(&ownerID)
 	
-    // แก้ไข: เปรียบเทียบ ownerID กับ u.ID
 	if err != nil || ownerID != u.ID {
 		h.writeError(w, http.StatusForbidden, "คุณไม่มีสิทธิ์ดูข้อมูลนี้")
 		return
