@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { addToCart } from '../store/slices/cartSlice';
 import api from '../services/api';
+import { ProductComments } from './ProductComments';
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -158,18 +159,7 @@ export default function ProductDetailPage() {
 
       {/* 3. Review Section */}
       <div className="mt-16 bg-white dark:bg-gray-800 rounded-3xl p-6 lg:p-10 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-6">รีวิวจากผู้ใช้งาน (3)</h2>
-        <div className="flex flex-col gap-6">
-          {[1, 2, 3].map((rev) => (
-            <div key={rev} className="border-b border-gray-100 dark:border-gray-700 pb-6 last:border-0 last:pb-0">
-              <div className="flex items-center gap-2 mb-2 text-yellow-400">
-                {'★★★★★'.split('').map((star, i) => <span key={i}>{star}</span>)}
-              </div>
-              <p className="text-gray-700 dark:text-gray-300 font-medium mb-2">คุณภาพดีมาก คุ้มราคา การจัดส่งรวดเร็ว</p>
-              <div className="text-sm text-gray-500 dark:text-gray-400">ผู้ใช้ที่ไม่ได้ระบุชื่อ • 2 วันที่ผ่านมา</div>
-            </div>
-          ))}
-        </div>
+        <ProductComments productId={Number(id)} />
       </div>
 
       {/* 4. Related Products Section */}
