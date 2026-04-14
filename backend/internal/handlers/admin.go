@@ -247,17 +247,22 @@ func (h *Handler) AdminGetAllOrders(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, orders)
 }
 
+// backend/internal/handlers/admin.go
+
 func (h *Handler) AdminUpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	
 	var req struct {
-		Status string `json:"status"` // คาดหวังค่าสถานะเช่น: pending, paid, shipped, completed, cancelled
+		Status       string `json:"status"`        // สถานะหลัก: pending, shipped, completed
+		StatusDetail string `json:"status_detail"` // รายละเอียด: "ถึงศูนย์คัดแยก"
+		Location     string `json:"location"`      // สถานที่: "กรุงเทพฯ"
 	}
 	if err := ReadJSON(r, &req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid input data")
 		return
 	}
 
+	// 1. อัปเดตสถานะหลักใน table orders
 	_, err := h.MallDB.ExecContext(r.Context(), 
 		"UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", 
 		req.Status, id)
@@ -266,7 +271,14 @@ func (h *Handler) AdminUpdateOrderStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, map[string]string{"message": "Status updated successfully"})
+	// 2. เพิ่มประวัติการเดินทางใน table order_tracking (ถ้ามีรายละเอียดส่งมา)
+	if req.StatusDetail != "" {
+		_, err = h.MallDB.ExecContext(r.Context(),
+			"INSERT INTO order_tracking (order_id, status_detail, location) VALUES ($1, $2, $3)",
+			id, req.StatusDetail, req.Location)
+	}
+
+	WriteJSON(w, http.StatusOK, map[string]string{"message": "Status and tracking updated successfully"})
 }
 
 // --- Admin News Management ---

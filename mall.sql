@@ -95,6 +95,13 @@ CREATE TABLE documents (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE order_tracking (
+    id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(id) ON DELETE CASCADE,
+    status_detail TEXT NOT NULL, -- เช่น "สินค้าถึงศูนย์คัดแยกบางพลี", "กำลังนำจ่าย"
+    location VARCHAR(255),       -- สถานที่ (ถ้ามี)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 -- ==========================================
 -- 4. ข้อมูลตัวอย่างเบื้องต้น (Mock Data)
 -- ==========================================

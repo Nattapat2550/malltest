@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-	"time"
+	"github.com/go-chi/chi/v5"
 )
 
 type OrderItem struct {
@@ -126,54 +126,63 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
-	u := GetUser(r)
-	if u == nil {
-		h.writeError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
+// backend/internal/handlers/order.go
 
-	rows, err := h.MallDB.Query(`
-		SELECT id, total_amount, address, shipping_method, status, created_at 
-		FROM orders 
-		WHERE user_id = $1 
-		ORDER BY id DESC
-	`, u.ID)
-	
+// GetMyOrders ดึงรายการสั่งซื้อทั้งหมดของ User ที่ Logged in อยู่
+func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value("user_id").(string)
+
+	rows, err := h.MallDB.Query("SELECT id, total_amount, status, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC", userID)
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Failed to query orders: "+err.Error())
+		h.writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	defer rows.Close()
 
-	var orders []map[string]interface{}
+	var orders []map[string]any
 	for rows.Next() {
 		var id int
 		var total float64
-		var address sql.NullString
-		var shippingMethod sql.NullString
-		var status sql.NullString
-		var createdAt time.Time
-		
-		// ป้องกัน Panic ด้วย sql.NullString เผื่อฐานข้อมูลมีค่า NULL
-		if err := rows.Scan(&id, &total, &address, &shippingMethod, &status, &createdAt); err != nil {
-			h.writeError(w, http.StatusInternalServerError, "Data scan error: "+err.Error())
-			return
+		var status string
+		var createdAt any
+		if err := rows.Scan(&id, &total, &status, &createdAt); err == nil {
+			orders = append(orders, map[string]any{
+				"id": id, "total_amount": total, "status": status, "created_at": createdAt,
+			})
 		}
-		
-		orders = append(orders, map[string]interface{}{
-			"id":              id,
-			"total_amount":    total,
-			"address":         address.String,
-			"shipping_method": shippingMethod.String,
-			"status":          status.String,
-			"created_at":      createdAt,
-		})
 	}
-
-	if orders == nil {
-		orders = []map[string]interface{}{}
-	}
-
 	WriteJSON(w, http.StatusOK, orders)
+}
+
+// GetOrderTracking ดึงประวัติการเดินทางของคำสั่งซื้อนั้นๆ
+func (h *Handler) GetOrderTracking(w http.ResponseWriter, r *http.Request) {
+	orderID := chi.URLParam(r, "id")
+	userID := r.Context().Value("user_id").(string)
+
+	// ตรวจสอบก่อนว่าเป็นเจ้าของ Order จริงไหม
+	var ownerID string
+	err := h.MallDB.QueryRow("SELECT user_id FROM orders WHERE id = $1", orderID).Scan(&ownerID)
+	if err != nil || ownerID != userID {
+		h.writeError(w, http.StatusForbidden, "คุณไม่มีสิทธิ์ดูข้อมูลนี้")
+		return
+	}
+
+	rows, err := h.MallDB.Query("SELECT status_detail, location, created_at FROM order_tracking WHERE order_id = $1 ORDER BY created_at DESC", orderID)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	var tracking []map[string]any
+	for rows.Next() {
+		var detail, location string
+		var createdAt any
+		if err := rows.Scan(&detail, &location, &createdAt); err == nil {
+			tracking = append(tracking, map[string]any{
+				"detail": detail, "location": location, "time": createdAt,
+			})
+		}
+	}
+	WriteJSON(w, http.StatusOK, tracking)
 }
