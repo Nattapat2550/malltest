@@ -69,7 +69,25 @@ func setupProductRoutes(h *handlers.Handler) func(chi.Router) {
 		r.Get("/", h.ListProducts)
 		r.Get("/{id}", h.GetProductByID)
 
-		// เพิ่มการอนุญาต POST, PUT, DELETE สำหรับจัดการสินค้า (ต้อง Login และเป็น Admin)
+		// ==========================================
+		// 1. Route สำหรับอ่านคอมเมนต์ (ใครก็อ่านได้)
+		// ==========================================
+		r.Get("/{id}/comments", h.GetProductComments)
+
+		// ==========================================
+		// 2. Route สำหรับจัดการคอมเมนต์ (ต้อง Login ก่อน)
+		// ==========================================
+		r.Group(func(r chi.Router) {
+			r.Use(h.RequireAuth) // ใช้แค่ RequireAuth ไม่ต้อง RequireAdmin
+			
+			r.Post("/{id}/comments", h.CreateProductComment)
+			r.Patch("/{id}/comments/{commentID}", h.UpdateProductComment)
+			r.Delete("/{id}/comments/{commentID}", h.DeleteProductComment)
+		})
+
+		// ==========================================
+		// 3. Route สำหรับจัดการสินค้า (ต้อง Login และเป็น Admin)
+		// ==========================================
 		r.Group(func(r chi.Router) {
 			r.Use(h.RequireAuth)
 			r.Use(h.RequireAdmin)
