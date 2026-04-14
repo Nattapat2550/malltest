@@ -92,16 +92,24 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(login.fulfilled, (state, action) => {
+        // ตรวจสอบว่า Server ส่ง ok และข้อมูล user กลับมา
         if (action.payload.ok && action.payload.user) {
           state.status = 'succeeded';
           state.isAuthenticated = true;
           state.role = action.payload.user.role;
           state.userId = action.payload.user.id;
-          
-          // บันทึก Token ลง localStorage เพื่อให้ api.ts ดึงไปใช้งาน
+
+          // *** จุดที่ต้องเพิ่ม: บันทึก Token และข้อมูลลง LocalStorage ***
           if (action.payload.token) {
             localStorage.setItem('token', action.payload.token);
           }
+          if (action.payload.user.role) {
+            localStorage.setItem('role', action.payload.user.role);
+          }
+          localStorage.setItem('user', JSON.stringify(action.payload.user));
+          
+          // แจ้งเตือนหน้าจออื่นๆ ว่าข้อมูลผู้ใช้เปลี่ยน
+          window.dispatchEvent(new Event('storage'));
         }
       })
       .addCase(login.rejected, (state, action: PayloadAction<any>) => {
@@ -113,8 +121,10 @@ const authSlice = createSlice({
         state.role = null;
         state.userId = null;
         
-        // ลบ Token ออกจาก localStorage เมื่อออกจากระบบ
+        // *** จุดที่ต้องเพิ่ม: ลบข้อมูลเมื่อ Logout ***
         localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('user');
       });
   }
 });
