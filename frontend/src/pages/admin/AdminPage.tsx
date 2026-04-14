@@ -4,10 +4,11 @@ import React, { useState } from 'react';
 import UsersTab from './tabs/UsersTab';
 import NewsTab from './tabs/NewsTab';
 import AppealsTab from './tabs/AppealsTab';
-
-// Import Tab ตัวใหม่ที่สร้างขึ้น
 import CarouselTab from './tabs/CarouselTab';
 import DocumentsTab from './tabs/DocumentsTab';
+
+// สมมติว่ามี ProductsTab เพื่อจัดการสินค้า
+import ProductsTab from './tabs/ProductsTab'; 
 
 // นำเข้าไอคอนสำหรับเมนู
 import userImg from '../../assets/user.png';
@@ -15,11 +16,9 @@ import ideaImg from '../../assets/idea.png';
 import settingsImg from '../../assets/settings.png'; 
 
 export default function AdminPage() {
-  // สร้าง State สำหรับเก็บว่ากำลังเปิด Tab ไหนอยู่ (ค่าเริ่มต้นคือ users)
   const [activeTab, setActiveTab] = useState('users');
 
   return (
-    // ใช้ w-full แบบไร้ขอบด้านข้าง ประหยัดพื้นที่ขั้นสุด
     <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 lg:p-8 transition-colors duration-300">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         
@@ -33,6 +32,10 @@ export default function AdminPage() {
           {/* Tabs Navigation */}
           <div className="flex flex-wrap gap-2 mt-6">
             <TabButton id="users" label="จัดการผู้ใช้งาน" active={activeTab} onClick={setActiveTab} icon={userImg} />
+            
+            {/* เพิ่มเมนูจัดการสินค้าเข้ามาตรงนี้ */}
+            <TabButton id="products" label="จัดการสินค้า (Mall)" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
+            
             <TabButton id="news" label="จัดการข่าวสาร" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
             <TabButton id="appeals" label="ระบบคำร้องเรียน" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
             <TabButton id="carousel" label="จัดการแบนเนอร์" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
@@ -44,6 +47,7 @@ export default function AdminPage() {
         <div className="p-6 bg-gray-50/50 dark:bg-gray-900/30 min-h-[70vh] animate-fade-in">
           {/* แสดง Component ตาม Tab ที่กำลัง Active */}
           {activeTab === 'users' && <UsersTab />}
+          {activeTab === 'products' && <ProductsTab />}
           {activeTab === 'news' && <NewsTab />}
           {activeTab === 'appeals' && <AppealsTab />}
           {activeTab === 'carousel' && <CarouselTab />}

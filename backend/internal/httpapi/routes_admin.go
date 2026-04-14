@@ -17,29 +17,25 @@ func setupAdminRoutes(h *handlers.Handler) func(chi.Router) {
 		r.Get("/users", h.AdminGetUsers)
 		r.Put("/users/{id}/role", h.AdminUpdateUserRole)
 
-		// --- Product Management ---
-		r.Route("/products", func(r chi.Router) {
-			r.Get("/", h.AdminGetProducts)
-			r.Post("/", h.AdminCreateProduct)
-			r.Put("/{id}", h.AdminUpdateProduct)
-			r.Delete("/{id}", h.AdminDeleteProduct)
-		})
+		// --- Product Management (Shopping Mall) ---
+		r.Get("/products", h.AdminGetProducts)
+		r.Post("/products", h.AdminCreateProduct)
+		r.Put("/products/{id}", h.AdminUpdateProduct)
+		r.Delete("/products/{id}", h.AdminDeleteProduct)
 
 		// --- Order & Sales Management ---
-		r.Route("/orders", func(r chi.Router) {
-			r.Get("/", h.AdminGetAllOrders)
-			r.Put("/{id}/status", h.AdminUpdateOrderStatus)
-		})
+		r.Get("/orders", h.AdminGetAllOrders)
+		r.Put("/orders/{id}/status", h.AdminUpdateOrderStatus)
 
-		// --- Content Management ---
-		r.Route("/content", func(r chi.Router) {
-			r.Get("/news", h.AdminGetNewsList)
-			r.Post("/news", h.AdminCreateNews)
-			r.Put("/news/{id}", h.AdminUpdateNews)
-			r.Delete("/news/{id}", h.AdminDeleteNews)
-			
-			r.Get("/carousel", h.AdminGetCarousel)
-			r.Post("/carousel", h.AdminUpdateCarousel)
-		})
+		// --- Content & Support Management ---
+		r.Get("/news", h.AdminGetNewsList)
+		r.Post("/news", h.AdminCreateNews)
+		r.Put("/news/{id}", h.AdminUpdateNews)
+		r.Delete("/news/{id}", h.AdminDeleteNews)
+		
+		r.Get("/appeals", h.AdminGetAppeals) // แก้ไข 404 appeals
+
+		r.Get("/carousel", h.AdminGetCarousel)
+		r.Post("/carousel", h.AdminUpdateCarousel)
 	}
 }

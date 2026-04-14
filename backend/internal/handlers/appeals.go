@@ -40,29 +40,6 @@ type AppealDTO struct {
 	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 }
-
-func (h *Handler) AdminGetAppeals(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.MallDB.QueryContext(r.Context(), "SELECT id, email, reason, status, created_at FROM user_appeals ORDER BY created_at DESC")
-	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Database error")
-		return
-	}
-	defer rows.Close()
-
-	var appeals []AppealDTO
-	for rows.Next() {
-		var a AppealDTO
-		if err := rows.Scan(&a.ID, &a.Email, &a.Reason, &a.Status, &a.CreatedAt); err == nil {
-			appeals = append(appeals, a)
-		}
-	}
-	if appeals == nil {
-		appeals = []AppealDTO{}
-	}
-
-	WriteJSON(w, http.StatusOK, appeals)
-}
-
 type ReviewAppealRequest struct {
 	Status string `json:"status"` // "approved" หรือ "rejected"
 }

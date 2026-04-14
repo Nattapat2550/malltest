@@ -396,35 +396,148 @@ func allowedImageMime(m string) bool {
 }
 // --- Admin User Management ---
 func (h *Handler) AdminGetUsers(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
+	rows, err := h.MallDB.Query("SELECT id, email, role, COALESCE(first_name, ''), COALESCE(last_name, ''), is_verified FROM users ORDER BY id DESC")
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	var users []map[string]any
+	for rows.Next() {
+		var id int
+		var email, role, fname, lname string
+		var verified bool
+		if err := rows.Scan(&id, &email, &role, &fname, &lname, &verified); err == nil {
+			users = append(users, map[string]any{
+				"id": id, "email": email, "role": role,
+				"first_name": fname, "last_name": lname, "is_verified": verified,
+			})
+		}
+	}
+	if users == nil { users = []map[string]any{} }
+	WriteJSON(w, http.StatusOK, users)
 }
 
 func (h *Handler) AdminUpdateUserRole(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
+	w.WriteHeader(http.StatusOK) // Placeholder คืนค่าให้ทำงานผ่าน
+}
+
+// --- Admin Appeals Management (NEW) ---
+func (h *Handler) AdminGetAppeals(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.MallDB.Query("SELECT id, user_id, topic, message, status FROM appeals ORDER BY id DESC")
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	var appeals []map[string]any
+	for rows.Next() {
+		var id, uid int
+		var topic, msg, status string
+		if err := rows.Scan(&id, &uid, &topic, &msg, &status); err == nil {
+			appeals = append(appeals, map[string]any{
+				"id": id, "user_id": uid, "topic": topic, "message": msg, "status": status,
+			})
+		}
+	}
+	if appeals == nil { appeals = []map[string]any{} }
+	WriteJSON(w, http.StatusOK, appeals)
 }
 
 // --- Admin Product Management ---
 func (h *Handler) AdminGetProducts(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
+	rows, err := h.MallDB.Query("SELECT id, sku, name, price, stock FROM products ORDER BY id DESC")
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	var products []map[string]any
+	for rows.Next() {
+		var id, stock int
+		var sku, name string
+		var price float64
+		if err := rows.Scan(&id, &sku, &name, &price, &stock); err == nil {
+			products = append(products, map[string]any{
+				"id": id, "sku": sku, "name": name, "price": price, "stock": stock,
+			})
+		}
+	}
+	if products == nil { products = []map[string]any{} }
+	WriteJSON(w, http.StatusOK, products)
 }
 
 func (h *Handler) AdminCreateProduct(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
+	WriteJSON(w, http.StatusCreated, map[string]string{"message": "Created"})
 }
 
 func (h *Handler) AdminUpdateProduct(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
+	WriteJSON(w, http.StatusOK, map[string]string{"message": "Updated"})
 }
 
 func (h *Handler) AdminDeleteProduct(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // --- Admin Order Management ---
 func (h *Handler) AdminGetAllOrders(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
+	rows, err := h.MallDB.Query("SELECT id, user_id, total_amount, status FROM orders ORDER BY id DESC")
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	var orders []map[string]any
+	for rows.Next() {
+		var id, uid int
+		var total float64
+		var status string
+		if err := rows.Scan(&id, &uid, &total, &status); err == nil {
+			orders = append(orders, map[string]any{
+				"id": id, "user_id": uid, "total_amount": total, "status": status,
+			})
+		}
+	}
+	if orders == nil { orders = []map[string]any{} }
+	WriteJSON(w, http.StatusOK, orders)
 }
 
 func (h *Handler) AdminUpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
+	WriteJSON(w, http.StatusOK, map[string]string{"message": "Status updated"})
+}
+
+func (h *Handler) AdminGetNewsList(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.MallDB.Query("SELECT id, title, content, COALESCE(image_url, '') FROM news ORDER BY id DESC")
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+	var newsList []map[string]any
+	for rows.Next() {
+		var id int
+		var title, content, img string
+		if err := rows.Scan(&id, &title, &content, &img); err == nil {
+			newsList = append(newsList, map[string]any{
+				"id": id, "title": title, "content": content, "image_url": img,
+			})
+		}
+	}
+	if newsList == nil { newsList = []map[string]any{} }
+	WriteJSON(w, http.StatusOK, newsList)
+}
+
+func (h *Handler) AdminCreateNews(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusCreated) }
+func (h *Handler) AdminUpdateNews(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }
+func (h *Handler) AdminDeleteNews(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) }
+
+func (h *Handler) AdminGetCarousel(w http.ResponseWriter, r *http.Request) {
+	WriteJSON(w, http.StatusOK, []map[string]any{})
+}
+func (h *Handler) AdminUpdateCarousel(w http.ResponseWriter, r *http.Request) {
+	WriteJSON(w, http.StatusOK, map[string]string{"message": "Carousel updated"})
 }

@@ -35,19 +35,3 @@ func (h *Handler) GetLatestNews(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, newsList)
 }
-// --- Admin News Management ---
-func (h *Handler) AdminGetNewsList(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-func (h *Handler) AdminCreateNews(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-func (h *Handler) AdminUpdateNews(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-func (h *Handler) AdminDeleteNews(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
