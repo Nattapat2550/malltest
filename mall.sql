@@ -37,6 +37,9 @@ CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL, -- อ้างอิง user_id จาก ProjectRust
     total_amount DECIMAL(10, 2) NOT NULL,
+    address TEXT NOT NULL,
+    shipping_method VARCHAR(50) DEFAULT 'standard',
+    note TEXT,
     status VARCHAR(50) DEFAULT 'pending', -- pending, paid, shipped, completed, cancelled
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

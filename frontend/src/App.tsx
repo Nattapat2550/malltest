@@ -22,6 +22,11 @@ const AppealsPage = lazy(() => import('./pages/AppealPage'));
 const DocumentDetailsPage = lazy(() => import('./pages/DocumentDetailsPage'));
 const ProductCatalog = lazy(() => import('./pages/ProductCatalog'));
 
+// เพิ่มหน้าใหม่ที่นี่
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
+const CartPage = lazy(() => import('./pages/CartPage'));
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
+
 const App = () => {
   const [serverReady, setServerReady] = useState(false);
   const [wakingUp, setWakingUp] = useState(false);
@@ -108,6 +113,10 @@ const App = () => {
 
           <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/products" element={<ProtectedRoute><ProductCatalog /></ProtectedRoute>} />
+          <Route path="/products/:id" element={<ProtectedRoute><ProductDetailPage /></ProtectedRoute>} />
+          <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
+          <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+          
           <Route path="/malls" element={<Navigate to="/products" replace />} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/download" element={<ProtectedRoute><DownloadPage /></ProtectedRoute>} />
