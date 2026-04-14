@@ -228,7 +228,7 @@ func (h *Handler) AdminUpdateWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.ConcertDB.ExecContext(ctx, `
+	_, err := h.MallDB.ExecContext(ctx, `
 		INSERT INTO user_wallets (user_id, balance) VALUES ($1, $2)
 		ON CONFLICT (user_id) DO UPDATE SET balance = $2
 	`, userID, req.Balance)
@@ -267,7 +267,7 @@ func (h *Handler) AdminScanTicket(w http.ResponseWriter, r *http.Request) {
 	sig := parts[1]
 
 	// ตรวจสอบลายเซ็น (Signature) ว่าไม่ได้ถูกปลอมแปลง
-	secret := "concerttick_super_secret" // ต้องตรงกับฝั่ง Generate
+	secret := "malltick_super_secret" // เปลี่ยนให้ตรงกับบริบท mall
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write([]byte(bookingID))
 	expectedSig := hex.EncodeToString(mac.Sum(nil))
@@ -279,7 +279,7 @@ func (h *Handler) AdminScanTicket(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	var currentStatus string
-	err = h.ConcertDB.QueryRowContext(ctx, "SELECT status FROM bookings WHERE id = $1", bookingID).Scan(&currentStatus)
+	err = h.MallDB.QueryRowContext(ctx, "SELECT status FROM bookings WHERE id = $1", bookingID).Scan(&currentStatus)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "ไม่พบข้อมูลการจองในระบบ")
 		return
@@ -295,7 +295,7 @@ func (h *Handler) AdminScanTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// อัปเดตเป็น Used ป้องกันการแสกนซ้ำ
-	_, err = h.ConcertDB.ExecContext(ctx, "UPDATE bookings SET status = 'used' WHERE id = $1", bookingID)
+	_, err = h.MallDB.ExecContext(ctx, "UPDATE bookings SET status = 'used' WHERE id = $1", bookingID)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Database Error")
 		return

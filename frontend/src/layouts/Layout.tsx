@@ -106,7 +106,7 @@ export default function Layout() {
                 <div className="p-2 bg-brand/10 rounded-xl mr-3 group-hover:scale-105 transition-transform">
                   <img src={logoImg} alt="Logo" className="w-8 h-8 object-contain" />
                 </div>
-                <span className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-linear-to-r from-brand to-purple-600">ConcertTick</span>
+                <span className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-linear-to-r from-brand to-purple-600">Mall</span>
               </Link>
               
               <div className="hidden lg:flex items-center space-x-8 text-base">
@@ -115,8 +115,7 @@ export default function Layout() {
                 <Link to="/download" className={isActive('/download')}>Download</Link>
                 {role !== 'guest' && (
                   <>
-                    <Link to="/concerts" className={isActive('/concerts')}>Concerts</Link>
-                    <Link to="/my-bookings" className={isActive('/my-bookings')}>My Bookings</Link>
+                    <Link to="/malls" className={isActive('/malls')}>Malls</Link>
                   </>
                 )}
                 {role === 'admin' && (
@@ -187,8 +186,7 @@ export default function Layout() {
               <Link to="/download" className={isMobileActive('/download')}>Download</Link>
               {role !== 'guest' && (
                 <>
-                  <Link to="/concerts" className={isMobileActive('/concerts')}>Concerts</Link>
-                  <Link to="/my-bookings" className={isMobileActive('/my-bookings')}>My Bookings</Link>
+                  <Link to="/malls" className={isMobileActive('/malls')}>Malls</Link>
                 </>
               )}
               {role === 'admin' && (
@@ -210,9 +208,9 @@ export default function Layout() {
       <footer className="bg-bg-card border-t border-outline text-text-sub text-center py-8 mt-auto transition-colors">
         <div className="flex justify-center items-center gap-2 mb-2">
           <img src={logoImg} alt="Logo" className="w-5 h-5 opacity-50 grayscale" />
-          <span className="font-bold tracking-wider">ConcertTick</span>
+          <span className="font-bold tracking-wider">MallTick</span>
         </div>
-        <p className="text-sm font-medium">&copy; 2026 ConcertTick Platform. All rights reserved.</p>
+        <p className="text-sm font-medium">&copy; 2026 MallTick Platform. All rights reserved.</p>
       </footer>
     </div>
   );

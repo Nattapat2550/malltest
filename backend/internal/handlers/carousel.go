@@ -13,11 +13,11 @@ import (
 
 // GET /api/carousel (Public - ดึงรูปไปโชว์หน้า Home อันนี้ไม่ซ้ำ)
 func (h *Handler) CarouselList(w http.ResponseWriter, r *http.Request) {
-	if h.ConcertDB == nil { return }
+	if h.MallDB == nil { return }
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	rows, err := h.ConcertDB.QueryContext(ctx, `SELECT id, image_url, link_url, is_active, sort_order, created_at FROM carousels WHERE is_active = true ORDER BY sort_order ASC, created_at DESC`)
+	rows, err := h.MallDB.QueryContext(ctx, `SELECT id, image_url, link_url, is_active, sort_order, created_at FROM carousels WHERE is_active = true ORDER BY sort_order ASC, created_at DESC`)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "DB Error")
 		return
@@ -54,7 +54,7 @@ func (h *Handler) AdminCarouselCreateNew(w http.ResponseWriter, r *http.Request)
 		h.writeError(w, http.StatusBadRequest, "Invalid input")
 		return
 	}
-	_, err := h.ConcertDB.ExecContext(r.Context(), `INSERT INTO carousels (image_url, link_url, is_active, sort_order) VALUES ($1, $2, $3, $4)`, c.ImageURL, c.LinkURL, c.IsActive, c.SortOrder)
+	_, err := h.MallDB.ExecContext(r.Context(), `INSERT INTO carousels (image_url, link_url, is_active, sort_order) VALUES ($1, $2, $3, $4)`, c.ImageURL, c.LinkURL, c.IsActive, c.SortOrder)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to create carousel")
 		return
@@ -76,7 +76,7 @@ func (h *Handler) AdminCarouselDeleteNew(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	_, err = h.ConcertDB.ExecContext(r.Context(), `DELETE FROM carousels WHERE id = $1`, id)
+	_, err = h.MallDB.ExecContext(r.Context(), `DELETE FROM carousels WHERE id = $1`, id)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to delete carousel")
 		return

@@ -34,32 +34,32 @@ func main() {
 		port = "5000"
 	}
 
-	concertDBUrl := os.Getenv("CONCERT_DB_URL")
-	var concertDB *sql.DB
-	if concertDBUrl != "" {
+	mallDBUrl := os.Getenv("MALL_DB_URL")
+	var mallDB *sql.DB
+	if mallDBUrl != "" {
 		var err error
-		concertDB, err = sql.Open("postgres", concertDBUrl)
+		mallDB, err = sql.Open("postgres", mallDBUrl)
 		if err != nil {
-			slog.Error("Cannot connect to Concert DB", "error", err)
+			slog.Error("Cannot connect to Mall DB", "error", err)
 			os.Exit(1)
 		}
-		if err = concertDB.Ping(); err != nil {
-			slog.Error("Concert DB ping failed", "error", err)
+		if err = mallDB.Ping(); err != nil {
+			slog.Error("Mall DB ping failed", "error", err)
 			os.Exit(1)
 		}
 
 		// 🌟 ตั้งค่า Connection Pool ป้องกัน DB ล่มเมื่อโหลดหนัก
-		concertDB.SetMaxOpenConns(150)
-		concertDB.SetMaxIdleConns(30)
-		concertDB.SetConnMaxLifetime(15 * time.Minute)
+		mallDB.SetMaxOpenConns(150)
+		mallDB.SetMaxIdleConns(30)
+		mallDB.SetConnMaxLifetime(15 * time.Minute)
 
-		defer concertDB.Close()
-		slog.Info("Connected to Concert DB successfully", "component", "backend")
+		defer mallDB.Close()
+		slog.Info("Connected to Mall DB successfully", "component", "backend")
 	}
 
 	srv := &http.Server{
 		Addr:              "0.0.0.0:" + port,
-		Handler:           httpapi.NewRouter(cfg, concertDB),
+		Handler:           httpapi.NewRouter(cfg, mallDB),
 		ReadHeaderTimeout: 15 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,

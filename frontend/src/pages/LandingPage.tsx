@@ -66,7 +66,7 @@ const LandingPage = () => {
       {/* 1. Hero Section (ปุ่มเข้าสู่ระบบ / สมัครสมาชิก) */}
       <div className="relative pt-20 pb-16 md:pt-24 md:pb-20 flex flex-col items-center justify-center text-center px-6">
         <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 mb-6 drop-shadow-sm">
-          Welcome to ConcertTick
+          Welcome to Mall
         </h1>
         <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mb-10 font-medium">
           เริ่มต้นประสบการณ์ทางดนตรีที่เหนือกว่า กรุณาเข้าสู่ระบบหรือสมัครสมาชิกเพื่อจองตั๋วคอนเสิร์ตและใช้งานระบบเต็มรูปแบบ

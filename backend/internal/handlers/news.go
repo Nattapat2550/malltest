@@ -9,12 +9,12 @@ import (
 // ===== NEWS FUNCTIONS =====
 
 func (h *Handler) GetLatestNews(w http.ResponseWriter, r *http.Request) {
-	if h.ConcertDB == nil { return }
+	if h.MallDB == nil { return }
 	
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	rows, err := h.ConcertDB.QueryContext(ctx, `SELECT id, title, content, COALESCE(image_url, ''), created_at FROM news WHERE is_active = true ORDER BY created_at DESC`)
+	rows, err := h.MallDB.QueryContext(ctx, `SELECT id, title, content, COALESCE(image_url, ''), created_at FROM news WHERE is_active = true ORDER BY created_at DESC`)
 	if err != nil { 
 		h.writeError(w, http.StatusInternalServerError, "DB Error")
 		return 

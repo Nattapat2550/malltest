@@ -16,14 +16,14 @@ type Handler struct {
 	Pure      *pureapi.Client
 	Mail      *Mailer
 	Google    *GoogleOAuth
-	ConcertDB *sql.DB // ✅ เพิ่ม ConcertDB เข้ามาในนี้
+	MallDB    *sql.DB // ✅ เพิ่ม MallDB เข้ามาในนี้
 }
 
-func New(cfg config.Config, p *pureapi.Client, concertDB *sql.DB) *Handler {
+func New(cfg config.Config, p *pureapi.Client, mallDB *sql.DB) *Handler {
 	h := &Handler{
 		Cfg:       cfg, 
 		Pure:      p, 
-		ConcertDB: concertDB, // ✅ รับค่าและเก็บไว้ใช้
+		MallDB:    mallDB, // ✅ รับค่าและเก็บไว้ใช้
 	}
 	h.Mail = NewMailer(cfg)
 	h.Google = NewGoogleOAuth(cfg)

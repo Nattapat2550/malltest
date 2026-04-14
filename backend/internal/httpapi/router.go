@@ -14,7 +14,7 @@ import (
 	"backend/internal/pureapi"
 )
 
-func NewRouter(cfg config.Config, concertDB *sql.DB) http.Handler {
+func NewRouter(cfg config.Config, mallDB *sql.DB) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -29,7 +29,7 @@ func NewRouter(cfg config.Config, concertDB *sql.DB) http.Handler {
 	r.Use(cors(allowedOrigins, true))
 
 	p := pureapi.NewClient(cfg.PureAPIBaseURL, cfg.PureAPIKey, cfg.PureAPIInternalURL)
-	h := handlers.New(cfg, p, concertDB)
+	h := handlers.New(cfg, p, mallDB)
 
 	r.Get("/api/health", h.Health)
 	r.Get("/", func(w http.ResponseWriter, req *http.Request) {

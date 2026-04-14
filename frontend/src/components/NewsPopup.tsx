@@ -22,23 +22,11 @@ export default function NewsPopup() {
 
   const fetchActiveNews = async () => {
     try {
-      const { data } = await api.get('/api/concerts/news/latest'); 
       
-      if (data && data.length > 0) {
-        const latestNewsIdFromDB = Math.max(...data.map((n: News) => n.id));
-        
-        // 3. เติม || '0' เข้าไปเพื่อรับมือกับกรณีที่ getItem คืนค่ามาเป็น null
-        const seenLocalId = parseInt(localStorage.getItem('latestSeenNewsId') || '0', 10);
-        const seenSessionId = parseInt(sessionStorage.getItem('latestSeenNewsId') || '0', 10);
-
-        if (latestNewsIdFromDB > seenLocalId && latestNewsIdFromDB > seenSessionId) {
-          setNewsList(data);
-          setShowNewsModal(true);
-        }
-      }
     } catch (error: any) {
       console.log("No active news");
     }
+
   };
 
   const closeNewsModal = () => {

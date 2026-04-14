@@ -8,15 +8,6 @@ import placeImg from '../assets/place.png';
 import ticketImg from '../assets/ticket.png';
 import ideaImg from '../assets/idea.png'; 
 
-interface Concert {
-  id: number;
-  access_code: string; 
-  name: string;
-  show_date: string;
-  venue: string;
-  layout_image_url?: string;
-  is_active: boolean;
-}
 
 interface Carousel {
   id: number;
@@ -33,7 +24,6 @@ interface DocumentItem {
 }
 
 export default function HomePage() {
-  const [concerts, setConcerts] = useState<Concert[]>([]);
   const [carousels, setCarousels] = useState<Carousel[]>([]);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -41,15 +31,6 @@ export default function HomePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [concertRes, carouselRes, docRes] = await Promise.all([
-          api.get('/api/concerts/list'),
-          // แก้ไข URL ให้ตรงกับ Backend
-          api.get('/api/carousel').catch(() => ({ data: [] })), 
-          api.get('/api/documents/list').catch(() => ({ data: [] }))
-        ]);
-        setConcerts(concertRes.data || []);
-        setCarousels(carouselRes.data || []);
-        setDocuments(docRes.data || []);
       } catch (err: any) { 
         console.error("Failed to load initial data");
       }
@@ -135,86 +116,15 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Concerts Grid Section */}
       <div className="w-full px-6 lg:px-12 2xl:px-20 mt-16 md:mt-24">
         <div className="flex items-center gap-4 mb-10">
           <div className="p-3 bg-blue-600/10 dark:bg-blue-500/20 rounded-2xl">
-            <img src={ticketImg} className="w-6 h-6 object-contain dark:invert" alt="Concerts" />
+            <img src={ticketImg} className="w-6 h-6 object-contain dark:invert" alt="Malls" />
           </div>
           <h2 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">
             คอนเสิร์ตเร็วๆ นี้
           </h2>
         </div>
-        
-        {concerts.length === 0 ? (
-          <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700">
-            <img src={calendarImg} className="w-16 h-16 mx-auto opacity-30 dark:invert mb-4" alt="Empty" />
-            <p className="text-gray-500 dark:text-gray-400 font-bold text-lg">ยังไม่มีคอนเสิร์ตในระบบขณะนี้</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {concerts.map(c => (
-              <div key={c.id} className={`group bg-white dark:bg-gray-800 rounded-3xl shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col h-full transition-all duration-300 ${!c.is_active ? 'opacity-70 grayscale' : 'hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-2 hover:border-blue-500/30'}`}>
-                
-                <div className="h-56 bg-gray-100 dark:bg-gray-900 relative overflow-hidden">
-                  {c.layout_image_url ? 
-                    <img src={c.layout_image_url} alt="Cover" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"/> : 
-                    <div className="w-full h-full flex items-center justify-center"><span className="text-gray-400 font-bold">No Image</span></div>
-                  }
-                  <div className="absolute top-4 right-4 z-10">
-                    {c.is_active ? (
-                      <span className="bg-white/90 dark:bg-gray-900/90 backdrop-blur text-blue-600 dark:text-blue-400 text-xs font-black px-4 py-1.5 rounded-full shadow-lg">เปิดจองแล้ว</span>
-                    ) : (
-                      <span className="bg-black/80 backdrop-blur text-white text-xs font-black px-4 py-1.5 rounded-full shadow-lg uppercase tracking-wider">Coming Soon</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="p-6 flex flex-col flex-1">
-                  <h3 className="text-xl font-black mb-4 text-gray-900 dark:text-white leading-snug line-clamp-2">{c.name}</h3>
-                  <div className="space-y-3 mb-6">
-                    <div className="flex items-center text-gray-600 dark:text-gray-400 text-sm font-medium">
-                      <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center mr-3 shrink-0">
-                        <img src={calendarImg} alt="Date" className="w-4 h-4 object-contain opacity-70 dark:invert" />
-                      </div>
-                      <span>{new Date(c.show_date).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })} น.</span>
-                    </div>
-                    <div className="flex items-center text-gray-600 dark:text-gray-400 text-sm font-medium">
-                      <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center mr-3 shrink-0">
-                        <img src={placeImg} alt="Venue" className="w-4 h-4 object-contain opacity-70 dark:invert" />
-                      </div>
-                      <span className="truncate">{c.venue}</span>
-                    </div>
-                  </div>
-                  <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
-                    {c.is_active ? (
-                      <Link to={`/concerts/${c.access_code}`} className="flex justify-center items-center w-full bg-gray-50 dark:bg-gray-900 group-hover:bg-blue-600 text-gray-900 dark:text-white group-hover:text-white font-bold py-3.5 rounded-xl transition-all duration-300">
-                        ดูรายละเอียด & จองตั๋ว
-                      </Link>
-                    ) : (
-                      <button disabled className="w-full bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-500 font-bold py-3.5 rounded-xl cursor-not-allowed border border-gray-200 dark:border-gray-700 border-dashed">
-                        รอเปิดจำหน่าย
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Documents/Gallery Section */}
-      <div className="w-full px-6 lg:px-12 2xl:px-20 mt-16 md:mt-24">
-        <div className="flex items-center gap-4 mb-10">
-          <div className="p-3 bg-green-500/10 dark:bg-green-500/20 rounded-2xl">
-            <img src={ideaImg} className="w-6 h-6 object-contain dark:invert" alt="Documents" />
-          </div>
-          <h2 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">
-            ข่าวสาร & ข้อมูลแกลเลอรี
-          </h2>
-        </div>
-        
         {documents.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {documents.map(d => (

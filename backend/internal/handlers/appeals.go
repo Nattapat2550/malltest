@@ -24,7 +24,7 @@ func (h *Handler) SubmitAppeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.ConcertDB.ExecContext(r.Context(), "INSERT INTO user_appeals (email, reason) VALUES ($1, $2)", req.Email, req.Reason)
+	_, err := h.MallDB.ExecContext(r.Context(), "INSERT INTO user_appeals (email, reason) VALUES ($1, $2)", req.Email, req.Reason)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "ไม่สามารถยื่นคำร้องได้ในขณะนี้")
 		return
@@ -42,7 +42,7 @@ type AppealDTO struct {
 }
 
 func (h *Handler) AdminGetAppeals(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.ConcertDB.QueryContext(r.Context(), "SELECT id, email, reason, status, created_at FROM user_appeals ORDER BY created_at DESC")
+	rows, err := h.MallDB.QueryContext(r.Context(), "SELECT id, email, reason, status, created_at FROM user_appeals ORDER BY created_at DESC")
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Database error")
 		return
@@ -76,13 +76,13 @@ func (h *Handler) AdminReviewAppeal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var email string
-	err := h.ConcertDB.QueryRowContext(r.Context(), "SELECT email FROM user_appeals WHERE id = $1", appealID).Scan(&email)
+	err := h.MallDB.QueryRowContext(r.Context(), "SELECT email FROM user_appeals WHERE id = $1", appealID).Scan(&email)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "ไม่พบคำร้อง")
 		return
 	}
 
-	_, err = h.ConcertDB.ExecContext(r.Context(), "UPDATE user_appeals SET status = $1 WHERE id = $2", req.Status, appealID)
+	_, err = h.MallDB.ExecContext(r.Context(), "UPDATE user_appeals SET status = $1 WHERE id = $2", req.Status, appealID)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "อัปเดตสถานะล้มเหลว")
 		return

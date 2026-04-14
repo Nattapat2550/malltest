@@ -14,11 +14,11 @@ import (
 
 // GET /api/documents/list (ดึงรายการ Document สำหรับหน้า Home)
 func (h *Handler) DocumentList(w http.ResponseWriter, r *http.Request) {
-	if h.ConcertDB == nil { return }
+	if h.MallDB == nil { return }
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	rows, err := h.ConcertDB.QueryContext(ctx, `SELECT id, title, description, cover_image, gallery_urls, is_active, created_at FROM documents WHERE is_active = true ORDER BY created_at DESC`)
+	rows, err := h.MallDB.QueryContext(ctx, `SELECT id, title, description, cover_image, gallery_urls, is_active, created_at FROM documents WHERE is_active = true ORDER BY created_at DESC`)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "DB Error")
 		return
@@ -41,13 +41,13 @@ func (h *Handler) DocumentList(w http.ResponseWriter, r *http.Request) {
 // GET /api/documents/{id} (ดึงรายละเอียดและแกลเลอรีของ Document นั้นๆ)
 func (h *Handler) GetDocumentDetail(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	if h.ConcertDB == nil { return }
+	if h.MallDB == nil { return }
 	
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	var d Document
-	err := h.ConcertDB.QueryRowContext(ctx, `SELECT id, title, description, cover_image, gallery_urls, is_active, created_at FROM documents WHERE id = $1 AND is_active = true`, id).
+	err := h.MallDB.QueryRowContext(ctx, `SELECT id, title, description, cover_image, gallery_urls, is_active, created_at FROM documents WHERE id = $1 AND is_active = true`, id).
 		Scan(&d.ID, &d.Title, &d.Description, &d.CoverImage, &d.GalleryURLs, &d.IsActive, &d.CreatedAt)
 	
 	if err == sql.ErrNoRows {
@@ -68,7 +68,7 @@ func (h *Handler) AdminCreateDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// GalleryURLs ถูกส่งมาเป็น JSON String Array
-	_, err := h.ConcertDB.ExecContext(r.Context(), `INSERT INTO documents (title, description, cover_image, gallery_urls, is_active) VALUES ($1, $2, $3, $4, $5)`, d.Title, d.Description, d.CoverImage, d.GalleryURLs, d.IsActive)
+	_, err := h.MallDB.ExecContext(r.Context(), `INSERT INTO documents (title, description, cover_image, gallery_urls, is_active) VALUES ($1, $2, $3, $4, $5)`, d.Title, d.Description, d.CoverImage, d.GalleryURLs, d.IsActive)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to create document")
 		return
@@ -85,9 +85,9 @@ func (h *Handler) AdminDeleteDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.ConcertDB == nil { return }
+	if h.MallDB == nil { return }
 
-	_, err = h.ConcertDB.ExecContext(r.Context(), `DELETE FROM documents WHERE id = $1`, id)
+	_, err = h.MallDB.ExecContext(r.Context(), `DELETE FROM documents WHERE id = $1`, id)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to delete document")
 		return
@@ -110,9 +110,9 @@ func (h *Handler) AdminUpdateDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.ConcertDB == nil { return }
+	if h.MallDB == nil { return }
 
-	_, err = h.ConcertDB.ExecContext(r.Context(), 
+	_, err = h.MallDB.ExecContext(r.Context(), 
 		`UPDATE documents SET title = $1, description = $2, cover_image = $3, gallery_urls = $4, is_active = $5 WHERE id = $6`,
 		d.Title, d.Description, d.CoverImage, d.GalleryURLs, d.IsActive, id)
 	
