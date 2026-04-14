@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -151,4 +152,29 @@ func (h *Handler) UsersMeDelete(w http.ResponseWriter, r *http.Request) {
 
 	h.clearAuthCookie(w)
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "Account has been soft-deleted"})
+}
+
+// GET /api/users/me/wallet
+func (h *Handler) GetUserWallet(w http.ResponseWriter, r *http.Request) {
+	u := GetUser(r)
+	if u == nil {
+		h.writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var balance float64
+	err := h.MallDB.QueryRow("SELECT balance FROM user_wallets WHERE user_id = $1", u.ID).Scan(&balance)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			balance = 0.00 // คืนค่า 0 หากผู้ใช้ยังไม่เคยถูกเติมเงินเลย
+		} else {
+			h.writeError(w, http.StatusInternalServerError, "Failed to fetch wallet balance")
+			return
+		}
+	}
+
+	WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"user_id": u.ID,
+		"balance": balance,
+	})
 }

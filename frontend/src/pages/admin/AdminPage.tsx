@@ -6,9 +6,8 @@ import NewsTab from './tabs/NewsTab';
 import AppealsTab from './tabs/AppealsTab';
 import CarouselTab from './tabs/CarouselTab';
 import DocumentsTab from './tabs/DocumentsTab';
-
-// สมมติว่ามี ProductsTab เพื่อจัดการสินค้า
-import ProductsTab from './tabs/ProductsTab'; 
+import ProductsTab from './tabs/ProductsTab'; // สมมติว่ามี ProductsTab เพื่อจัดการสินค้า
+import OrdersTab from './tabs/OrdersTab';
 
 // นำเข้าไอคอนสำหรับเมนู
 import userImg from '../../assets/user.png';
@@ -52,6 +51,7 @@ export default function AdminPage() {
           {activeTab === 'appeals' && <AppealsTab />}
           {activeTab === 'carousel' && <CarouselTab />}
           {activeTab === 'documents' && <DocumentsTab />}
+          {activeTab === 'orders' && <OrdersTab />}
         </div>
         
       </div>

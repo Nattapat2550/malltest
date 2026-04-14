@@ -186,7 +186,25 @@ func (h *Handler) AdminGetAllOrders(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) AdminUpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
-	WriteJSON(w, http.StatusOK, map[string]string{"message": "Status updated"})
+	id := chi.URLParam(r, "id")
+	
+	var req struct {
+		Status string `json:"status"` // คาดหวังค่าสถานะเช่น: pending, paid, shipped, completed, cancelled
+	}
+	if err := ReadJSON(r, &req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid input data")
+		return
+	}
+
+	_, err := h.MallDB.ExecContext(r.Context(), 
+		"UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", 
+		req.Status, id)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to update order status")
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, map[string]string{"message": "Status updated successfully"})
 }
 
 // --- Admin News Management ---
@@ -247,6 +265,7 @@ func (h *Handler) AdminGetCarousel(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) AdminUpdateCarousel(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]string{"message": "Carousel updated"})
 }
+
 // UpdateUserWallet สำหรับให้ Admin อัปเดตยอดเงิน
 func (h *Handler) UpdateUserWallet(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "id") // สมมติว่าส่ง user_id มาใน URL

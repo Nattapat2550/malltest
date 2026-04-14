@@ -1,19 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { clearCart } from '../store/slices/cartSlice';
+import api from '../services/api';
 
 export default function CheckoutPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   
-  // รับ State จากตะกร้า หรือ ซื้อทันที
-  const items = location.state?.directBuy || [];
+  // รองรับทั้งแบบซื้อทันที (directBuy) หรือ ดึงจากตะกร้า (Redux Cart)
+  const cartItems = useSelector((state: any) => state.cart.items);
+  const items = location.state?.directBuy || cartItems;
   const initialPromo = location.state?.promoCode || '';
-  const initialDiscount = location.state?.discount || 0;
 
   const [address, setAddress] = useState('');
   const [shippingMethod, setShippingMethod] = useState('standard');
   const [note, setNote] = useState('');
   const [promoCode, setPromoCode] = useState(initialPromo);
+
+  // ส่วนของการจัดการ Wallet และ State การโหลด
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [loadingWallet, setLoadingWallet] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    // ดึงข้อมูลยอดเงินในกระเป๋าเมื่อเข้าหน้า Checkout
+    api.get('/api/users/me/wallet')
+      .then(res => setWalletBalance(res.data.balance || 0))
+      .catch(console.error)
+      .finally(() => setLoadingWallet(false));
+  }, []);
 
   if (items.length === 0) {
     return <div className="min-h-screen flex justify-center items-center text-gray-900 dark:text-white"><h1 className="text-2xl font-bold">ไม่พบข้อมูลการสั่งซื้อ</h1></div>;
@@ -24,11 +41,41 @@ export default function CheckoutPage() {
   const discount = promoCode === 'MALL20' ? subtotal * 0.2 : 0;
   const total = subtotal + shippingCost - discount;
 
-  const handlePlaceOrder = () => {
+  // เช็คว่าเงินพอหรือไม่
+  const isInsufficientBalance = walletBalance < total;
+
+  const handlePlaceOrder = async () => {
     if (!address.trim()) return alert('กรุณากรอกที่อยู่จัดส่ง');
-    // ในโปรเจกต์จริงจะเรียก API สั่งซื้อที่นี่
-    alert('สั่งซื้อสำเร็จ! ขอบคุณที่ใช้บริการ');
-    navigate('/home');
+    if (isInsufficientBalance) return alert('ยอดเงินในกระเป๋าไม่เพียงพอ กรุณาเติมเงินก่อนทำรายการ');
+
+    setIsSubmitting(true);
+    try {
+      // เตรียมข้อมูลให้ตรงกับ Backend struct
+      const orderPayload = {
+        items: items.map((item: any) => ({
+          product_id: item.productId || item.id, // รองรับทั้งจาก cart (productId) และ direct (id)
+          quantity: item.quantity,
+          price: item.price
+        })),
+        address,
+        shipping_method: shippingMethod,
+        note,
+        promo_code: promoCode,
+        total_amount: total
+      };
+
+      await api.post('/api/orders/checkout', orderPayload);
+      
+      // ล้างตะกร้าหลังสั่งซื้อสำเร็จ
+      dispatch(clearCart());
+      
+      alert('สั่งซื้อสำเร็จ! หักยอดเงินเรียบร้อยแล้ว');
+      navigate('/settings'); // พาไปหน้า Settings เพื่อดูประวัติการสั่งซื้อ
+    } catch (err: any) {
+      alert(err.response?.data?.error || err.response?.data?.message || 'เกิดข้อผิดพลาดในการสั่งซื้อ');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -77,8 +124,30 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* สรุปรายการสินค้า */}
+        {/* สรุปรายการสินค้าและ Wallet */}
         <div className="lg:w-112.5 flex flex-col gap-6">
+          
+          {/* กล่องแสดงยอดเงิน (Wallet) */}
+          <div className={`rounded-3xl p-6 shadow-sm border-2 ${isInsufficientBalance ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'}`}>
+            <h2 className={`text-lg font-bold mb-2 ${isInsufficientBalance ? 'text-red-800 dark:text-red-400' : 'text-blue-900 dark:text-blue-300'}`}>
+              ยอดเงินในกระเป๋าของคุณ
+            </h2>
+            {loadingWallet ? (
+              <p className="text-gray-500">กำลังโหลด...</p>
+            ) : (
+              <div>
+                <p className={`text-3xl font-black ${isInsufficientBalance ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                  ฿{walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </p>
+                {isInsufficientBalance && (
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-2 font-bold">
+                    *ยอดเงินไม่เพียงพอ ขาดอีก ฿{(total - walletBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <h2 className="text-xl font-black text-gray-900 dark:text-white mb-6">สินค้าที่สั่งซื้อ</h2>
             <div className="flex flex-col gap-4 max-h-75 overflow-y-auto pr-2">
@@ -131,9 +200,14 @@ export default function CheckoutPage() {
 
             <button 
               onClick={handlePlaceOrder}
-              className="w-full mt-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg transition-all shadow-lg shadow-blue-500/30"
+              disabled={isInsufficientBalance || isSubmitting || loadingWallet}
+              className={`w-full mt-8 py-4 rounded-xl font-bold text-lg transition-all shadow-lg 
+                ${isInsufficientBalance || isSubmitting || loadingWallet
+                  ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 cursor-not-allowed shadow-none' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/30'
+                }`}
             >
-              ยืนยันการสั่งซื้อ
+              {isSubmitting ? 'กำลังดำเนินการ...' : isInsufficientBalance ? 'ยอดเงินไม่เพียงพอ' : 'ยืนยันการสั่งซื้อ'}
             </button>
           </div>
         </div>
