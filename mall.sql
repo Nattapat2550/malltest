@@ -102,6 +102,18 @@ CREATE TABLE order_tracking (
     location VARCHAR(255),       -- สถานที่ (ถ้ามี)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE product_comments (
+    id SERIAL PRIMARY KEY,
+    product_id INT REFERENCES products(id) ON DELETE CASCADE,
+    user_id VARCHAR(255) NOT NULL, -- อ้างอิง user_id จาก ProjectRust
+    order_id INT REFERENCES orders(id) ON DELETE CASCADE,
+    rating INT CHECK (rating >= 1 AND rating <= 5), -- ให้คะแนน 1-5 ดาว
+    message TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    -- ป้องกันการคอมเมนต์ซ้ำ: 1 user สามารถคอมเมนต์สินค้านี้ได้ 1 ครั้ง ต่อ 1 คำสั่งซื้อ
+    UNIQUE(user_id, product_id, order_id) 
+);
 -- ==========================================
 -- 4. ข้อมูลตัวอย่างเบื้องต้น (Mock Data)
 -- ==========================================

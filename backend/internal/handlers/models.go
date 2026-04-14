@@ -40,3 +40,20 @@ type Document struct {
 	IsActive    bool      `json:"is_active"`
 	CreatedAt   time.Time `json:"created_at"`
 }
+
+// ===== Models สำหรับ Product Comments =====
+type ProductComment struct {
+	ID        int       `json:"id"`
+	ProductID int       `json:"product_id"`
+	UserID    string    `json:"user_id"`
+	OrderID   int       `json:"order_id"`
+	Rating    int       `json:"rating"`
+	Message   string    `json:"message"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type CreateCommentRequest struct {
+	OrderID int    `json:"order_id"` // ระบุ order ที่ต้องการคอมเมนต์
+	Rating  int    `json:"rating"`
+	Message string `json:"message"`
+}

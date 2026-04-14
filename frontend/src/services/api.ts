@@ -28,3 +28,16 @@ export const adminUpdateOrderStatus = (id: number, status: string) =>
 // Admin Wallet API (สำหรับแอดมินเติมเงินให้ User)
 export const adminUpdateUserWallet = (userId: string, balance: number) => 
   api.put(`/api/admin/users/${userId}/wallet`, { balance });
+export const commentApi = {
+  getComments: (productId: number) => 
+    api.get(`/products/${productId}/comments`),
+  
+  createComment: (productId: number, data: { order_id: number, rating: number, message: string }) => 
+    api.post(`/products/${productId}/comments`, data),
+  
+  updateComment: (productId: number, commentId: number, data: { rating: number, message: string }) => 
+    api.patch(`/products/${productId}/comments/${commentId}`, data),
+  
+  deleteComment: (productId: number, commentId: number) => 
+    api.delete(`/products/${productId}/comments/${commentId}`),
+};
