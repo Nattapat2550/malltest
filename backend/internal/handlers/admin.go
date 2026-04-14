@@ -11,12 +11,38 @@ import (
 // --- Admin User Management (Fetch from ProjectRust) ---
 func (h *Handler) AdminGetUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var users any
+	var users []map[string]any
 
-	// วิ่งไปขอข้อมูลรายชื่อผู้ใช้งานจาก ProjectRust ผ่าน API
+	// 1. ดึงข้อมูล User จากระบบ Auth ส่วนกลาง
 	if err := h.Pure.Get(ctx, "/api/internal/admin/users", &users); err != nil {
 		h.writeError(w, http.StatusInternalServerError, "ไม่สามารถดึงข้อมูล User จากระบบส่วนกลางได้")
 		return
+	}
+
+	// 2. ดึงยอดเงินกระเป๋าจากฐานข้อมูล MallDB
+	rows, err := h.MallDB.Query("SELECT user_id, balance FROM user_wallets")
+	wallets := make(map[string]float64)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var uid string
+			var balance float64
+			if err := rows.Scan(&uid, &balance); err == nil {
+				wallets[uid] = balance
+			}
+		}
+	}
+
+	// 3. แนบยอดเงินเข้าไปในข้อมูล User แต่ละคนก่อนส่งให้ Frontend
+	for i, user := range users {
+		uid, ok := user["id"].(string)
+		if ok {
+			if bal, exists := wallets[uid]; exists {
+				users[i]["balance"] = bal
+			} else {
+				users[i]["balance"] = 0.00 // ค่าเริ่มต้นถ้ายังไม่เคยถูกเติมเงิน
+			}
+		}
 	}
 
 	WriteJSON(w, http.StatusOK, users)

@@ -1,11 +1,13 @@
+// frontend/src/pages/admin/tabs/UsersTab.tsx
 import React, { useState, useEffect } from 'react';
 import api from '../../../services/api';
 
 interface User {
   id: string;
-  email: string;
+  email?: string;
+  username?: string;
   role: string;
-  wallet_balance?: number;
+  balance?: number; // ✅ เปลี่ยนจาก wallet_balance เป็น balance ให้ตรงกับ Backend
 }
 
 export default function UsersTab() {
@@ -38,7 +40,8 @@ export default function UsersTab() {
 
   const openWalletModal = (user: User) => {
     setSelectedUser(user);
-    setNewBalance(user.wallet_balance || 0);
+    // ✅ อัปเดตให้เรียกใช้ user.balance
+    setNewBalance(user.balance || 0);
     setWalletModal(true);
   };
 
@@ -69,7 +72,7 @@ export default function UsersTab() {
           <thead>
             <tr className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm border-b border-gray-200 dark:border-gray-700">
               <th className="p-4">ID</th>
-              <th className="p-4">Email</th>
+              <th className="p-4">Email / Username</th>
               <th className="p-4">สิทธิ์</th>
               <th className="p-4">ยอดเงิน (Wallet)</th>
               <th className="p-4 text-right">จัดการ</th>
@@ -86,14 +89,15 @@ export default function UsersTab() {
               users.map(u => (
                 <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
                   <td className="p-4 text-gray-500 dark:text-gray-400 text-xs font-mono">{u.id}</td>
-                  <td className="p-4 text-gray-900 dark:text-white font-medium">{u.email}</td>
+                  <td className="p-4 text-gray-900 dark:text-white font-medium">{u.email || u.username || 'ไม่มีข้อมูล'}</td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded text-xs font-bold ${u.role === 'admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}>
                       {u.role ? u.role.toUpperCase() : 'USER'}
                     </span>
                   </td>
                   <td className="p-4 font-bold text-green-600 dark:text-green-400">
-                    ฿{(u.wallet_balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {/* ✅ อัปเดตให้เรียกใช้ u.balance */}
+                    ฿{(u.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </td>
                   <td className="p-4 flex justify-end gap-2">
                     <button 
@@ -115,7 +119,7 @@ export default function UsersTab() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl p-6">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">ปรับปรุงยอดเงิน</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">บัญชี: {selectedUser.email}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">บัญชี: {selectedUser.email || selectedUser.username}</p>
             
             <form onSubmit={handleUpdateWallet}>
               <div className="mb-6">
