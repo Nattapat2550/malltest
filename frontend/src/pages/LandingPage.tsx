@@ -69,7 +69,7 @@ const LandingPage = () => {
           Welcome to Mall
         </h1>
         <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mb-10 font-medium">
-          เริ่มต้นประสบการณ์ทางดนตรีที่เหนือกว่า กรุณาเข้าสู่ระบบหรือสมัครสมาชิกเพื่อจองตั๋วคอนเสิร์ตและใช้งานระบบเต็มรูปแบบ
+          เริ่มต้นประสบการณ์ช้อปปิ้งที่เหนือกว่า กรุณาเข้าสู่ระบบหรือสมัครสมาชิกเพื่อเลือกซื้อสินค้าและใช้งานระบบเต็มรูปแบบ
         </p>
         <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md justify-center">
           <Link 
@@ -129,7 +129,7 @@ const LandingPage = () => {
       {documents.length > 0 && (
         <div className="w-full px-6 lg:px-12 2xl:px-20 mt-16 md:mt-24">
           <div className="flex items-center gap-4 mb-10">
-            <div className="p-3 bg-green-500/10 dark:bg-green-500/20 rounded-2xl">
+            <div className="p-3 bg-blue-500/10 dark:bg-blue-500/20 rounded-2xl">
               <img src={ideaImg} className="w-6 h-6 object-contain dark:invert" alt="Documents" />
             </div>
             <h2 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">
@@ -139,7 +139,7 @@ const LandingPage = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {documents.map(d => (
-              <div key={d.id} className="group bg-white dark:bg-gray-800 rounded-3xl shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col h-full transition-all duration-300 hover:shadow-2xl hover:shadow-green-500/10 hover:-translate-y-2 hover:border-green-500/30">
+              <div key={d.id} className="group bg-white dark:bg-gray-800 rounded-3xl shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col h-full transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-2 hover:border-blue-500/30">
                 <div className="h-48 bg-gray-100 dark:bg-gray-900 relative overflow-hidden">
                   {d.cover_image ? 
                     <img src={d.cover_image} alt="Cover" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"/> : 
@@ -149,7 +149,7 @@ const LandingPage = () => {
                 <div className="p-6 flex flex-col flex-1">
                   <h3 className="text-xl font-black mb-4 text-gray-900 dark:text-white leading-snug line-clamp-2">{d.title}</h3>
                   <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <Link to={`/documents/${d.id}`} className="flex justify-center items-center w-full bg-gray-50 dark:bg-gray-900 group-hover:bg-green-600 text-gray-900 dark:text-white group-hover:text-white font-bold py-3.5 rounded-xl transition-all duration-300">
+                    <Link to={`/documents/${d.id}`} className="flex justify-center items-center w-full bg-gray-50 dark:bg-gray-900 group-hover:bg-blue-600 text-gray-900 dark:text-white group-hover:text-white font-bold py-3.5 rounded-xl transition-all duration-300">
                       อ่านรายละเอียด & แกลเลอรี
                     </Link>
                   </div>

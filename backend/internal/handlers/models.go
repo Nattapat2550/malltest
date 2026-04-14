@@ -12,14 +12,7 @@ type News struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type Venue struct {
-	ID         int    `json:"id"`
-	Name       string `json:"name"`
-	SVGContent string `json:"svg_content"`
-}
-
-
-// ===== Models สำหรับ GTYCoin =====
+// ===== Models สำหรับ Wallet =====
 type UserWallet struct {
 	UserID  string  `json:"user_id"`
 	Balance float64 `json:"balance"`

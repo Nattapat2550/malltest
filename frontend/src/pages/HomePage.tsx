@@ -5,7 +5,6 @@ import api from '../services/api';
 import heroImg from '../assets/hero.png';
 import ideaImg from '../assets/idea.png'; 
 
-
 interface Carousel {
   id: number;
   image_url: string;
@@ -28,6 +27,12 @@ export default function HomePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const [carouselRes, docRes] = await Promise.all([
+          api.get('/api/carousel').catch(() => ({ data: [] })), 
+          api.get('/api/documents/list').catch(() => ({ data: [] }))
+        ]);
+        setCarousels(carouselRes.data || []);
+        setDocuments(docRes.data || []);
       } catch (err: any) { 
         console.error("Failed to load initial data");
       }
@@ -60,10 +65,10 @@ export default function HomePage() {
             </span>
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-black mb-6 leading-tight tracking-tight drop-shadow-lg">
               Unlock Your <br className="hidden md:block" />
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-400">Live Music</span> Journey
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-400">Shopping</span> Journey
             </h1>
             <p className="text-lg md:text-xl text-gray-300 font-medium max-w-2xl mx-auto md:mx-0">
-              ระบบจองตั๋วคอนเสิร์ตที่ล้ำสมัยที่สุด เลือกระบุที่นั่งแบบ Interactive และสัมผัสประสบการณ์ที่เหนือกว่า
+              แพลตฟอร์มอีคอมเมิร์ซที่ล้ำสมัยที่สุด เลือกซื้อสินค้าได้อย่างอิสระ และสัมผัสประสบการณ์ช้อปปิ้งที่เหนือกว่า
             </p>
           </div>
           <div className="flex-1 flex justify-center md:justify-end">
@@ -116,13 +121,13 @@ export default function HomePage() {
       <div className="w-full px-6 lg:px-12 2xl:px-20 mt-16 md:mt-24">
         <div className="flex items-center gap-4 mb-10">
           <h2 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">
-            คอนเสิร์ตเร็วๆ นี้
+            ข่าวสาร & สินค้าแนะนำ
           </h2>
         </div>
         {documents.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {documents.map(d => (
-              <div key={d.id} className="group bg-white dark:bg-gray-800 rounded-3xl shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col h-full transition-all duration-300 hover:shadow-2xl hover:shadow-green-500/10 hover:-translate-y-2 hover:border-green-500/30">
+              <div key={d.id} className="group bg-white dark:bg-gray-800 rounded-3xl shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col h-full transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-2 hover:border-blue-500/30">
                 <div className="h-48 bg-gray-100 dark:bg-gray-900 relative overflow-hidden">
                   {d.cover_image ? 
                     <img src={d.cover_image} alt="Cover" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"/> : 
@@ -132,7 +137,7 @@ export default function HomePage() {
                 <div className="p-6 flex flex-col flex-1">
                   <h3 className="text-xl font-black mb-4 text-gray-900 dark:text-white leading-snug line-clamp-2">{d.title}</h3>
                   <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <Link to={`/documents/${d.id}`} className="flex justify-center items-center w-full bg-gray-50 dark:bg-gray-900 group-hover:bg-green-600 text-gray-900 dark:text-white group-hover:text-white font-bold py-3.5 rounded-xl transition-all duration-300">
+                    <Link to={`/documents/${d.id}`} className="flex justify-center items-center w-full bg-gray-50 dark:bg-gray-900 group-hover:bg-blue-600 text-gray-900 dark:text-white group-hover:text-white font-bold py-3.5 rounded-xl transition-all duration-300">
                       อ่านรายละเอียด & แกลเลอรี
                     </Link>
                   </div>
