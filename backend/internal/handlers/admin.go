@@ -71,9 +71,10 @@ func (h *Handler) AdminGetAppeals(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, appeals)
 }
 
-// --- Admin Product Management (ทำงานได้ 100%) ---
+// --- Admin Product Management ---
 func (h *Handler) AdminGetProducts(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.MallDB.Query("SELECT id, sku, name, price, stock FROM products ORDER BY id DESC")
+	// เพิ่มการดึง COALESCE(image_url, '') ออกมาจากฐานข้อมูล
+	rows, err := h.MallDB.Query("SELECT id, sku, name, price, stock, COALESCE(image_url, '') FROM products ORDER BY id DESC")
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -83,35 +84,34 @@ func (h *Handler) AdminGetProducts(w http.ResponseWriter, r *http.Request) {
 	var products []map[string]any
 	for rows.Next() {
 		var id, stock int
-		var sku, name string
+		var sku, name, img string
 		var price float64
-		if err := rows.Scan(&id, &sku, &name, &price, &stock); err == nil {
+		if err := rows.Scan(&id, &sku, &name, &price, &stock, &img); err == nil {
 			products = append(products, map[string]any{
-				"id": id, "sku": sku, "name": name, "price": price, "stock": stock,
+				"id": id, "sku": sku, "name": name, "price": price, "stock": stock, "image_url": img,
 			})
 		}
 	}
-	if products == nil {
-		products = []map[string]any{}
-	}
+	if products == nil { products = []map[string]any{} }
 	WriteJSON(w, http.StatusOK, products)
 }
 
 func (h *Handler) AdminCreateProduct(w http.ResponseWriter, r *http.Request) {
 	var p struct {
-		SKU   string  `json:"sku"`
-		Name  string  `json:"name"`
-		Price float64 `json:"price"`
-		Stock int     `json:"stock"`
+		SKU      string  `json:"sku"`
+		Name     string  `json:"name"`
+		Price    float64 `json:"price"`
+		Stock    int     `json:"stock"`
+		ImageURL string  `json:"image_url"` // รับค่ารููปภาพ
 	}
 	if err := ReadJSON(r, &p); err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid input data")
 		return
 	}
 
-	_, err := h.MallDB.ExecContext(r.Context(),
-		"INSERT INTO products (sku, name, price, stock) VALUES ($1, $2, $3, $4)",
-		p.SKU, p.Name, p.Price, p.Stock)
+	_, err := h.MallDB.ExecContext(r.Context(), 
+		"INSERT INTO products (sku, name, price, stock, image_url) VALUES ($1, $2, $3, $4, $5)", 
+		p.SKU, p.Name, p.Price, p.Stock, p.ImageURL)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to create product: "+err.Error())
 		return
@@ -123,19 +123,20 @@ func (h *Handler) AdminCreateProduct(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) AdminUpdateProduct(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var p struct {
-		SKU   string  `json:"sku"`
-		Name  string  `json:"name"`
-		Price float64 `json:"price"`
-		Stock int     `json:"stock"`
+		SKU      string  `json:"sku"`
+		Name     string  `json:"name"`
+		Price    float64 `json:"price"`
+		Stock    int     `json:"stock"`
+		ImageURL string  `json:"image_url"` // รับค่ารููปภาพ
 	}
 	if err := ReadJSON(r, &p); err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid input data")
 		return
 	}
 
-	_, err := h.MallDB.ExecContext(r.Context(),
-		"UPDATE products SET sku = $1, name = $2, price = $3, stock = $4 WHERE id = $5",
-		p.SKU, p.Name, p.Price, p.Stock, id)
+	_, err := h.MallDB.ExecContext(r.Context(), 
+		"UPDATE products SET sku = $1, name = $2, price = $3, stock = $4, image_url = $5 WHERE id = $6", 
+		p.SKU, p.Name, p.Price, p.Stock, p.ImageURL, id)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to update product")
 		return

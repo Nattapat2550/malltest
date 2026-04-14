@@ -1,6 +1,6 @@
 // frontend/src/pages/admin/tabs/ProductsTab.tsx
 import React, { useState, useEffect } from 'react';
-import api from '../../../services/api'; // ปรับ path ให้ตรงกับโครงสร้างของคุณ (อาจจะเป็น '../../../services/api')
+import api from '../../../services/api';
 
 interface Product {
   id: number;
@@ -8,6 +8,7 @@ interface Product {
   name: string;
   price: number;
   stock: number;
+  image_url?: string;
 }
 
 export default function ProductsTab() {
@@ -23,6 +24,7 @@ export default function ProductsTab() {
     name: '',
     price: 0,
     stock: 0,
+    image_url: '',
   });
 
   const fetchProducts = async () => {
@@ -50,10 +52,11 @@ export default function ProductsTab() {
         name: product.name,
         price: product.price,
         stock: product.stock,
+        image_url: product.image_url || '',
       });
     } else {
       setEditingId(null);
-      setFormData({ sku: '', name: '', price: 0, stock: 0 });
+      setFormData({ sku: '', name: '', price: 0, stock: 0, image_url: '' });
     }
     setIsModalOpen(true);
   };
@@ -115,7 +118,7 @@ export default function ProductsTab() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50 dark:bg-gray-900/50 text-gray-600 dark:text-gray-300 text-sm">
-              <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700 rounded-tl-xl">ID</th>
+              <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700 rounded-tl-xl w-16">รูป</th>
               <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">SKU</th>
               <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">ชื่อสินค้า</th>
               <th className="p-4 font-bold border-b border-gray-200 dark:border-gray-700">ราคา (บาท)</th>
@@ -133,7 +136,15 @@ export default function ProductsTab() {
             ) : (
               products.map((p) => (
                 <tr key={p.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
-                  <td className="p-4 text-gray-900 dark:text-white font-medium">{p.id}</td>
+                  <td className="p-4">
+                    <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-700 overflow-hidden border border-gray-200 dark:border-gray-600">
+                      {p.image_url ? (
+                        <img src={p.image_url} alt="img" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">N/A</div>
+                      )}
+                    </div>
+                  </td>
                   <td className="p-4 text-gray-600 dark:text-gray-300">{p.sku}</td>
                   <td className="p-4 text-gray-900 dark:text-white font-bold">{p.name}</td>
                   <td className="p-4 text-green-600 dark:text-green-400 font-bold">{p.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
@@ -189,6 +200,7 @@ export default function ProductsTab() {
                   placeholder="เช่น IT-001"
                 />
               </div>
+              
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ชื่อสินค้า</label>
                 <input
@@ -201,6 +213,31 @@ export default function ProductsTab() {
                   placeholder="ชื่อสินค้า..."
                 />
               </div>
+              
+              {/* เพิ่มช่องกรอกลิงก์รูปภาพ */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ลิงก์รูปภาพ (URL)</label>
+                <div className="flex gap-3 items-center">
+                  <input
+                    type="url"
+                    name="image_url"
+                    value={formData.image_url}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="https://..."
+                  />
+                  {/* พรีวิวรูปภาพเล็กๆ ด้านข้าง */}
+                  {formData.image_url && (
+                    <img 
+                      src={formData.image_url} 
+                      alt="preview" 
+                      className="w-10 h-10 rounded-lg object-cover border border-gray-200 dark:border-gray-600 shadow-sm shrink-0"
+                      onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/40?text=Err')}
+                    />
+                  )}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ราคา (บาท)</label>
