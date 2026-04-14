@@ -97,6 +97,11 @@ const authSlice = createSlice({
           state.isAuthenticated = true;
           state.role = action.payload.user.role;
           state.userId = action.payload.user.id;
+          
+          // บันทึก Token ลง localStorage เพื่อให้ api.ts ดึงไปใช้งาน
+          if (action.payload.token) {
+            localStorage.setItem('token', action.payload.token);
+          }
         }
       })
       .addCase(login.rejected, (state, action: PayloadAction<any>) => {
@@ -107,6 +112,9 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.role = null;
         state.userId = null;
+        
+        // ลบ Token ออกจาก localStorage เมื่อออกจากระบบ
+        localStorage.removeItem('token');
       });
   }
 });
