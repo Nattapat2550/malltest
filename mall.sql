@@ -40,6 +40,7 @@ CREATE TABLE orders (
     address TEXT NOT NULL,
     shipping_method VARCHAR(50) DEFAULT 'standard',
     note TEXT,
+    promo_code VARCHAR(50),
     status VARCHAR(50) DEFAULT 'pending', -- pending, paid, shipped, completed, cancelled
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
