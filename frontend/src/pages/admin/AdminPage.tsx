@@ -11,9 +11,6 @@ import CarouselTab from './tabs/CarouselTab';
 import DocumentsTab from './tabs/DocumentsTab';
 
 // นำเข้าไอคอนสำหรับเมนู
-import placeImg from '../../assets/place.png';
-import ticketImg from '../../assets/ticket.png';
-import calendarImg from '../../assets/calendar.png';
 import userImg from '../../assets/user.png';
 import ideaImg from '../../assets/idea.png';
 import settingsImg from '../../assets/settings.png'; 

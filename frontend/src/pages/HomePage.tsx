@@ -3,9 +3,6 @@ import { Link } from 'react-router-dom';
 import api from '../services/api';
 
 import heroImg from '../assets/hero.png';
-import calendarImg from '../assets/calendar.png';
-import placeImg from '../assets/place.png';
-import ticketImg from '../assets/ticket.png';
 import ideaImg from '../assets/idea.png'; 
 
 
@@ -118,9 +115,6 @@ export default function HomePage() {
 
       <div className="w-full px-6 lg:px-12 2xl:px-20 mt-16 md:mt-24">
         <div className="flex items-center gap-4 mb-10">
-          <div className="p-3 bg-blue-600/10 dark:bg-blue-500/20 rounded-2xl">
-            <img src={ticketImg} className="w-6 h-6 object-contain dark:invert" alt="Malls" />
-          </div>
           <h2 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">
             คอนเสิร์ตเร็วๆ นี้
           </h2>
