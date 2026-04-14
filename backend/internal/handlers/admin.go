@@ -395,34 +395,45 @@ func allowedImageMime(m string) bool {
 	}
 }
 // --- Admin User Management ---
+// --- Admin User Management ---
 func (h *Handler) AdminGetUsers(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.MallDB.Query("SELECT id, email, role, COALESCE(first_name, ''), COALESCE(last_name, ''), is_verified FROM users ORDER BY id DESC")
-	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, err.Error())
+	ctx := r.Context()
+	var users any
+	
+	// วิ่งไปขอข้อมูลรายชื่อผู้ใช้งานจาก ProjectRust ผ่าน API แทนการดึงจาก Database ของระบบ Mall
+	if err := h.Pure.Get(ctx, "/api/internal/admin/users", &users); err != nil {
+		h.writeError(w, http.StatusInternalServerError, "ไม่สามารถดึงข้อมูล User จากระบบส่วนกลางได้")
 		return
 	}
-	defer rows.Close()
 
-	var users []map[string]any
-	for rows.Next() {
-		var id int
-		var email, role, fname, lname string
-		var verified bool
-		if err := rows.Scan(&id, &email, &role, &fname, &lname, &verified); err == nil {
-			users = append(users, map[string]any{
-				"id": id, "email": email, "role": role,
-				"first_name": fname, "last_name": lname, "is_verified": verified,
-			})
-		}
-	}
-	if users == nil { users = []map[string]any{} }
+	// ส่งข้อมูลที่ได้จาก Rust กลับไปให้หน้าเว็บแสดงผล
 	WriteJSON(w, http.StatusOK, users)
 }
 
 func (h *Handler) AdminUpdateUserRole(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK) // Placeholder คืนค่าให้ทำงานผ่าน
-}
+	ctx := r.Context()
+	idStr := chi.URLParam(r, "id")
 
+	var body map[string]any
+	if err := ReadJSON(r, &body); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	payload := map[string]any{"id": idStr}
+	for k, v := range body {
+		payload[k] = v
+	}
+
+	var updated any
+	// ส่งคำสั่งอัปเดตสิทธิ์ไปที่ ProjectRust
+	if err := h.Pure.Post(ctx, "/api/internal/admin/users/update", payload, &updated); err != nil {
+		h.writeError(w, http.StatusInternalServerError, "ไม่สามารถอัปเดตสิทธิ์การใช้งานได้")
+		return
+	}
+	
+	WriteJSON(w, http.StatusOK, updated)
+}
 // --- Admin Appeals Management (NEW) ---
 func (h *Handler) AdminGetAppeals(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.MallDB.Query("SELECT id, user_id, topic, message, status FROM appeals ORDER BY id DESC")
