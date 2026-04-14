@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -245,4 +246,35 @@ func (h *Handler) AdminGetCarousel(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) AdminUpdateCarousel(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]string{"message": "Carousel updated"})
+}
+// UpdateUserWallet สำหรับให้ Admin อัปเดตยอดเงิน
+func (h *Handler) UpdateUserWallet(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "id") // สมมติว่าส่ง user_id มาใน URL
+	
+	var req struct {
+		Balance float64 `json:"balance"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		return
+	}
+
+	// ใช้ UPSERT เพื่ออัปเดตหรือสร้างกระเป๋าเงินใหม่หากยังไม่มี
+	_, err := h.MallDB.Exec(`
+		INSERT INTO user_wallets (user_id, balance) 
+		VALUES ($1, $2)
+		ON CONFLICT (user_id) 
+		DO UPDATE SET balance = EXCLUDED.balance, updated_at = CURRENT_TIMESTAMP
+	`, userID, req.Balance)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Wallet updated successfully",
+		"new_balance": req.Balance,
+	})
 }
