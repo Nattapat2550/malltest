@@ -1,4 +1,3 @@
-// backend/internal/httpapi/router.go
 package httpapi
 
 import (
@@ -43,7 +42,6 @@ func NewRouter(cfg config.Config, mallDB *sql.DB) http.Handler {
 		w.WriteHeader(http.StatusNoContent) 
 	})
 
-	// เรียกใช้ Route ย่อยที่แยกไปตามไฟล์ต่างๆ
 	r.Route("/api/auth", setupAuthRoutes(h))
 	r.Route("/api/users", setupUserRoutes(h))
 	r.Route("/api/admin", setupAdminRoutes(h))
@@ -54,6 +52,7 @@ func NewRouter(cfg config.Config, mallDB *sql.DB) http.Handler {
 	r.Get("/api/homepage", h.HomepageGet)
 	r.With(h.RequireAdmin).Put("/api/homepage", h.HomepageUpdate)
 	
+	r.Get("/api/news", h.GetLatestNews) // เพิ่มบรรทัดนี้สำหรับ News
 	r.Get("/api/carousel", h.CarouselList)
 	r.Get("/api/documents/list", h.DocumentList)
 	r.Get("/api/documents/{id}", h.GetDocumentDetail)

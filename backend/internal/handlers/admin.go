@@ -2,411 +2,22 @@
 package handlers
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
-	"errors"
-	"fmt"
-	"io"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
-
-	"backend/internal/pureapi"
 )
 
-// ---------- Admin: Users ----------
-
-// GET /api/admin/users
-func (h *Handler) AdminUsersList(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	var users any
-	if err := h.Pure.Get(ctx, "/api/internal/admin/users", &users); err != nil {
-		h.writeErrFrom(w, err)
-		return
-	}
-	WriteJSON(w, http.StatusOK, users)
-}
-
-// PUT /api/admin/users/{id}
-func (h *Handler) AdminUsersUpdateByID(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil || id <= 0 {
-		h.writeError(w, http.StatusBadRequest, "Invalid user id")
-		return
-	}
-
-	var body map[string]any
-	if err := ReadJSON(r, &body); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid JSON")
-		return
-	}
-
-	// pure-api internal endpoint: POST /api/internal/admin/users/update
-	payload := map[string]any{"id": id}
-	for k, v := range body {
-		payload[k] = v
-	}
-
-	var updated any
-	if err := h.Pure.Post(ctx, "/api/internal/admin/users/update", payload, &updated); err != nil {
-		if isUsernameUniqueViolation(err) {
-			h.writeError(w, http.StatusConflict, "Username already taken")
-			return
-		}
-		h.writeErrFrom(w, err)
-		return
-	}
-	WriteJSON(w, http.StatusOK, updated)
-}
-
-// POST /api/admin/users/update (legacy path kept for compatibility)
-func (h *Handler) AdminUsersUpdate(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	var payload map[string]any
-	if err := ReadJSON(r, &payload); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid JSON")
-		return
-	}
-	var updated any
-	if err := h.Pure.Post(ctx, "/api/internal/admin/users/update", payload, &updated); err != nil {
-		if isUsernameUniqueViolation(err) {
-			h.writeError(w, http.StatusConflict, "Username already taken")
-			return
-		}
-		h.writeErrFrom(w, err)
-		return
-	}
-	WriteJSON(w, http.StatusOK, updated)
-}
-
-// ---------- Admin: Carousel ----------
-
-// GET /api/admin/carousel
-func (h *Handler) AdminCarouselList(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	var items any
-	if err := h.Pure.Get(ctx, "/api/internal/carousel/list", &items); err != nil {
-		h.writeErrFrom(w, err)
-		return
-	}
-	WriteJSON(w, http.StatusOK, items)
-}
-
-// POST /api/admin/carousel (multipart: image + fields)
-func (h *Handler) AdminCarouselCreate(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	// 4MB limit (match Node)
-	r.Body = http.MaxBytesReader(w, r.Body, 4*1024*1024)
-	if err := r.ParseMultipartForm(4 * 1024 * 1024); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid form")
-		return
-	}
-
-	dataURL, err := readImageDataURL(r, "image", 4*1024*1024)
-	if err != nil {
-		h.writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	payload := map[string]any{
-		"title":        strings.TrimSpace(r.FormValue("title")),
-		"subtitle":     strings.TrimSpace(r.FormValue("subtitle")),
-		"description":  strings.TrimSpace(r.FormValue("description")),
-		"link":         strings.TrimSpace(r.FormValue("link")),
-		"imageDataUrl": dataURL,
-	}
-
-	// itemIndex is optional
-	if v := strings.TrimSpace(r.FormValue("itemIndex")); v != "" {
-		if n, e := strconv.Atoi(v); e == nil {
-			payload["itemIndex"] = n
-		}
-	} else if v := strings.TrimSpace(r.FormValue("item_index")); v != "" {
-		if n, e := strconv.Atoi(v); e == nil {
-			payload["item_index"] = n
-		}
-	}
-
-	var created any
-	if err := h.Pure.Post(ctx, "/api/internal/carousel/create", payload, &created); err != nil {
-		h.writeErrFrom(w, err)
-		return
-	}
-	WriteJSON(w, http.StatusOK, created)
-}
-
-// PUT /api/admin/carousel/{id} (multipart, image optional)
-func (h *Handler) AdminCarouselUpdate(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil || id <= 0 {
-		h.writeError(w, http.StatusBadRequest, "Invalid carousel id")
-		return
-	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, 4*1024*1024)
-	if err := r.ParseMultipartForm(4 * 1024 * 1024); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid form")
-		return
-	}
-
-	payload := map[string]any{
-		"id":          id,
-		"title":       strings.TrimSpace(r.FormValue("title")),
-		"subtitle":    strings.TrimSpace(r.FormValue("subtitle")),
-		"description": strings.TrimSpace(r.FormValue("description")),
-		"link":        strings.TrimSpace(r.FormValue("link")),
-	}
-
-	// itemIndex optional
-	if v := strings.TrimSpace(r.FormValue("itemIndex")); v != "" {
-		if n, e := strconv.Atoi(v); e == nil {
-			payload["itemIndex"] = n
-		}
-	} else if v := strings.TrimSpace(r.FormValue("item_index")); v != "" {
-		if n, e := strconv.Atoi(v); e == nil {
-			payload["item_index"] = n
-		}
-	}
-
-	// image optional
-	if dataURL, e := tryReadImageDataURL(r, "image", 4*1024*1024); e != nil {
-		h.writeError(w, http.StatusBadRequest, e.Error())
-		return
-	} else if dataURL != "" {
-		payload["imageDataUrl"] = dataURL
-	}
-
-	var updated any
-	if err := h.Pure.Post(ctx, "/api/internal/carousel/update", payload, &updated); err != nil {
-		h.writeErrFrom(w, err)
-		return
-	}
-	WriteJSON(w, http.StatusOK, updated)
-}
-
-// DELETE /api/admin/carousel/{id}
-func (h *Handler) AdminCarouselDelete(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil || id <= 0 {
-		h.writeError(w, http.StatusBadRequest, "Invalid carousel id")
-		return
-	}
-
-	payload := map[string]any{"id": id}
-	if err := h.Pure.Post(ctx, "/api/internal/carousel/delete", payload, nil); err != nil {
-		h.writeErrFrom(w, err)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-// ---------- Admin: Wallet (NEW) ----------
-// POST /api/admin/users/{id}/wallet
-func (h *Handler) AdminUpdateWallet(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	userID := chi.URLParam(r, "id")
-	
-	var req struct {
-		Balance float64 `json:"balance"`
-	}
-	if err := ReadJSON(r, &req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid JSON")
-		return
-	}
-
-	_, err := h.MallDB.ExecContext(ctx, `
-		INSERT INTO user_wallets (user_id, balance) VALUES ($1, $2)
-		ON CONFLICT (user_id) DO UPDATE SET balance = $2
-	`, userID, req.Balance)
-	
-	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Failed to update wallet")
-		return
-	}
-	WriteJSON(w, http.StatusOK, map[string]string{"message": "Wallet updated successfully"})
-}
-
-// ---------- Admin: Scan Ticket (NEW) ----------
-// POST /api/admin/bookings/scan
-func (h *Handler) AdminScanTicket(w http.ResponseWriter, r *http.Request) {
-	var req map[string]string
-	if err := ReadJSON(r, &req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-	token := req["token"]
-
-	// ถอดรหัส Token
-	decoded, err := base64.StdEncoding.DecodeString(token)
-	if err != nil {
-		h.writeError(w, http.StatusBadRequest, "QR Code ไม่ถูกต้อง (Invalid Format)")
-		return
-	}
-
-	parts := strings.Split(string(decoded), "|")
-	if len(parts) != 2 {
-		h.writeError(w, http.StatusBadRequest, "QR Code ข้อมูลไม่ครบถ้วน")
-		return
-	}
-
-	bookingID := parts[0]
-	sig := parts[1]
-
-	// ตรวจสอบลายเซ็น (Signature) ว่าไม่ได้ถูกปลอมแปลง
-	secret := "malltick_super_secret" // เปลี่ยนให้ตรงกับบริบท mall
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write([]byte(bookingID))
-	expectedSig := hex.EncodeToString(mac.Sum(nil))
-
-	if !hmac.Equal([]byte(sig), []byte(expectedSig)) {
-		h.writeError(w, http.StatusForbidden, "QR Code ปลอมแปลง! ไม่อนุญาตให้เข้างาน")
-		return
-	}
-
-	ctx := r.Context()
-	var currentStatus string
-	err = h.MallDB.QueryRowContext(ctx, "SELECT status FROM bookings WHERE id = $1", bookingID).Scan(&currentStatus)
-	if err != nil {
-		h.writeError(w, http.StatusNotFound, "ไม่พบข้อมูลการจองในระบบ")
-		return
-	}
-
-	switch currentStatus {
-	case "used":
-		h.writeError(w, http.StatusConflict, "บัตรใบนี้ถูกใช้งานแสกนเข้างานไปแล้ว!")
-		return
-	case "cancelled":
-		h.writeError(w, http.StatusConflict, "บัตรใบนี้ถูกยกเลิกไปแล้ว!")
-		return
-	}
-
-	// อัปเดตเป็น Used ป้องกันการแสกนซ้ำ
-	_, err = h.MallDB.ExecContext(ctx, "UPDATE bookings SET status = 'used' WHERE id = $1", bookingID)
-	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Database Error")
-		return
-	}
-
-	WriteJSON(w, http.StatusOK, map[string]string{
-		"message": fmt.Sprintf("ตรวจสอบบัตรสำเร็จ (ID: %s) อนุญาตให้เข้างาน", bookingID),
-	})
-}
-
-// ---------- helpers ----------
-
-func isUsernameUniqueViolation(err error) bool {
-	var pe *pureapi.Error
-	if !errors.As(err, &pe) {
-		return false
-	}
-	m, ok := pe.Detail.(map[string]any)
-	if !ok {
-		return false
-	}
-	eo, ok := m["error"].(map[string]any)
-	if !ok {
-		return false
-	}
-	d, _ := eo["details"].(string)
-	d = strings.ToLower(d)
-	return strings.Contains(d, "duplicate key") && strings.Contains(d, "users_username_key")
-}
-
-func readImageDataURL(r *http.Request, field string, maxBytes int64) (string, error) {
-	f, hdr, err := r.FormFile(field)
-	if err != nil {
-		return "", fmt.Errorf("No image")
-	}
-	defer f.Close()
-
-	mime := hdr.Header.Get("Content-Type")
-	if mime == "" {
-		mime = hdr.Header.Get("content-type")
-	}
-	mime = strings.ToLower(strings.TrimSpace(mime))
-	if !strings.HasPrefix(mime, "image/") {
-		return "", fmt.Errorf("Unsupported file type")
-	}
-	if !allowedImageMime(mime) {
-		return "", fmt.Errorf("Unsupported file type")
-	}
-
-	b, err := io.ReadAll(f)
-	if err != nil {
-		return "", fmt.Errorf("Read failed")
-	}
-	if int64(len(b)) > maxBytes {
-		return "", fmt.Errorf("File too large")
-	}
-	enc := base64.StdEncoding.EncodeToString(b)
-	return fmt.Sprintf("data:%s;base64,%s", mime, enc), nil
-}
-
-func tryReadImageDataURL(r *http.Request, field string, maxBytes int64) (string, error) {
-	f, hdr, err := r.FormFile(field)
-	if err != nil {
-		return "", nil
-	}
-	defer f.Close()
-
-	mime := hdr.Header.Get("Content-Type")
-	if mime == "" {
-		mime = hdr.Header.Get("content-type")
-	}
-	mime = strings.ToLower(strings.TrimSpace(mime))
-	if !strings.HasPrefix(mime, "image/") {
-		return "", fmt.Errorf("Unsupported file type")
-	}
-	if !allowedImageMime(mime) {
-		return "", fmt.Errorf("Unsupported file type")
-	}
-
-	b, err := io.ReadAll(f)
-	if err != nil {
-		return "", fmt.Errorf("Read failed")
-	}
-	if int64(len(b)) > maxBytes {
-		return "", fmt.Errorf("File too large")
-	}
-	enc := base64.StdEncoding.EncodeToString(b)
-	return fmt.Sprintf("data:%s;base64,%s", mime, enc), nil
-}
-
-func allowedImageMime(m string) bool {
-	switch m {
-	case "image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp":
-		return true
-	default:
-		return false
-	}
-}
-// --- Admin User Management ---
-// --- Admin User Management ---
+// --- Admin User Management (Fetch from ProjectRust) ---
 func (h *Handler) AdminGetUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var users any
-	
-	// วิ่งไปขอข้อมูลรายชื่อผู้ใช้งานจาก ProjectRust ผ่าน API แทนการดึงจาก Database ของระบบ Mall
+
+	// วิ่งไปขอข้อมูลรายชื่อผู้ใช้งานจาก ProjectRust ผ่าน API
 	if err := h.Pure.Get(ctx, "/api/internal/admin/users", &users); err != nil {
 		h.writeError(w, http.StatusInternalServerError, "ไม่สามารถดึงข้อมูล User จากระบบส่วนกลางได้")
 		return
 	}
 
-	// ส่งข้อมูลที่ได้จาก Rust กลับไปให้หน้าเว็บแสดงผล
 	WriteJSON(w, http.StatusOK, users)
 }
 
@@ -431,10 +42,11 @@ func (h *Handler) AdminUpdateUserRole(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusInternalServerError, "ไม่สามารถอัปเดตสิทธิ์การใช้งานได้")
 		return
 	}
-	
+
 	WriteJSON(w, http.StatusOK, updated)
 }
-// --- Admin Appeals Management (NEW) ---
+
+// --- Admin Appeals Management ---
 func (h *Handler) AdminGetAppeals(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.MallDB.Query("SELECT id, user_id, topic, message, status FROM appeals ORDER BY id DESC")
 	if err != nil {
@@ -445,19 +57,21 @@ func (h *Handler) AdminGetAppeals(w http.ResponseWriter, r *http.Request) {
 
 	var appeals []map[string]any
 	for rows.Next() {
-		var id, uid int
-		var topic, msg, status string
+		var id int
+		var uid, topic, msg, status string // uid เป็น string ตามฐานข้อมูลใหม่
 		if err := rows.Scan(&id, &uid, &topic, &msg, &status); err == nil {
 			appeals = append(appeals, map[string]any{
 				"id": id, "user_id": uid, "topic": topic, "message": msg, "status": status,
 			})
 		}
 	}
-	if appeals == nil { appeals = []map[string]any{} }
+	if appeals == nil {
+		appeals = []map[string]any{}
+	}
 	WriteJSON(w, http.StatusOK, appeals)
 }
 
-// --- Admin Product Management ---
+// --- Admin Product Management (ทำงานได้ 100%) ---
 func (h *Handler) AdminGetProducts(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.MallDB.Query("SELECT id, sku, name, price, stock FROM products ORDER BY id DESC")
 	if err != nil {
@@ -477,19 +91,68 @@ func (h *Handler) AdminGetProducts(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	if products == nil { products = []map[string]any{} }
+	if products == nil {
+		products = []map[string]any{}
+	}
 	WriteJSON(w, http.StatusOK, products)
 }
 
 func (h *Handler) AdminCreateProduct(w http.ResponseWriter, r *http.Request) {
-	WriteJSON(w, http.StatusCreated, map[string]string{"message": "Created"})
+	var p struct {
+		SKU   string  `json:"sku"`
+		Name  string  `json:"name"`
+		Price float64 `json:"price"`
+		Stock int     `json:"stock"`
+	}
+	if err := ReadJSON(r, &p); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid input data")
+		return
+	}
+
+	_, err := h.MallDB.ExecContext(r.Context(),
+		"INSERT INTO products (sku, name, price, stock) VALUES ($1, $2, $3, $4)",
+		p.SKU, p.Name, p.Price, p.Stock)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to create product: "+err.Error())
+		return
+	}
+
+	WriteJSON(w, http.StatusCreated, map[string]string{"message": "Created successfully"})
 }
 
 func (h *Handler) AdminUpdateProduct(w http.ResponseWriter, r *http.Request) {
-	WriteJSON(w, http.StatusOK, map[string]string{"message": "Updated"})
+	id := chi.URLParam(r, "id")
+	var p struct {
+		SKU   string  `json:"sku"`
+		Name  string  `json:"name"`
+		Price float64 `json:"price"`
+		Stock int     `json:"stock"`
+	}
+	if err := ReadJSON(r, &p); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid input data")
+		return
+	}
+
+	_, err := h.MallDB.ExecContext(r.Context(),
+		"UPDATE products SET sku = $1, name = $2, price = $3, stock = $4 WHERE id = $5",
+		p.SKU, p.Name, p.Price, p.Stock, id)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to update product")
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, map[string]string{"message": "Updated successfully"})
 }
 
 func (h *Handler) AdminDeleteProduct(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	_, err := h.MallDB.ExecContext(r.Context(), "DELETE FROM products WHERE id = $1", id)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to delete product")
+		return
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -504,7 +167,8 @@ func (h *Handler) AdminGetAllOrders(w http.ResponseWriter, r *http.Request) {
 
 	var orders []map[string]any
 	for rows.Next() {
-		var id, uid int
+		var id int
+		var uid string // uid เป็น string ตามฐานข้อมูลใหม่
 		var total float64
 		var status string
 		if err := rows.Scan(&id, &uid, &total, &status); err == nil {
@@ -513,7 +177,9 @@ func (h *Handler) AdminGetAllOrders(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	if orders == nil { orders = []map[string]any{} }
+	if orders == nil {
+		orders = []map[string]any{}
+	}
 	WriteJSON(w, http.StatusOK, orders)
 }
 
@@ -521,6 +187,7 @@ func (h *Handler) AdminUpdateOrderStatus(w http.ResponseWriter, r *http.Request)
 	WriteJSON(w, http.StatusOK, map[string]string{"message": "Status updated"})
 }
 
+// --- Admin News Management ---
 func (h *Handler) AdminGetNewsList(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.MallDB.Query("SELECT id, title, content, COALESCE(image_url, '') FROM news ORDER BY id DESC")
 	if err != nil {
@@ -538,7 +205,9 @@ func (h *Handler) AdminGetNewsList(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	if newsList == nil { newsList = []map[string]any{} }
+	if newsList == nil {
+		newsList = []map[string]any{}
+	}
 	WriteJSON(w, http.StatusOK, newsList)
 }
 
@@ -546,9 +215,33 @@ func (h *Handler) AdminCreateNews(w http.ResponseWriter, r *http.Request) { w.Wr
 func (h *Handler) AdminUpdateNews(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }
 func (h *Handler) AdminDeleteNews(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) }
 
+// --- Admin Carousel Management ---
 func (h *Handler) AdminGetCarousel(w http.ResponseWriter, r *http.Request) {
-	WriteJSON(w, http.StatusOK, []map[string]any{})
+	// ดึงข้อมูล Carousel จากฐานข้อมูลของ Mall
+	rows, err := h.MallDB.Query("SELECT id, image_url, COALESCE(link_url, ''), is_active, sort_order FROM carousels ORDER BY sort_order ASC, id DESC")
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+	
+	var items []map[string]any
+	for rows.Next() {
+		var id, sort int
+		var img, link string
+		var isActive bool
+		if err := rows.Scan(&id, &img, &link, &isActive, &sort); err == nil {
+			items = append(items, map[string]any{
+				"id": id, "image_url": img, "link_url": link, "is_active": isActive, "sort_order": sort,
+			})
+		}
+	}
+	if items == nil {
+		items = []map[string]any{}
+	}
+	WriteJSON(w, http.StatusOK, items)
 }
+
 func (h *Handler) AdminUpdateCarousel(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]string{"message": "Carousel updated"})
 }

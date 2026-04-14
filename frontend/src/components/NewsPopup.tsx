@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 
-// 1. สร้าง Interface ให้ News
 interface News {
   id: number;
   title: string;
@@ -11,22 +10,32 @@ interface News {
 
 export default function NewsPopup() {
   const [showNewsModal, setShowNewsModal] = useState(false);
-  const [newsList, setNewsList] = useState<News[]>([]); // 2. บอกว่า Array นี้เก็บข้อมูลหน้าตาแบบ News
+  const [newsList, setNewsList] = useState<News[]>([]); 
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
   useEffect(() => {
     fetchActiveNews();
-    localStorage.removeItem('hasSeenNews');
-    sessionStorage.removeItem('hasSeenNews');
   }, []);
 
   const fetchActiveNews = async () => {
     try {
-      
+      const res = await api.get('/api/news');
+      if (res.data && res.data.length > 0) {
+        setNewsList(res.data);
+        
+        // เช็คว่าผู้ใช้เคยเห็นข่าวล่าสุดหรือยัง
+        const latestId = Math.max(...res.data.map((n: News) => n.id));
+        const localSeen = localStorage.getItem('latestSeenNewsId');
+        const sessionSeen = sessionStorage.getItem('latestSeenNewsId');
+        
+        if (localSeen && parseInt(localSeen) >= latestId) return;
+        if (sessionSeen && parseInt(sessionSeen) >= latestId) return;
+        
+        setShowNewsModal(true);
+      }
     } catch (error: any) {
       console.log("No active news");
     }
-
   };
 
   const closeNewsModal = () => {
@@ -35,7 +44,7 @@ export default function NewsPopup() {
     const latestId = Math.max(...newsList.map(n => n.id));
     
     if (dontShowAgain) {
-      localStorage.setItem('latestSeenNewsId', latestId.toString()); // เติม toString()
+      localStorage.setItem('latestSeenNewsId', latestId.toString());
     } else {
       sessionStorage.setItem('latestSeenNewsId', latestId.toString());
     }
@@ -44,7 +53,7 @@ export default function NewsPopup() {
   if (!showNewsModal || newsList.length === 0) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in">
       <div className="bg-white p-6 rounded-lg max-w-2xl w-full relative max-h-[90vh] flex flex-col">
         <button 
           onClick={closeNewsModal} 

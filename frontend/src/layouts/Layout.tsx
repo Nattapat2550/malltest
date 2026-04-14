@@ -1,7 +1,6 @@
-// frontend/src/layouts/Layout.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import api from '../services/api'; // เพิ่ม import api
+import api from '../services/api';
 import NewsPopup from '../components/NewsPopup';
 
 import logoImg from '../assets/logo.png';
@@ -17,7 +16,6 @@ export default function Layout() {
   
   const [user, setUser] = useState<any>(null);
 
-  // โหลด User ครั้งแรก และซิงค์ข้อมูลใหม่จาก Server
   useEffect(() => {
     const loadUser = () => {
       const userStr = localStorage.getItem('user');
@@ -27,7 +25,6 @@ export default function Layout() {
     };
     loadUser();
 
-    // หากมี Token ให้ดึงข้อมูลล่าสุดจาก Server เพื่อป้องกันปัญหาข้อมูลค้างจากหน้า Login/Google
     if (token) {
       api.get('/api/auth/status')
         .then(res => {
@@ -39,7 +36,6 @@ export default function Layout() {
         .catch(err => console.error("Failed to load user status", err));
     }
 
-    // ดักฟัง Event กรณีข้อมูลเปลี่ยนในแท็บอื่น หรือแท็บเดียวกัน
     window.addEventListener('storage', loadUser);
     window.addEventListener('user-updated', loadUser);
     return () => {
@@ -48,7 +44,6 @@ export default function Layout() {
     };
   }, [token]);
 
-  // ซิงค์จาก LocalStorage ใหม่เสมอเมื่อเปลี่ยนหน้า (เช่น ทำให้อัปเดตทันทีที่กลับมาจากหน้า Settings)
   useEffect(() => {
     const userStr = localStorage.getItem('user');
     if (userStr) {
@@ -115,7 +110,7 @@ export default function Layout() {
                 <Link to="/download" className={isActive('/download')}>Download</Link>
                 {role !== 'guest' && (
                   <>
-                    <Link to="/malls" className={isActive('/malls')}>Malls</Link>
+                    <Link to="/products" className={isActive('/products')}>Shop / Products</Link>
                   </>
                 )}
                 {role === 'admin' && (
@@ -186,7 +181,7 @@ export default function Layout() {
               <Link to="/download" className={isMobileActive('/download')}>Download</Link>
               {role !== 'guest' && (
                 <>
-                  <Link to="/malls" className={isMobileActive('/malls')}>Malls</Link>
+                  <Link to="/products" className={isMobileActive('/products')}>Shop / Products</Link>
                 </>
               )}
               {role === 'admin' && (

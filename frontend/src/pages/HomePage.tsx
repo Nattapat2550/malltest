@@ -40,7 +40,6 @@ export default function HomePage() {
     fetchData();
   }, []);
 
-  // ระบบเลื่อน Carousel อัตโนมัติ
   useEffect(() => {
     if (carousels.length <= 1) return;
     const timer = setInterval(() => {
@@ -67,9 +66,12 @@ export default function HomePage() {
               Unlock Your <br className="hidden md:block" />
               <span className="text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-400">Shopping</span> Journey
             </h1>
-            <p className="text-lg md:text-xl text-gray-300 font-medium max-w-2xl mx-auto md:mx-0">
+            <p className="text-lg md:text-xl text-gray-300 font-medium max-w-2xl mx-auto md:mx-0 mb-8">
               แพลตฟอร์มอีคอมเมิร์ซที่ล้ำสมัยที่สุด เลือกซื้อสินค้าได้อย่างอิสระ และสัมผัสประสบการณ์ช้อปปิ้งที่เหนือกว่า
             </p>
+            <Link to="/products" className="inline-block bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3.5 px-10 rounded-full shadow-lg hover:shadow-blue-500/50 hover:scale-105 transition-all duration-300">
+              เริ่มช้อปปิ้งเลย
+            </Link>
           </div>
           <div className="flex-1 flex justify-center md:justify-end">
             <div className="relative w-64 md:w-80 lg:w-96">
@@ -80,7 +82,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Admin Editable Carousel Section */}
       {carousels.length > 0 && (
         <div className="w-full px-6 lg:px-12 2xl:px-20 mt-10">
           <div className="relative w-full h-62.5 md:h-100 lg:h-112.5 rounded-3xl overflow-hidden shadow-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">

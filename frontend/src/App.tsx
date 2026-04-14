@@ -19,9 +19,8 @@ const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
 const DownloadPage = lazy(() => import('./pages/DownloadPage'));
 const AppealsPage = lazy(() => import('./pages/AppealPage'));
-
-// เพิ่มบรรทัดนี้สำหรับโหลดหน้า DocumentDetailsPage
 const DocumentDetailsPage = lazy(() => import('./pages/DocumentDetailsPage'));
+const ProductCatalog = lazy(() => import('./pages/ProductCatalog'));
 
 const App = () => {
   const [serverReady, setServerReady] = useState(false);
@@ -56,16 +55,15 @@ const App = () => {
         localStorage.setItem('token', token);
         if (role) localStorage.setItem('role', role);
         
-        // ดึงข้อมูล User จาก backend ทันที
         api.get('/api/auth/status')
           .then((res) => {
             if (res.data && res.data.user) {
               localStorage.setItem('user', JSON.stringify(res.data.user));
-              window.dispatchEvent(new Event('user-updated')); // ส่งสัญญาณบอกระบบให้ขยับ Layout ทันที
+              window.dispatchEvent(new Event('user-updated'));
             }
             const targetUrl = role === 'admin' ? '/admin' : '/home';
-            window.history.replaceState(null, '', targetUrl); // ลบ Hash ทิ้ง
-            window.location.reload(); // บังคับ Reload หน้าเว็บแบบสมบูรณ์ เพื่อป้องกัน State ค้าง
+            window.history.replaceState(null, '', targetUrl);
+            window.location.reload();
           })
           .catch(() => {
             window.history.replaceState(null, '', '/home');
@@ -105,15 +103,12 @@ const App = () => {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
           
-
-          {/* เพิ่ม Route สำหรับดูหน้ารายละเอียดข้อมูลและแกลเลอรีแบบ Public */}
           <Route path="/documents/:id" element={<DocumentDetailsPage />} />
-          
-          {/* เอา ProtectedRoute ออกเพื่อให้คนที่โดนแบนเข้าได้ */}
           <Route path="/appeals" element={<AppealsPage />} />
 
           <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-          <Route path="/malls" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+          <Route path="/products" element={<ProtectedRoute><ProductCatalog /></ProtectedRoute>} />
+          <Route path="/malls" element={<Navigate to="/products" replace />} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/download" element={<ProtectedRoute><DownloadPage /></ProtectedRoute>} />
 
