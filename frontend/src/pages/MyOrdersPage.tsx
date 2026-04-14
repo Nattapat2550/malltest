@@ -1,119 +1,115 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api'; // อ้างอิงจากโครงสร้างโปรเจกต์ของคุณ
+import React, { useEffect, useState } from 'react';
+import api from '../services/api';
 
-// กำหนด Type ให้ TypeScript รู้จักข้อมูล
+interface OrderItem {
+  id: number;
+  product_name: string;
+  quantity: number;
+  price: number;
+}
+
 interface Order {
   id: number;
   total_amount: number;
-  status: string;
+  status: string; // 'pending', 'shipping', 'completed', 'cancelled'
   created_at: string;
-}
-
-interface TrackingStep {
-  detail: string;
-  location: string;
-  time: string;
+  items: OrderItem[];
 }
 
 const MyOrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const [tracking, setTracking] = useState<TrackingStep[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
 
-  // ดึงรายการคำสั่งซื้อตอนเปิดหน้า
+  const fetchOrders = async () => {
+    try {
+      const response = await api.get('/api/orders');
+      setOrders(response.data);
+    } catch (error) {
+      console.error('Failed to fetch orders');
+    }
+  };
+
   useEffect(() => {
     fetchOrders();
   }, []);
 
-  const fetchOrders = async () => {
-    try {
-        // ลองเปลี่ยนเป็น /api/orders
-        const response = await api.get('/api/orders'); 
-        setOrders(response.data || []);
-    } catch (error) {
-        console.error('Failed to fetch orders:', error);
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'shipping': return 'bg-blue-100 text-blue-800';
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
-    };
+  };
 
-    const fetchTracking = async (orderId: number) => {
-        setSelectedOrderId(orderId);
-        setLoading(true);
-        try {
-            // ลองเปลี่ยนเป็น /api/orders/...
-            const response = await api.get(`/api/orders/${orderId}/tracking`);
-            setTracking(response.data || []);
-        } catch (error) {
-            console.error('Failed to fetch tracking:', error);
-            setTracking([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const getStatusText = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'pending': return 'รอการตรวจสอบ';
+      case 'shipping': return 'กำลังจัดส่ง';
+      case 'completed': return 'ส่งสำเร็จ';
+      case 'cancelled': return 'ยกเลิกแล้ว';
+      default: return status;
+    }
+  };
 
   return (
-    <div className="container mx-auto p-4 max-w-5xl">
-      <h1 className="text-2xl font-bold mb-6">คำสั่งซื้อของฉัน</h1>
+    <div className="container mx-auto p-4 max-w-4xl">
+      <h1 className="text-2xl font-bold mb-6">สถานะการสั่งซื้อและการจัดส่ง</h1>
+      
+      {orders.length === 0 ? (
+        <div className="text-center p-8 bg-white rounded-lg shadow">ไม่มีรายการสั่งซื้อ</div>
+      ) : (
+        <div className="space-y-4">
+          {orders.map((order) => (
+            <div key={order.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border-l-4 border-blue-500">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <p className="text-sm text-gray-500">หมายเลขคำสั่งซื้อ: #{order.id}</p>
+                  <p className="text-sm text-gray-500">วันที่: {new Date(order.created_at).toLocaleDateString('th-TH')}</p>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
+                  {getStatusText(order.status)}
+                </span>
+              </div>
 
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* คอลัมน์ซ้าย: รายการคำสั่งซื้อ */}
-        <div className="w-full md:w-1/2 bg-white p-4 rounded shadow">
-          <h2 className="text-lg font-semibold mb-4">ประวัติการสั่งซื้อ</h2>
-          {orders.length === 0 ? (
-            <p className="text-gray-500">คุณยังไม่มีคำสั่งซื้อ</p>
-          ) : (
-            <ul className="space-y-3">
-              {orders.map((order) => (
-                <li 
-                  key={order.id} 
-                  className={`p-3 border rounded cursor-pointer hover:bg-gray-50 transition ${selectedOrderId === order.id ? 'border-blue-500 bg-blue-50' : ''}`}
-                  onClick={() => fetchTracking(order.id)}
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Order #{order.id}</span>
-                    <span className="text-sm font-bold text-blue-600">฿{order.total_amount.toFixed(2)}</span>
+              <div className="space-y-2 mb-4">
+                {order.items?.map((item, idx) => (
+                  <div key={idx} className="flex justify-between text-sm">
+                    <span className="dark:text-gray-300">{item.product_name} x {item.quantity}</span>
+                    <span className="font-medium dark:text-white">฿{(item.price * item.quantity).toLocaleString()}</span>
                   </div>
-                  <div className="text-sm text-gray-500 mt-1 flex justify-between">
-                    <span>สถานะ: {order.status}</span>
-                    <span>{new Date(order.created_at).toLocaleDateString()}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                ))}
+              </div>
 
-        {/* คอลัมน์ขวา: สถานะการจัดส่ง (Tracking) */}
-        <div className="w-full md:w-1/2 bg-white p-4 rounded shadow">
-          <h2 className="text-lg font-semibold mb-4">สถานะการจัดส่ง {selectedOrderId && `(Order #${selectedOrderId})`}</h2>
-          
-          {!selectedOrderId ? (
-            <p className="text-gray-500 text-center mt-10">คลิกที่คำสั่งซื้อเพื่อดูสถานะการจัดส่ง</p>
-          ) : loading ? (
-            <p className="text-center text-gray-500 mt-10">กำลังโหลด...</p>
-          ) : tracking.length === 0 ? (
-            <p className="text-center text-gray-500 mt-10">ยังไม่มีข้อมูลการจัดส่งสำหรับสินค้านี้</p>
-          ) : (
-            <div className="mt-6">
-              {tracking.map((step, index) => (
-                <div key={index} className="flex gap-4 mb-4">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-3 h-3 rounded-full ${index === 0 ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                    {index !== tracking.length - 1 && <div className="w-0.5 h-full bg-gray-200 mt-1"></div>}
+              <div className="border-t pt-3 flex justify-between items-center">
+                <span className="font-bold dark:text-white">รวมทั้งสิ้น:</span>
+                <span className="text-lg font-bold text-blue-600">฿{order.total_amount.toLocaleString()}</span>
+              </div>
+              
+              {/* แสดง Progress Bar ตามสถานะ */}
+              <div className="mt-4">
+                <div className="relative pt-1">
+                  <div className="flex mb-2 items-center justify-between text-xs">
+                    <span className={order.status !== 'cancelled' ? 'text-blue-600' : 'text-red-600'}>
+                      ความคืบหน้าการจัดส่ง
+                    </span>
                   </div>
-                  <div className="pb-4">
-                    <p className={`font-bold ${index === 0 ? 'text-gray-900' : 'text-gray-600'}`}>{step.detail}</p>
-                    <p className="text-sm text-gray-500">
-                      {step.location && <span className="mr-2">{step.location} |</span>}
-                      {new Date(step.time).toLocaleString()}
-                    </p>
+                  <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-200">
+                    <div 
+                      style={{ width: 
+                        order.status === 'pending' ? '25%' : 
+                        order.status === 'shipping' ? '60%' : 
+                        order.status === 'completed' ? '100%' : '0%' 
+                      }}
+                      className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${order.status === 'cancelled' ? 'bg-red-500' : 'bg-blue-500'}`}
+                    ></div>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
-          )}
+          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 };

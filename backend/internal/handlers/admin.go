@@ -250,35 +250,30 @@ func (h *Handler) AdminGetAllOrders(w http.ResponseWriter, r *http.Request) {
 // backend/internal/handlers/admin.go
 
 func (h *Handler) AdminUpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	
-	var req struct {
-		Status       string `json:"status"`        // สถานะหลัก: pending, shipped, completed
-		StatusDetail string `json:"status_detail"` // รายละเอียด: "ถึงศูนย์คัดแยก"
-		Location     string `json:"location"`      // สถานที่: "กรุงเทพฯ"
+	orderID := chi.URLParam(r, "id")
+	var input struct {
+		Status string `json:"status"`
 	}
-	if err := ReadJSON(r, &req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid input data")
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
 		return
 	}
 
-	// 1. อัปเดตสถานะหลักใน table orders
-	_, err := h.MallDB.ExecContext(r.Context(), 
-		"UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", 
-		req.Status, id)
+	// อัปเดตทั้ง status ในตาราง orders และอัปเดตเวลา
+	// เปลี่ยน input.status เป็น input.Status ตรงบรรทัดด้านล่างนี้
+	_, err := h.MallDB.Exec(`
+		UPDATE orders 
+		SET status = $1, updated_at = CURRENT_TIMESTAMP 
+		WHERE id = $2`, 
+		input.Status, orderID)
+
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Failed to update order status")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// 2. เพิ่มประวัติการเดินทางใน table order_tracking (ถ้ามีรายละเอียดส่งมา)
-	if req.StatusDetail != "" {
-		_, err = h.MallDB.ExecContext(r.Context(),
-			"INSERT INTO order_tracking (order_id, status_detail, location) VALUES ($1, $2, $3)",
-			id, req.StatusDetail, req.Location)
-	}
-
-	WriteJSON(w, http.StatusOK, map[string]string{"message": "Status and tracking updated successfully"})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Order status updated successfully"})
 }
 
 // --- Admin News Management ---

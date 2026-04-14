@@ -21,21 +21,21 @@ export default function ProductDetailPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // ดึงข้อมูลสินค้าปัจจุบัน
+        // ดึงข้อมูลสินค้าทั้งหมด
         const res = await api.get(`/api/products`);
         const allProducts = res.data || [];
         const current = allProducts.find((p: any) => p.id.toString() === id);
         
         if (current) {
-          // Mock Media (ใส่ image_url หรือ video เพื่อจำลอง Carousel)
-          current.media = [
-            { type: 'image', url: current.image_url },
-            { type: 'image', url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80' },
-            { type: 'video', url: 'https://www.w3schools.com/html/mov_bbb.mp4' }
-          ];
+          // ใช้ข้อมูล Media จากฐานข้อมูลจริงๆ 
+          // (ถ้าไม่มีข้อมูล media ให้ดึง image_url รูปหลักมาแสดงแทนเป็น fallback)
+          current.media = current.media && current.media.length > 0 
+            ? current.media 
+            : [{ type: 'image', url: current.image_url }];
+            
           setProduct(current);
           
-          // สุ่มสินค้าแนะนำ (จำลอง)
+          // สุ่มสินค้าแนะนำ
           setRelated(allProducts.filter((p: any) => p.id.toString() !== id).slice(0, 4));
         }
       } catch (err) {
@@ -91,10 +91,10 @@ export default function ProductDetailPage() {
         {/* 1. Carousel Section */}
         <div className="flex flex-col gap-4">
           <div className="relative w-full h-96 lg:h-125 bg-gray-100 dark:bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center">
-            {product.media[activeMediaIndex].type === 'video' ? (
+            {product.media[activeMediaIndex]?.type === 'video' ? (
               <video src={product.media[activeMediaIndex].url} controls className="w-full h-full object-contain" />
             ) : (
-              <img src={product.media[activeMediaIndex].url} alt="Media" className="w-full h-full object-cover" />
+              <img src={product.media[activeMediaIndex]?.url} alt="Media" className="w-full h-full object-cover" />
             )}
           </div>
           <div className="flex gap-4 overflow-x-auto pb-2">
