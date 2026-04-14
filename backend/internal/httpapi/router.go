@@ -68,6 +68,15 @@ func setupProductRoutes(h *handlers.Handler) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", h.ListProducts)
 		r.Get("/{id}", h.GetProductByID)
+
+		// เพิ่มการอนุญาต POST, PUT, DELETE สำหรับจัดการสินค้า (ต้อง Login และเป็น Admin)
+		r.Group(func(r chi.Router) {
+			r.Use(h.RequireAuth)
+			r.Use(h.RequireAdmin)
+			r.Post("/", h.CreateProduct)
+			r.Put("/{id}", h.UpdateProduct)
+			r.Delete("/{id}", h.DeleteProduct)
+		})
 	}
 }
 
