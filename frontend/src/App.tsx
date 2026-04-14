@@ -40,7 +40,13 @@ const App = () => {
       } catch (err: any) { 
         if (isMounted) {
           setWakingUp(true);
-          setTimeout(wakeUpServers, 3000);
+          // เช็คว่าถ้าโดน 429 (Rate Limit) ให้รอ 10 วินาทีค่อยยิงใหม่ 
+          // ถ้าเป็น Error อื่น (เช่น เซิร์ฟเวอร์ยังไม่ตื่น) ให้รอ 5 วินาที
+          if (err.response && err.response.status === 429) {
+            setTimeout(wakeUpServers, 10000); 
+          } else {
+            setTimeout(wakeUpServers, 5000);
+          }
         }
       }
     };

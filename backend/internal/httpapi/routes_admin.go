@@ -37,5 +37,6 @@ func setupAdminRoutes(h *handlers.Handler) func(chi.Router) {
 
 		r.Get("/carousel", h.AdminGetCarousel)
 		r.Post("/carousel", h.AdminUpdateCarousel)
+		r.Put("/users/{id}/wallet", h.UpdateUserWallet)
 	}
 }
