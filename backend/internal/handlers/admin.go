@@ -3,6 +3,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -35,13 +36,20 @@ func (h *Handler) AdminGetUsers(w http.ResponseWriter, r *http.Request) {
 
 	// 3. แนบยอดเงินเข้าไปในข้อมูล User แต่ละคนก่อนส่งให้ Frontend
 	for i, user := range users {
-		uid, ok := user["id"].(string)
-		if ok {
+		var uid string
+		// ปรับปรุงการดึง ID ให้รองรับทั้งกรณีที่เป็น String และ Number(Float64 จาก JSON)
+		if idVal, ok := user["id"]; ok && idVal != nil {
+			uid = fmt.Sprintf("%v", idVal)
+		}
+
+		if uid != "" {
 			if bal, exists := wallets[uid]; exists {
 				users[i]["balance"] = bal
 			} else {
 				users[i]["balance"] = 0.00 // ค่าเริ่มต้นถ้ายังไม่เคยถูกเติมเงิน
 			}
+		} else {
+			users[i]["balance"] = 0.00
 		}
 	}
 
@@ -97,7 +105,6 @@ func (h *Handler) AdminGetAppeals(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, appeals)
 }
-// ไปใส่ไว้ใน backend/internal/handlers/admin.go
 
 func (h *Handler) AdminUpdateAppealStatus(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
@@ -127,9 +134,9 @@ func (h *Handler) AdminDeleteAppeal(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
 // --- Admin Product Management ---
 func (h *Handler) AdminGetProducts(w http.ResponseWriter, r *http.Request) {
-	// เพิ่มการดึง COALESCE(image_url, '') ออกมาจากฐานข้อมูล
 	rows, err := h.MallDB.Query("SELECT id, sku, name, price, stock, COALESCE(image_url, '') FROM products ORDER BY id DESC")
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, err.Error())
@@ -225,7 +232,7 @@ func (h *Handler) AdminGetAllOrders(w http.ResponseWriter, r *http.Request) {
 	var orders []map[string]any
 	for rows.Next() {
 		var id int
-		var uid string // uid เป็น string ตามฐานข้อมูลใหม่
+		var uid string
 		var total float64
 		var status string
 		if err := rows.Scan(&id, &uid, &total, &status); err == nil {
@@ -292,7 +299,6 @@ func (h *Handler) AdminDeleteNews(w http.ResponseWriter, r *http.Request) { w.Wr
 
 // --- Admin Carousel Management ---
 func (h *Handler) AdminGetCarousel(w http.ResponseWriter, r *http.Request) {
-	// ดึงข้อมูล Carousel จากฐานข้อมูลของ Mall
 	rows, err := h.MallDB.Query("SELECT id, image_url, COALESCE(link_url, ''), is_active, sort_order FROM carousels ORDER BY sort_order ASC, id DESC")
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, err.Error())
@@ -323,7 +329,7 @@ func (h *Handler) AdminUpdateCarousel(w http.ResponseWriter, r *http.Request) {
 
 // UpdateUserWallet สำหรับให้ Admin อัปเดตยอดเงิน
 func (h *Handler) UpdateUserWallet(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "id") // สมมติว่าส่ง user_id มาใน URL
+	userID := chi.URLParam(r, "id") 
 	
 	var req struct {
 		Balance float64 `json:"balance"`
@@ -333,7 +339,6 @@ func (h *Handler) UpdateUserWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ใช้ UPSERT เพื่ออัปเดตหรือสร้างกระเป๋าเงินใหม่หากยังไม่มี
 	_, err := h.MallDB.Exec(`
 		INSERT INTO user_wallets (user_id, balance) 
 		VALUES ($1, $2)
