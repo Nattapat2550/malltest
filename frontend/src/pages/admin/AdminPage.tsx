@@ -34,7 +34,7 @@ export default function AdminPage() {
             
             {/* เพิ่มเมนูจัดการสินค้าเข้ามาตรงนี้ */}
             <TabButton id="products" label="จัดการสินค้า (Mall)" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
-            
+            <TabButton id="orders" label="จัดการคำสั่งซื้อ" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
             <TabButton id="news" label="จัดการข่าวสาร" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
             <TabButton id="appeals" label="ระบบคำร้องเรียน" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
             <TabButton id="carousel" label="จัดการแบนเนอร์" active={activeTab} onClick={setActiveTab} icon={ideaImg} />

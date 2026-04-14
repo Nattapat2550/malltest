@@ -28,7 +28,7 @@ export default function SettingsPage() {
       .catch(console.error);
 
     // ดึงประวัติการสั่งซื้อ
-    api.get('/api/orders/me')
+    api.get('/api/orders')
       .then(res => setOrders(res.data || []))
       .catch(console.error);
   }, []);

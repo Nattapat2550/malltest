@@ -15,7 +15,7 @@ api.interceptors.request.use((config) => {
 export default api;
 // Wallet & User Orders API
 export const getUserWallet = () => api.get('/api/users/me/wallet');
-export const getMyOrders = () => api.get('/api/orders/me');
+export const getMyOrders = () => api.get('/api/orders');
 
 // Admin Orders API
 export const adminGetAllOrders = () => api.get('/api/admin/orders');
