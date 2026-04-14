@@ -34,6 +34,8 @@ func setupAdminRoutes(h *handlers.Handler) func(chi.Router) {
 		r.Delete("/news/{id}", h.AdminDeleteNews)
 		
 		r.Get("/appeals", h.AdminGetAppeals) // แก้ไข 404 appeals
+		r.Put("/appeals/{id}", h.AdminUpdateAppealStatus)
+		r.Delete("/appeals/{id}", h.AdminDeleteAppeal)
 
 		r.Get("/carousel", h.AdminGetCarousel)
 		r.Post("/carousel", h.AdminUpdateCarousel)

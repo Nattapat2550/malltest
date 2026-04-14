@@ -13,5 +13,6 @@ func setupUserRoutes(h *handlers.Handler) func(chi.Router) {
 		ur.Put("/me", h.UsersMePut)
 		ur.Post("/me/avatar", h.UsersMeAvatar)
 		ur.Delete("/me", h.UsersMeDelete)
+		ur.Get("/me/wallet", h.GetUserWallet)
 	}
 }

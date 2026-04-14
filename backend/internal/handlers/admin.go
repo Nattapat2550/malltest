@@ -71,7 +71,36 @@ func (h *Handler) AdminGetAppeals(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, appeals)
 }
+// ไปใส่ไว้ใน backend/internal/handlers/admin.go
 
+func (h *Handler) AdminUpdateAppealStatus(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var req struct {
+		Status string `json:"status"`
+	}
+	if err := ReadJSON(r, &req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid input data")
+		return
+	}
+
+	_, err := h.MallDB.ExecContext(r.Context(), "UPDATE appeals SET status = $1 WHERE id = $2", req.Status, id)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to update appeal status")
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, map[string]string{"message": "Appeal status updated"})
+}
+
+func (h *Handler) AdminDeleteAppeal(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	_, err := h.MallDB.ExecContext(r.Context(), "DELETE FROM appeals WHERE id = $1", id)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to delete appeal")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
 // --- Admin Product Management ---
 func (h *Handler) AdminGetProducts(w http.ResponseWriter, r *http.Request) {
 	// เพิ่มการดึง COALESCE(image_url, '') ออกมาจากฐานข้อมูล
