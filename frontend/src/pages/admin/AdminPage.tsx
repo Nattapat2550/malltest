@@ -1,7 +1,6 @@
 // frontend/src/pages/admin/AdminPage.tsx
 import React, { useState } from 'react';
 
-
 import UsersTab from './tabs/UsersTab';
 import NewsTab from './tabs/NewsTab';
 import AppealsTab from './tabs/AppealsTab';
@@ -16,6 +15,8 @@ import ideaImg from '../../assets/idea.png';
 import settingsImg from '../../assets/settings.png'; 
 
 export default function AdminPage() {
+  // สร้าง State สำหรับเก็บว่ากำลังเปิด Tab ไหนอยู่ (ค่าเริ่มต้นคือ users)
+  const [activeTab, setActiveTab] = useState('users');
 
   return (
     // ใช้ w-full แบบไร้ขอบด้านข้าง ประหยัดพื้นที่ขั้นสุด
@@ -31,11 +32,22 @@ export default function AdminPage() {
           
           {/* Tabs Navigation */}
           <div className="flex flex-wrap gap-2 mt-6">
+            <TabButton id="users" label="จัดการผู้ใช้งาน" active={activeTab} onClick={setActiveTab} icon={userImg} />
+            <TabButton id="news" label="จัดการข่าวสาร" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
+            <TabButton id="appeals" label="ระบบคำร้องเรียน" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
+            <TabButton id="carousel" label="จัดการแบนเนอร์" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
+            <TabButton id="documents" label="จัดการข้อมูล & แกลเลอรี" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
           </div>
         </div>
 
         {/* Content Area */}
         <div className="p-6 bg-gray-50/50 dark:bg-gray-900/30 min-h-[70vh] animate-fade-in">
+          {/* แสดง Component ตาม Tab ที่กำลัง Active */}
+          {activeTab === 'users' && <UsersTab />}
+          {activeTab === 'news' && <NewsTab />}
+          {activeTab === 'appeals' && <AppealsTab />}
+          {activeTab === 'carousel' && <CarouselTab />}
+          {activeTab === 'documents' && <DocumentsTab />}
         </div>
         
       </div>
