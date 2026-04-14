@@ -28,26 +28,28 @@ const MyOrdersPage: React.FC = () => {
 
   const fetchOrders = async () => {
     try {
-      const response = await api.get('/orders');
-      setOrders(response.data || []);
+        // ลองเปลี่ยนเป็น /api/orders
+        const response = await api.get('/api/orders'); 
+        setOrders(response.data || []);
     } catch (error) {
-      console.error('Failed to fetch orders:', error);
+        console.error('Failed to fetch orders:', error);
     }
-  };
+    };
 
-  const fetchTracking = async (orderId: number) => {
-    setSelectedOrderId(orderId);
-    setLoading(true);
-    try {
-      const response = await api.get(`/orders/${orderId}/tracking`);
-      setTracking(response.data || []);
-    } catch (error) {
-      console.error('Failed to fetch tracking:', error);
-      setTracking([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchTracking = async (orderId: number) => {
+        setSelectedOrderId(orderId);
+        setLoading(true);
+        try {
+            // ลองเปลี่ยนเป็น /api/orders/...
+            const response = await api.get(`/api/orders/${orderId}/tracking`);
+            setTracking(response.data || []);
+        } catch (error) {
+            console.error('Failed to fetch tracking:', error);
+            setTracking([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
   return (
     <div className="container mx-auto p-4 max-w-5xl">
