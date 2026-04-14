@@ -14,7 +14,5 @@ func setupUserRoutes(h *handlers.Handler) func(chi.Router) {
 		ur.Post("/me/avatar", h.UsersMeAvatar)
 		ur.Delete("/me", h.UsersMeDelete)
 		ur.Get("/me/wallet", h.GetUserWallet)
-		ur.Get("/orders", h.GetMyOrders)
-		ur.Get("/orders/{id}/tracking", h.GetOrderTracking)
 	}
 }

@@ -130,28 +130,45 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 
 // GetMyOrders ดึงรายการสั่งซื้อทั้งหมดของ User ที่ Logged in อยู่
 func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+    // ดึง userID จาก Context (ต้องมั่นใจว่าผ่าน Middleware RequireAuth มาแล้ว)
+    ctxUser := r.Context().Value("user_id")
+    if ctxUser == nil {
+        h.writeError(w, http.StatusUnauthorized, "ไม่พบข้อมูลผู้ใช้งาน")
+        return
+    }
+    userID := ctxUser.(string)
 
-	rows, err := h.MallDB.Query("SELECT id, total_amount, status, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC", userID)
-	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer rows.Close()
+    // ค้นหาคำสั่งซื้อที่ตรงกับ user_id นี้
+    rows, err := h.MallDB.QueryContext(r.Context(), 
+        "SELECT id, total_amount, status, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC", 
+        userID)
+    if err != nil {
+        h.writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในการดึงข้อมูล: "+err.Error())
+        return
+    }
+    defer rows.Close()
 
-	var orders []map[string]any
-	for rows.Next() {
-		var id int
-		var total float64
-		var status string
-		var createdAt any
-		if err := rows.Scan(&id, &total, &status, &createdAt); err == nil {
-			orders = append(orders, map[string]any{
-				"id": id, "total_amount": total, "status": status, "created_at": createdAt,
-			})
-		}
-	}
-	WriteJSON(w, http.StatusOK, orders)
+    var orders []map[string]any
+    for rows.Next() {
+        var id int
+        var total float64
+        var status string
+        var createdAt interface{}
+        if err := rows.Scan(&id, &total, &status, &createdAt); err == nil {
+            orders = append(orders, map[string]any{
+                "id":           id,
+                "total_amount": total,
+                "status":       status,
+                "created_at":   createdAt,
+            })
+        }
+    }
+
+    if orders == nil {
+        orders = []map[string]any{}
+    }
+
+    WriteJSON(w, http.StatusOK, orders)
 }
 
 // GetOrderTracking ดึงประวัติการเดินทางของคำสั่งซื้อนั้นๆ

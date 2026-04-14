@@ -75,6 +75,7 @@ func setupOrderRoutes(h *handlers.Handler) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Use(h.RequireAuth)
 		r.Post("/checkout", h.Checkout)
-		r.Get("/me", h.GetMyOrders)
+		r.Get("/", h.GetMyOrders)
+		r.Get("/{id}/tracking", h.GetOrderTracking)
 	}
 }
