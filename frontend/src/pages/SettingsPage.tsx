@@ -8,9 +8,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   
-  // เพิ่ม State สำหรับ Wallet และ Orders
   const [wallet, setWallet] = useState<number>(0);
-  const [orders, setOrders] = useState<any[]>([]);
 
   useEffect(() => {
     // ดึงโปรไฟล์
@@ -25,11 +23,6 @@ export default function SettingsPage() {
     // ดึงยอดเงิน
     api.get('/api/users/me/wallet')
       .then(res => setWallet(res.data.balance || 0))
-      .catch(console.error);
-
-    // ดึงประวัติการสั่งซื้อ
-    api.get('/api/orders')
-      .then(res => setOrders(res.data || []))
       .catch(console.error);
   }, []);
 
@@ -92,18 +85,6 @@ export default function SettingsPage() {
     }
   };
 
-  // ฟังก์ชันช่วยแสดงสีสถานะ
-  const getStatusBadge = (status: string) => {
-    switch(status) {
-      case 'pending': return <span className="px-3 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-full text-xs font-bold">รอชำระเงิน</span>;
-      case 'paid': return <span className="px-3 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 rounded-full text-xs font-bold">ชำระแล้ว รอจัดส่ง</span>;
-      case 'shipped': return <span className="px-3 py-1 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 rounded-full text-xs font-bold">กำลังจัดส่ง</span>;
-      case 'completed': return <span className="px-3 py-1 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 rounded-full text-xs font-bold">จัดส่งสำเร็จ</span>;
-      case 'cancelled': return <span className="px-3 py-1 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 rounded-full text-xs font-bold">ยกเลิกแล้ว</span>;
-      default: return <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-bold">{status}</span>;
-    }
-  };
-
   return (
     <div className="max-w-4xl mx-auto p-6 mt-10 space-y-8 animate-fade-in pb-20">
       
@@ -118,7 +99,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* 2. Profile Section (ของเดิม) */}
+      {/* 2. Profile Section */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8">
         <h2 className="text-2xl font-bold border-b border-gray-200 dark:border-gray-700 pb-4 mb-6 text-gray-900 dark:text-white">ตั้งค่าโปรไฟล์ส่วนตัว</h2>
         
@@ -165,46 +146,20 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* 3. Order History Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="p-6 lg:p-8 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">ประวัติการสั่งซื้อ และ สถานะจัดส่ง</h2>
+      {/* 3. Order History Section (เปลี่ยนเป็นปุ่มลิงก์ไปหน้า MyOrdersPage) */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">ประวัติการสั่งซื้อและสถานะจัดส่ง</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            ดูประวัติการสั่งซื้อทั้งหมดของคุณ และติดตามสถานะการจัดส่งแบบละเอียด
+          </p>
         </div>
-        
-        {orders.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-            คุณยังไม่มีประวัติการสั่งซื้อ
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">
-                  <th className="p-4 font-bold whitespace-nowrap">รหัสออเดอร์</th>
-                  <th className="p-4 font-bold whitespace-nowrap">วันที่สั่งซื้อ</th>
-                  <th className="p-4 font-bold whitespace-nowrap">ยอดรวม</th>
-                  <th className="p-4 font-bold whitespace-nowrap">สถานะจัดส่ง</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {orders.map((o: any) => (
-                  <tr key={o.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                    <td className="p-4 font-medium text-gray-900 dark:text-white">#{o.id}</td>
-                    <td className="p-4 text-sm text-gray-600 dark:text-gray-400">
-                      {new Date(o.created_at).toLocaleString('th-TH')}
-                    </td>
-                    <td className="p-4 font-bold text-blue-600 dark:text-blue-400">
-                      ฿{o.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="p-4">
-                      {getStatusBadge(o.status)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <Link 
+          to="/my-orders" 
+          className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-md shadow-blue-500/20 whitespace-nowrap"
+        >
+          ดูคำสั่งซื้อของฉัน
+        </Link>
       </div>
 
       {/* 4. Appeals Section */}

@@ -22,10 +22,12 @@ const AppealsPage = lazy(() => import('./pages/AppealPage'));
 const DocumentDetailsPage = lazy(() => import('./pages/DocumentDetailsPage'));
 const ProductCatalog = lazy(() => import('./pages/ProductCatalog'));
 
-// เพิ่มหน้าใหม่ที่นี่
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const CartPage = lazy(() => import('./pages/CartPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
+
+// 1. เพิ่ม Import หน้า MyOrdersPage ตรงนี้
+const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage'));
 
 const App = () => {
   const [serverReady, setServerReady] = useState(false);
@@ -40,8 +42,6 @@ const App = () => {
       } catch (err: any) { 
         if (isMounted) {
           setWakingUp(true);
-          // เช็คว่าถ้าโดน 429 (Rate Limit) ให้รอ 10 วินาทีค่อยยิงใหม่ 
-          // ถ้าเป็น Error อื่น (เช่น เซิร์ฟเวอร์ยังไม่ตื่น) ให้รอ 5 วินาที
           if (err.response && err.response.status === 429) {
             setTimeout(wakeUpServers, 10000); 
           } else {
@@ -122,6 +122,9 @@ const App = () => {
           <Route path="/products/:id" element={<ProtectedRoute><ProductDetailPage /></ProtectedRoute>} />
           <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
           <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+          
+          {/* 2. เพิ่ม Route ไปหน้า MyOrdersPage */}
+          <Route path="/my-orders" element={<ProtectedRoute><MyOrdersPage /></ProtectedRoute>} />
           
           <Route path="/malls" element={<Navigate to="/products" replace />} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
