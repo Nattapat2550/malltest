@@ -31,35 +31,35 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 
 	var req OrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+		h.writeError(w, http.StatusBadRequest, "Invalid input: "+err.Error())
 		return
 	}
 
 	if len(req.Items) == 0 {
-		http.Error(w, "Order must contain at least one item", http.StatusBadRequest)
+		h.writeError(w, http.StatusBadRequest, "Order must contain at least one item")
 		return
 	}
 	if req.Address == "" {
-		http.Error(w, "Shipping address is required", http.StatusBadRequest)
+		h.writeError(w, http.StatusBadRequest, "Shipping address is required")
 		return
 	}
 
-	// เริ่ม Transaction เพื่อความปลอดภัยของข้อมูลการเงินและสต็อก
+	// เริ่ม Transaction เพื่อความปลอดภัย
 	tx, err := h.MallDB.BeginTx(r.Context(), nil)
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Failed to start transaction")
+		h.writeError(w, http.StatusInternalServerError, "Failed to start tx: "+err.Error())
 		return
 	}
 	defer tx.Rollback()
 
-	// 1. เช็คยอดเงินในกระเป๋า (FOR UPDATE เพื่อป้องกัน Race condition)
+	// 1. เช็คยอดเงินในกระเป๋า (FOR UPDATE ป้องกันการชนกันของข้อมูล)
 	var balance float64
 	err = tx.QueryRow("SELECT balance FROM user_wallets WHERE user_id = $1 FOR UPDATE", u.ID).Scan(&balance)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			balance = 0.00
 		} else {
-			h.writeError(w, http.StatusInternalServerError, "Failed to check wallet balance")
+			h.writeError(w, http.StatusInternalServerError, "Failed to query wallet: "+err.Error())
 			return
 		}
 	}
@@ -76,18 +76,18 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 		ON CONFLICT (user_id) DO UPDATE SET balance = EXCLUDED.balance, updated_at = CURRENT_TIMESTAMP`, 
 		u.ID, newBalance)
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Failed to deduct balance")
+		h.writeError(w, http.StatusInternalServerError, "Failed to deduct balance: "+err.Error())
 		return
 	}
 
-	// 3. สร้าง Order (สถานะเป็น paid เลยเพราะหักเงินเรียบร้อย)
+	// 3. สร้าง Order
 	var orderID int
 	err = tx.QueryRow(`
 		INSERT INTO orders (user_id, total_amount, address, shipping_method, note, promo_code, status)
 		VALUES ($1, $2, $3, $4, $5, $6, 'paid') RETURNING id`,
 		u.ID, req.TotalAmount, req.Address, req.ShippingMethod, req.Note, req.PromoCode).Scan(&orderID)
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Failed to create order")
+		h.writeError(w, http.StatusInternalServerError, "Failed to create order: "+err.Error())
 		return
 	}
 
@@ -96,14 +96,13 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 		_, err = tx.Exec("INSERT INTO order_items (order_id, product_id, quantity, price_at_time) VALUES ($1, $2, $3, $4)",
 			orderID, item.ProductID, item.Quantity, item.Price)
 		if err != nil {
-			h.writeError(w, http.StatusInternalServerError, "Failed to save order items")
+			h.writeError(w, http.StatusInternalServerError, "Failed to insert order item: "+err.Error())
 			return
 		}
 
-		// ตัดสต็อกและเช็คว่าสต็อกไม่ติดลบ
 		res, err := tx.Exec("UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1", item.Quantity, item.ProductID)
 		if err != nil {
-			h.writeError(w, http.StatusInternalServerError, "Failed to update product stock")
+			h.writeError(w, http.StatusInternalServerError, "Failed to update stock: "+err.Error())
 			return
 		}
 		
@@ -115,13 +114,11 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = tx.Commit(); err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		h.writeError(w, http.StatusInternalServerError, "Failed to commit tx: "+err.Error())
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	WriteJSON(w, http.StatusCreated, map[string]interface{}{
 		"status":      "success",
 		"message":     "Order placed successfully",
 		"order_id":    orderID,
@@ -144,7 +141,7 @@ func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 	`, u.ID)
 	
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Failed to fetch orders")
+		h.writeError(w, http.StatusInternalServerError, "Failed to query orders: "+err.Error())
 		return
 	}
 	defer rows.Close()
@@ -153,19 +150,25 @@ func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var id int
 		var total float64
-		var address, shippingMethod, status string
+		var address sql.NullString
+		var shippingMethod sql.NullString
+		var status sql.NullString
 		var createdAt time.Time
 		
-		if err := rows.Scan(&id, &total, &address, &shippingMethod, &status, &createdAt); err == nil {
-			orders = append(orders, map[string]interface{}{
-				"id":              id,
-				"total_amount":    total,
-				"address":         address,
-				"shipping_method": shippingMethod,
-				"status":          status, // สถานะจัดส่งให้ User (pending, paid, shipped, completed, cancelled)
-				"created_at":      createdAt,
-			})
+		// ป้องกัน Panic ด้วย sql.NullString เผื่อฐานข้อมูลมีค่า NULL
+		if err := rows.Scan(&id, &total, &address, &shippingMethod, &status, &createdAt); err != nil {
+			h.writeError(w, http.StatusInternalServerError, "Data scan error: "+err.Error())
+			return
 		}
+		
+		orders = append(orders, map[string]interface{}{
+			"id":              id,
+			"total_amount":    total,
+			"address":         address.String,
+			"shipping_method": shippingMethod.String,
+			"status":          status.String,
+			"created_at":      createdAt,
+		})
 	}
 
 	if orders == nil {
