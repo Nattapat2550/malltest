@@ -130,18 +130,17 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 
 // GetMyOrders ดึงรายการสั่งซื้อทั้งหมดของ User ที่ Logged in อยู่
 func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
-    // ดึง userID จาก Context (ต้องมั่นใจว่าผ่าน Middleware RequireAuth มาแล้ว)
-    ctxUser := r.Context().Value("user_id")
-    if ctxUser == nil {
+    // แก้ไข: ใช้ฟังก์ชัน GetUser(r) แบบเดียวกับที่ใช้ใน Checkout
+    u := GetUser(r)
+    if u == nil {
         h.writeError(w, http.StatusUnauthorized, "ไม่พบข้อมูลผู้ใช้งาน")
         return
     }
-    userID := ctxUser.(string)
 
-    // ค้นหาคำสั่งซื้อที่ตรงกับ user_id นี้
+    // แก้ไข: ใช้ u.ID ซึ่งเป็น int64 ในการค้นหาใน Database
     rows, err := h.MallDB.QueryContext(r.Context(), 
         "SELECT id, total_amount, status, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC", 
-        userID)
+        u.ID)
     if err != nil {
         h.writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในการดึงข้อมูล: "+err.Error())
         return
@@ -174,12 +173,20 @@ func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 // GetOrderTracking ดึงประวัติการเดินทางของคำสั่งซื้อนั้นๆ
 func (h *Handler) GetOrderTracking(w http.ResponseWriter, r *http.Request) {
 	orderID := chi.URLParam(r, "id")
-	userID := r.Context().Value("user_id").(string)
+	
+    // แก้ไข: ดึง User ด้วย GetUser(r)
+	u := GetUser(r)
+	if u == nil {
+		h.writeError(w, http.StatusUnauthorized, "ไม่พบข้อมูลผู้ใช้งาน")
+		return
+	}
 
 	// ตรวจสอบก่อนว่าเป็นเจ้าของ Order จริงไหม
-	var ownerID string
+	var ownerID int64 // แก้ไข: เปลี่ยนเป็น int64 ให้ตรงกับ u.ID
 	err := h.MallDB.QueryRow("SELECT user_id FROM orders WHERE id = $1", orderID).Scan(&ownerID)
-	if err != nil || ownerID != userID {
+	
+    // แก้ไข: เปรียบเทียบ ownerID กับ u.ID
+	if err != nil || ownerID != u.ID {
 		h.writeError(w, http.StatusForbidden, "คุณไม่มีสิทธิ์ดูข้อมูลนี้")
 		return
 	}
