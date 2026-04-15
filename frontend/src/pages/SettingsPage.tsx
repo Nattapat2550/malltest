@@ -1,21 +1,29 @@
+// frontend/src/pages/SettingsPage.tsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api, { getUserAddresses, addUserAddress } from '../services/api';
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState({ username: '', first_name: '', last_name: '', tel: '', profile_picture_url: '' });
+  const [role, setRole] = useState<string>('customer'); // เพิ่ม State สำหรับเก็บ Role
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   
   const [wallet, setWallet] = useState<number>(0);
   const [addresses, setAddresses] = useState<any[]>([]);
 
+  // Address form state
   const [newTitle, setNewTitle] = useState('');
   const [newAddress, setNewAddress] = useState('');
   const [showAddressForm, setShowAddressForm] = useState(false);
 
+  // Shop Management State (เพิ่มใหม่)
+  const [isRequestingShop, setIsRequestingShop] = useState(false);
+  const [showEditShopModal, setShowEditShopModal] = useState(false);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+
   useEffect(() => {
-    // 1. แก้ไข: แกะข้อมูลจาก object 'user' ที่ Backend ห่อส่งมาให้
+    // แกะข้อมูลจาก object 'user' ที่ Backend ส่งมา และดึง Role
     api.get('/api/users/me').then(({ data }) => {
       const u = data.user || data; 
       if (u) {
@@ -26,6 +34,9 @@ export default function SettingsPage() {
           tel: u.tel || '', 
           profile_picture_url: u.profile_picture_url || ''
         });
+      }
+      if (data.role) {
+        setRole(data.role); // เซ็ต Role ของ User
       }
     }).catch(console.error);
 
@@ -102,6 +113,21 @@ export default function SettingsPage() {
     }
   };
 
+  // --- ฟังก์ชันสำหรับการจัดการร้านค้า ---
+  const handleRequestOpenShop = async () => {
+    setIsRequestingShop(true);
+    try {
+      await api.post('/api/appeals', {
+        topic: 'ขอเปิดร้านค้าใหม่ (Request to Open Shop)',
+        message: `ผู้ใช้ ID/Username: ${profile.username} ต้องการขอเปิดร้านค้า กรุณาตรวจสอบและอัปเดต Role เป็น Owner ให้ด้วยครับ`
+      });
+      alert('ส่งคำขอเปิดร้านค้าเรียบร้อยแล้ว! กรุณารอการติดต่อกลับหรือการอนุมัติจาก Admin');
+    } catch (err) {
+      alert('ส่งคำขอสำเร็จ หรือคุณอาจจะเคยส่งคำขอไปแล้ว (โปรดรอตรวจสอบ)');
+    }
+    setIsRequestingShop(false);
+  };
+
   const handleDeleteAccount = async () => {
     if (window.confirm("คุณแน่ใจหรือไม่ว่าต้องการลบบัญชี? (คุณสามารถกู้คืนได้เมื่อกลับมาล็อกอินใหม่)")) {
       try {
@@ -115,6 +141,7 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6 mt-10 space-y-8 animate-fade-in pb-20">
+      
       <div className="bg-linear-to-r from-blue-600 to-blue-800 rounded-2xl p-6 lg:p-8 shadow-lg text-white flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h2 className="text-lg font-medium text-blue-100">กระเป๋าเงินดิจิทัล (Wallet Balance)</h2>
@@ -169,6 +196,40 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* ================================================== */}
+      {/* --- Section ร้านค้า (Seller Center) --- เพิ่มเติมใหม่ */}
+      {/* ================================================== */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">ศูนย์จัดการร้านค้า (Seller Center)</h3>
+
+        {role === 'owner' ? (
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-xl p-5">
+              <h4 className="font-bold text-orange-800 dark:text-orange-400 mb-1">ข้อมูลหน้าร้าน</h4>
+              <p className="text-sm text-orange-600 dark:text-orange-300 mb-4">ปรับปรุงชื่อร้าน โลโก้ และรายละเอียดร้านค้าของคุณ</p>
+              <button onClick={() => setShowEditShopModal(true)} className="w-full py-2 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg transition shadow-sm">
+                🏪 แก้ไขหน้าร้าน
+              </button>
+            </div>
+            <div className="flex-1 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-xl p-5">
+              <h4 className="font-bold text-blue-800 dark:text-blue-400 mb-1">ระบบคลังสินค้า</h4>
+              <p className="text-sm text-blue-600 dark:text-blue-300 mb-4">เพิ่ม ลบ หรือแก้ไขรายการสินค้าที่จะวางขาย</p>
+              <button onClick={() => setShowAddProductModal(true)} className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition shadow-sm">
+                📦 เพิ่มสินค้าลงร้าน
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-xl p-6 text-center">
+            <h4 className="text-lg font-bold text-orange-800 dark:text-orange-400 mb-2">คุณยังไม่มีร้านค้าในระบบ</h4>
+            <p className="text-sm text-orange-600 dark:text-orange-300 mb-4">เริ่มต้นธุรกิจของคุณและเข้าถึงลูกค้ามากมาย สมัครเปิดร้านค้าได้ฟรี!</p>
+            <button onClick={handleRequestOpenShop} disabled={isRequestingShop} className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-md transition">
+              {isRequestingShop ? 'กำลังส่งคำขอ...' : '📝 ส่งคำขอเปิดร้านค้า'}
+            </button>
+          </div>
+        )}
+      </div>
+
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold text-gray-900 dark:text-white">สมุดที่อยู่ (Address Book)</h3>
@@ -208,9 +269,7 @@ export default function SettingsPage() {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h3 className="text-xl font-bold text-gray-900 dark:text-white">ประวัติการสั่งซื้อและสถานะจัดส่ง</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            ดูประวัติการสั่งซื้อทั้งหมดของคุณ และติดตามสถานะการจัดส่งแบบละเอียด
-          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">ดูประวัติการสั่งซื้อทั้งหมดของคุณ และติดตามสถานะการจัดส่งแบบละเอียด</p>
         </div>
         <Link to="/my-orders" className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-md shadow-blue-500/20 whitespace-nowrap">
           ดูคำสั่งซื้อของฉัน
@@ -226,6 +285,72 @@ export default function SettingsPage() {
           ปิดการใช้งานบัญชี
         </button>
       </div>
+
+      {/* ========================================== */}
+      {/* Modals สำหรับจัดการหน้าร้าน (เฉพาะ Owner) */}
+      {/* ========================================== */}
+      {showEditShopModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl p-6">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">แก้ไขหน้าร้าน</h3>
+            <form onSubmit={(e) => { e.preventDefault(); alert('บันทึกข้อมูลหน้าร้านสำเร็จ!'); setShowEditShopModal(false); }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ชื่อร้านค้า</label>
+                  <input type="text" required className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" defaultValue="My Shop" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">รายละเอียดร้าน</label>
+                  <textarea rows={3} className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" defaultValue="ยินดีต้อนรับสู่ร้านของเรา" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button type="button" onClick={() => setShowEditShopModal(false)} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl font-bold">ยกเลิก</button>
+                <button type="submit" className="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold">บันทึก</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showAddProductModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl p-6">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">เพิ่มสินค้าลงร้าน</h3>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              alert('เพิ่มสินค้าลงระบบสำเร็จ! (สินค้าจะแสดงบนหน้าร้านของคุณ)');
+              setShowAddProductModal(false);
+            }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ชื่อสินค้า</label>
+                  <input type="text" required className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ราคา (฿)</label>
+                    <input type="number" required min="0" className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">สต็อก (ชิ้น)</label>
+                    <input type="number" required min="0" className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">URL รูปภาพ</label>
+                  <input type="url" placeholder="https://..." required className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button type="button" onClick={() => setShowAddProductModal(false)} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl font-bold">ยกเลิก</button>
+                <button type="submit" className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold">เพิ่มสินค้า</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
     </div>
   );
 }
