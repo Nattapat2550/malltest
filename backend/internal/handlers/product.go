@@ -180,10 +180,13 @@ func (h *Handler) GetProductComments(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) CreateProductComment(w http.ResponseWriter, r *http.Request) {
 	productID := chi.URLParam(r, "id")
 	
-	// สมมติว่ามีการดึง userID จาก Middleware 
-	// userID := r.Context().Value("user_id").(string) 
-	// ตรงนี้ผมใช้ค่าจำลองไปก่อน กรุณาแก้ไขให้ดึงจาก Auth Middleware ของคุณ
-	userID := "user-from-auth-middleware" 
+	// ดึงข้อมูล User จาก Middleware
+	u := GetUser(r)
+	if u == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	userID := u.ID
 
 	var req CreateCommentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -215,14 +218,13 @@ func (h *Handler) CreateProductComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. บันทึกคอมเมนต์ (ถ้า user พยายามซ้ำใน order เดิม จะติด UNIQUE constraint ของ DB และเกิด error)
+	// 2. บันทึกคอมเมนต์
 	_, err = h.MallDB.Exec(`
 		INSERT INTO product_comments (product_id, user_id, order_id, rating, message) 
 		VALUES ($1, $2, $3, $4, $5)
 	`, productID, userID, req.OrderID, req.Rating, req.Message)
 
 	if err != nil {
-		// เช็คว่าเป็น error จากการทำผิดเงื่อนไข UNIQUE หรือไม่
 		http.Error(w, "คุณได้คอมเมนต์สินค้านี้สำหรับคำสั่งซื้อนี้ไปแล้ว หรือเกิดข้อผิดพลาด: "+err.Error(), http.StatusConflict)
 		return
 	}
@@ -233,7 +235,14 @@ func (h *Handler) CreateProductComment(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) UpdateProductComment(w http.ResponseWriter, r *http.Request) {
 	commentID := chi.URLParam(r, "commentID")
-	userID := "user-from-auth-middleware" // ดึงจาก Context/Middleware จริง
+	
+	// ดึงข้อมูล User จาก Middleware
+	u := GetUser(r)
+	if u == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	userID := u.ID
 
 	var req struct {
 		Rating  int    `json:"rating"`
@@ -268,7 +277,14 @@ func (h *Handler) UpdateProductComment(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) DeleteProductComment(w http.ResponseWriter, r *http.Request) {
 	commentID := chi.URLParam(r, "commentID")
-	userID := "user-from-auth-middleware" // ดึงจาก Context/Middleware จริง
+	
+	// ดึงข้อมูล User จาก Middleware
+	u := GetUser(r)
+	if u == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	userID := u.ID
 
 	result, err := h.MallDB.Exec("DELETE FROM product_comments WHERE id = $1 AND user_id = $2", commentID, userID)
 	if err != nil {
