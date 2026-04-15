@@ -22,7 +22,6 @@ const CheckCodePage = () => {
     setMsg(null);
     try {
       await api.post('/api/auth/verify-code', { email, code: code.trim() });
-      // เปลี่ยนจาก /form ไปที่หน้า /complete-profile
       navigate(`/complete-profile?email=${encodeURIComponent(email)}`);
     } catch (err: any) {
       setMsg(err.response?.data?.error || 'Invalid code');
@@ -39,6 +38,7 @@ const CheckCodePage = () => {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">รหัส 6 หลัก</label>
           <input
             type="text" required value={code} onChange={(e) => setCode(e.target.value.trim())}
+            autoComplete="one-time-code"
             className="w-full px-4 py-2 text-center tracking-widest text-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-900 dark:text-white"
           />
         </div>

@@ -8,12 +8,24 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 var emailRe = regexp.MustCompile(`^\S+@\S+\.\S+$`)
+
+// --- ตัวแปรสำหรับเก็บ OTP ใน Memory (ไม่ต้องลงฐานข้อมูล) ---
+var (
+	otpStore = make(map[string]otpEntry)
+	otpMutex sync.RWMutex
+)
+
+type otpEntry struct {
+	Code      string
+	ExpiresAt time.Time
+}
 
 type userDTO struct {
 	ID                int64   `json:"id"`
@@ -88,22 +100,16 @@ func (h *Handler) AuthRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ลบการสร้าง User ลงฐานข้อมูลทิ้ง เพื่อไม่ให้มีข้อมูลขึ้น DB ก่อนการกดยืนยันในหน้าฟอร์ม
-	// var user userDTO
-	// if err := h.Pure.Post(ctx, "/api/internal/create-user-email", map[string]any{"email": email}, &user); err != nil {
-	// 	h.writeErrFrom(w, err)
-	// 	return
-	// }
-
+	// ❌ เอาการสร้าง User ลง DB ออก เพื่อไม่ให้มีข้อมูลขยะ
 	code := generateSixDigitCode()
-	expiresAt := time.Now().Add(10 * time.Minute).Format(time.RFC3339)
 	
-	// ใช้ email เป็นตัวอ้างอิงแทนการใช้ userId เพราะ user ยังไม่ถูกสร้าง
-	_ = h.Pure.Post(ctx, "/api/internal/store-verification-code", map[string]any{
-		"email":     email, 
-		"code":      code,
-		"expiresAt": expiresAt,
-	}, nil)
+	// ✅ เก็บ Code ลง Memory แทน (อยู่ได้ 10 นาที)
+	otpMutex.Lock()
+	otpStore[email] = otpEntry{
+		Code:      code,
+		ExpiresAt: time.Now().Add(10 * time.Minute),
+	}
+	otpMutex.Unlock()
 
 	emailSent := false
 	if !h.Cfg.EmailDisable {
@@ -124,7 +130,6 @@ func (h *Handler) AuthRegister(w http.ResponseWriter, r *http.Request) {
 
 // ------ VERIFY CODE ------
 func (h *Handler) AuthVerifyCode(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
 	var req verifyReq
 	if err := ReadJSON(r, &req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid JSON")
@@ -137,20 +142,28 @@ func (h *Handler) AuthVerifyCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var resp verifyResp
-	if err := h.Pure.Post(ctx, "/api/internal/verify-code", map[string]any{"email": email, "code": code}, &resp); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid or expired code")
+	// ✅ เช็ค Code จาก Memory แทนการถามจาก DB/PureAPI
+	otpMutex.RLock()
+	entry, exists := otpStore[email]
+	otpMutex.RUnlock()
+
+	if !exists || entry.Code != code {
+		h.writeError(w, http.StatusBadRequest, "Invalid code")
 		return
 	}
-	
-	if !resp.OK {
-		if resp.Reason != nil && *resp.Reason == "no_user" {
-			h.writeError(w, http.StatusNotFound, "User not found")
-		} else {
-			h.writeError(w, http.StatusBadRequest, "Invalid or expired code")
-		}
+
+	if time.Now().After(entry.ExpiresAt) {
+		otpMutex.Lock()
+		delete(otpStore, email)
+		otpMutex.Unlock()
+		h.writeError(w, http.StatusBadRequest, "Code expired")
 		return
 	}
+
+	// ถ้ายืนยันถูก ให้ลบ Code ทิ้งป้องกันการใช้งานซ้ำ
+	otpMutex.Lock()
+	delete(otpStore, email)
+	otpMutex.Unlock()
 	
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
@@ -195,7 +208,7 @@ func (h *Handler) AuthCompleteProfile(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		} else {
-			// User จะถูกสร้างตรงนี้เท่านั้น (เมื่อมีการกดยืนยันบันทึกข้อมูล)
+			// ✅ การบันทึกผู้ใช้ลงฐานข้อมูล จะถูกทำที่นี่! (หลังจากผู้ใช้กดยืนยัน Complete Profile แล้วเท่านั้น)
 			if errCreate := h.Pure.Post(ctx, "/api/internal/create-user-email", map[string]any{"email": email}, &user); errCreate != nil {
 				h.writeError(w, http.StatusInternalServerError, "Failed to create user account")
 				return
