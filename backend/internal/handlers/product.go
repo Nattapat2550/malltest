@@ -14,20 +14,22 @@ type Media struct {
 }
 
 type Product struct {
-	ID          int     `json:"id"`
-	SKU         string  `json:"sku"`
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	Stock       int     `json:"stock"`
-	ImageURL    string  `json:"image_url"`
-	Media       []Media `json:"media"` // สำหรับหน้ารอง (Carousel)
+	ID          int       `json:"id"`
+	MotherID    *int      `json:"motherid,omitempty"` // เพิ่มฟิลด์ motherid (อาจจะเป็น null ได้)
+	SKU         string    `json:"sku"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Price       float64   `json:"price"`
+	Stock       int       `json:"stock"`
+	ImageURL    string    `json:"image_url"`
+	Media       []Media   `json:"media"`
+	Variants    []Product `json:"variants,omitempty"` // เพิ่มฟิลด์ไว้ส่งรูปแบบสินค้ากลับไปหน้าเว็บ
 }
 
 // ListProducts ดึงข้อมูลสินค้าทั้งหมดจากฐานข้อมูล
 func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.MallDB.Query(`
-		SELECT id, sku, name, description, price, stock, image_url, COALESCE(media_urls, '[]') 
+		SELECT id, motherid, sku, name, description, price, stock, image_url, COALESCE(media_urls, '[]') 
 		FROM products 
 		ORDER BY id DESC
 	`)
@@ -41,7 +43,7 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var p Product
 		var mediaJSON string
-		if err := rows.Scan(&p.ID, &p.SKU, &p.Name, &p.Description, &p.Price, &p.Stock, &p.ImageURL, &mediaJSON); err != nil {
+		if err := rows.Scan(&p.ID, &p.MotherID, &p.SKU, &p.Name, &p.Description, &p.Price, &p.Stock, &p.ImageURL, &mediaJSON); err != nil {
 			continue
 		}
 		json.Unmarshal([]byte(mediaJSON), &p.Media)
@@ -55,16 +57,17 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(products)
 }
 
-// GetProductByID ดึงข้อมูลสินค้า 1 ชิ้น
+// GetProductByID ดึงข้อมูลสินค้า 1 ชิ้น พร้อมกับตัวเลือก (Variants) ที่อยู่ในกลุ่มเดียวกัน
 func (h *Handler) GetProductByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var p Product
 	var mediaJSON string
 
+	// 1. ดึงข้อมูลสินค้าที่ระบุ
 	err := h.MallDB.QueryRow(`
-		SELECT id, sku, name, description, price, stock, image_url, COALESCE(media_urls, '[]') 
+		SELECT id, motherid, sku, name, description, price, stock, image_url, COALESCE(media_urls, '[]') 
 		FROM products WHERE id = $1`, id).
-		Scan(&p.ID, &p.SKU, &p.Name, &p.Description, &p.Price, &p.Stock, &p.ImageURL, &mediaJSON)
+		Scan(&p.ID, &p.MotherID, &p.SKU, &p.Name, &p.Description, &p.Price, &p.Stock, &p.ImageURL, &mediaJSON)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -78,6 +81,34 @@ func (h *Handler) GetProductByID(w http.ResponseWriter, r *http.Request) {
 	json.Unmarshal([]byte(mediaJSON), &p.Media)
 	if p.Media == nil {
 		p.Media = []Media{}
+	}
+
+	// 2. ดึงข้อมูลรูปแบบอื่นๆ ในกลุ่มเดียวกัน (หาตัวแม่ให้เจอก่อน)
+	rootID := p.ID
+	if p.MotherID != nil {
+		rootID = *p.MotherID
+	}
+
+	// ดึงแม่และลูกทั้งหมดในกลุ่ม
+	rows, err := h.MallDB.Query(`
+		SELECT id, motherid, sku, name, description, price, stock, image_url, COALESCE(media_urls, '[]') 
+		FROM products 
+		WHERE id = $1 OR motherid = $1 
+		ORDER BY id ASC`, rootID)
+	
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var v Product
+			var vMedia string
+			if err := rows.Scan(&v.ID, &v.MotherID, &v.SKU, &v.Name, &v.Description, &v.Price, &v.Stock, &v.ImageURL, &vMedia); err == nil {
+				json.Unmarshal([]byte(vMedia), &v.Media)
+				if v.Media == nil {
+					v.Media = []Media{}
+				}
+				p.Variants = append(p.Variants, v)
+			}
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -94,9 +125,9 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	mediaBytes, _ := json.Marshal(p.Media)
 
 	_, err := h.MallDB.Exec(`
-		INSERT INTO products (sku, name, description, price, stock, image_url, media_urls) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		p.SKU, p.Name, p.Description, p.Price, p.Stock, p.ImageURL, string(mediaBytes))
+		INSERT INTO products (motherid, sku, name, description, price, stock, image_url, media_urls) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		p.MotherID, p.SKU, p.Name, p.Description, p.Price, p.Stock, p.ImageURL, string(mediaBytes))
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -119,9 +150,9 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 
 	_, err := h.MallDB.Exec(`
 		UPDATE products 
-		SET sku=$1, name=$2, description=$3, price=$4, stock=$5, image_url=$6, media_urls=$7, updated_at=CURRENT_TIMESTAMP
-		WHERE id=$8`,
-		p.SKU, p.Name, p.Description, p.Price, p.Stock, p.ImageURL, string(mediaBytes), id)
+		SET motherid=$1, sku=$2, name=$3, description=$4, price=$5, stock=$6, image_url=$7, media_urls=$8, updated_at=CURRENT_TIMESTAMP
+		WHERE id=$9`,
+		p.MotherID, p.SKU, p.Name, p.Description, p.Price, p.Stock, p.ImageURL, string(mediaBytes), id)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -168,7 +199,6 @@ func (h *Handler) GetProductComments(w http.ResponseWriter, r *http.Request) {
 		comments = append(comments, c)
 	}
 
-	// ถ้าไม่มีคอมเมนต์ให้ส่ง array เปล่ากลับไป
 	if comments == nil {
 		comments = []ProductComment{}
 	}
@@ -180,7 +210,6 @@ func (h *Handler) GetProductComments(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) CreateProductComment(w http.ResponseWriter, r *http.Request) {
 	productID := chi.URLParam(r, "id")
 	
-	// ดึงข้อมูล User จาก Middleware
 	u := GetUser(r)
 	if u == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -194,7 +223,6 @@ func (h *Handler) CreateProductComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. ตรวจสอบสิทธิ์: ออเดอร์นี้ผู้ใช้เป็นคนสั่ง, มีสินค้านี้ในออเดอร์ และสถานะคือ completed หรือไม่?
 	var isValidOrder bool
 	err := h.MallDB.QueryRow(`
 		SELECT EXISTS (
@@ -218,7 +246,6 @@ func (h *Handler) CreateProductComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. บันทึกคอมเมนต์
 	_, err = h.MallDB.Exec(`
 		INSERT INTO product_comments (product_id, user_id, order_id, rating, message) 
 		VALUES ($1, $2, $3, $4, $5)
@@ -236,7 +263,6 @@ func (h *Handler) CreateProductComment(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateProductComment(w http.ResponseWriter, r *http.Request) {
 	commentID := chi.URLParam(r, "commentID")
 	
-	// ดึงข้อมูล User จาก Middleware
 	u := GetUser(r)
 	if u == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -253,7 +279,6 @@ func (h *Handler) UpdateProductComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ตรวจสอบว่าเป็นเจ้าของคอมเมนต์จริงหรือไม่
 	result, err := h.MallDB.Exec(`
 		UPDATE product_comments 
 		SET rating = $1, message = $2, created_at = NOW() 
@@ -278,7 +303,6 @@ func (h *Handler) UpdateProductComment(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteProductComment(w http.ResponseWriter, r *http.Request) {
 	commentID := chi.URLParam(r, "commentID")
 	
-	// ดึงข้อมูล User จาก Middleware
 	u := GetUser(r)
 	if u == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)

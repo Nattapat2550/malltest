@@ -6,6 +6,7 @@ import api from '../services/api';
 
 interface Product {
   id: number;
+  motherid?: number | null; // เพิ่มฟิลด์ motherid
   sku: string;
   name: string;
   description: string;
@@ -36,13 +37,16 @@ export default function ProductCatalog() {
     fetchProducts();
   }, []);
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(search.toLowerCase()) || 
-    p.sku.toLowerCase().includes(search.toLowerCase())
-  );
+  // ฟิลเตอร์: ซ่อนสินค้ารอง (โชว์เฉพาะสินค้าที่ไม่มี motherid) และ ค้นหาตามคำ
+  const filteredProducts = products.filter(p => {
+    const isMainProduct = p.motherid === null || p.motherid === undefined;
+    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
+                          p.sku.toLowerCase().includes(search.toLowerCase());
+    return isMainProduct && matchesSearch;
+  });
 
   const handleAddToCart = (e: React.MouseEvent, p: Product) => {
-    e.preventDefault(); // ป้องกันไม่ให้ Link ทำงานเมื่อกดปุ่มซื้อ
+    e.preventDefault(); 
     if (p.stock > 0) {
       dispatch(addToCart({
         productId: p.id,
@@ -52,7 +56,6 @@ export default function ProductCatalog() {
         image_url: p.image_url,
         stock: p.stock
       }));
-      // แจ้งเตือนผู้ใช้ (หรือใช้ Toast ถ้ามี)
       alert(`เพิ่ม ${p.name} ลงตะกร้าแล้ว`);
     }
   };

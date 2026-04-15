@@ -22,23 +22,26 @@ export default function ProductDetailPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // ดึงข้อมูลสินค้าทั้งหมด
-        const res = await api.get(`/api/products`);
-        const allProducts = res.data || [];
-        const current = allProducts.find((p: any) => p.id.toString() === id);
+        // 1. ดึงข้อมูลสินค้าที่กำลังดูอยู่ (รวมถึง Variants ที่ Backend ส่งมาให้)
+        const res = await api.get(`/api/products/${id}`);
+        const current = res.data;
         
         if (current) {
-          // ใช้ข้อมูล Media จากฐานข้อมูลจริงๆ 
-          // (ถ้าไม่มีข้อมูล media ให้ดึง image_url รูปหลักมาแสดงแทนเป็น fallback)
           current.media = current.media && current.media.length > 0 
             ? current.media 
             : [{ type: 'image', url: current.image_url }];
             
           setProduct(current);
-          
-          // สุ่มสินค้าแนะนำ
-          setRelated(allProducts.filter((p: any) => p.id.toString() !== id).slice(0, 4));
+          setQuantity(1); // รีเซ็ตจำนวนเมื่อเปลี่ยนรูปแบบ
+          setActiveMediaIndex(0); // รีเซ็ตรูปภาพ
         }
+
+        // 2. ดึงข้อมูลสินค้าทั้งหมดเพื่อมาทำ "สินค้าอื่นๆ ที่เกี่ยวข้อง"
+        const allRes = await api.get(`/api/products`);
+        const allProducts = allRes.data || [];
+        // กรองเอาเฉพาะสินค้าคนละชิ้น และสุ่มมา 4 ชิ้น (แนะนำให้กรองสินค้าหลักที่ไม่มี motherid)
+        setRelated(allProducts.filter((p: any) => p.id.toString() !== id).slice(0, 4));
+
       } catch (err) {
         console.error("Error fetching product", err);
       } finally {
@@ -47,7 +50,7 @@ export default function ProductDetailPage() {
     };
     fetchData();
     window.scrollTo(0, 0);
-  }, [id]);
+  }, [id]); // ทำงานใหม่ทุกครั้งที่ id บน URL เปลี่ยน (เมื่อกดเลือกรูปแบบอื่น)
 
   const handleAddToCart = () => {
     if (!product || product.stock < 1) return;
@@ -64,7 +67,6 @@ export default function ProductDetailPage() {
 
   const handleBuyNow = () => {
     if (!product || product.stock < 1) return;
-    // ส่งข้อมูลไปหน้า Checkout ผ่าน state (bypass cart)
     navigate('/checkout', { state: { 
       directBuy: [{
         productId: product.id,
@@ -125,6 +127,30 @@ export default function ProductDetailPage() {
             {product.description}
           </div>
 
+          {/* ========================================== */}
+          {/* ส่วนเลือกรูปแบบสินค้า (Variants Selector) */}
+          {/* ========================================== */}
+          {product.variants && product.variants.length > 1 && (
+            <div className="mb-8 border-t border-gray-100 dark:border-gray-700 pt-6">
+              <span className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">รูปแบบสินค้า:</span>
+              <div className="flex flex-wrap gap-2">
+                {product.variants.map((v: any) => (
+                  <button
+                    key={v.id}
+                    onClick={() => navigate(`/products/${v.id}`)}
+                    className={`px-4 py-2 rounded-xl border-2 transition-all text-sm font-bold ${
+                      v.id === product.id 
+                      ? 'border-blue-600 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' 
+                      : 'border-gray-200 text-gray-500 hover:border-blue-400 dark:border-gray-700 dark:text-gray-400'
+                    }`}
+                  >
+                    {v.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mb-8">
             <span className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">จำนวน</span>
             <div className="flex items-center gap-4">
@@ -144,7 +170,7 @@ export default function ProductDetailPage() {
               className="flex-1 py-4 rounded-2xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-bold text-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-              เพิ่มลงตะกร้า
+              {product.stock < 1 ? 'สินค้าหมด' : 'เพิ่มลงตะกร้า'}
             </button>
             <button 
               onClick={handleBuyNow}

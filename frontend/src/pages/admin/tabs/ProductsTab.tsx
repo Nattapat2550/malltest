@@ -8,6 +8,7 @@ interface Media {
 
 interface Product {
   id: number;
+  motherid?: number | null; // เพิ่มฟิลด์ motherid
   sku: string;
   name: string;
   description: string;
@@ -24,6 +25,7 @@ export default function ProductsTab() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const [formData, setFormData] = useState({
+    motherid: '', // เพิ่ม state สำหรับเก็บค่า motherid ในฟอร์ม
     sku: '', name: '', description: '', price: '', stock: '', image_url: '', media: [] as Media[]
   });
 
@@ -48,6 +50,7 @@ export default function ProductsTab() {
     if (product) {
       setEditingProduct(product);
       setFormData({
+        motherid: product.motherid ? product.motherid.toString() : '', // แปลงเป็น string สำหรับฟอร์ม
         sku: product.sku, 
         name: product.name, 
         description: product.description || '',
@@ -59,7 +62,7 @@ export default function ProductsTab() {
     } else {
       setEditingProduct(null);
       setFormData({ 
-        sku: '', name: '', description: '', price: '', stock: '10', image_url: '', media: [] 
+        motherid: '', sku: '', name: '', description: '', price: '', stock: '10', image_url: '', media: [] 
       });
     }
     setIsModalOpen(true);
@@ -67,7 +70,6 @@ export default function ProductsTab() {
 
   const closeModal = () => setIsModalOpen(false);
 
-  // การจัดการ Media (Carousel หน้ารอง)
   const addMediaField = () => {
     setFormData({ ...formData, media: [...formData.media, { type: 'image', url: '' }] });
   };
@@ -85,6 +87,8 @@ export default function ProductsTab() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
+      // ตรวจสอบถ้า motherid ว่าง ให้ส่ง null ถ้าไม่ว่างให้แปลงเป็นตัวเลข
+      motherid: formData.motherid === '' ? null : parseInt(formData.motherid, 10),
       sku: formData.sku, 
       name: formData.name, 
       description: formData.description,
@@ -109,7 +113,7 @@ export default function ProductsTab() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('ยืนยันการลบสินค้านี้?')) return;
+    if (!window.confirm('ยืนยันการลบสินค้านี้? (หากเป็นสินค้าหลัก สินค้ารองจะไม่ถูกลบ แต่จะหลุดจากการจัดกลุ่ม)')) return;
     try {
       await api.delete(`/api/products/${id}`);
       fetchProducts();
@@ -118,6 +122,9 @@ export default function ProductsTab() {
       alert('ลบข้อมูลไม่สำเร็จ');
     }
   };
+
+  // ดึงเฉพาะสินค้าที่เป็น "ตัวแม่" มาแสดงใน Dropdown ให้เลือกผูก
+  const motherCandidates = products.filter(p => !p.motherid && p.id !== editingProduct?.id);
 
   if (loading) {
     return <div className="p-8 text-center text-gray-500 dark:text-gray-400">กำลังโหลดข้อมูลสินค้า...</div>;
@@ -137,7 +144,7 @@ export default function ProductsTab() {
           <thead>
             <tr className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm border-b border-gray-200 dark:border-gray-700">
               <th className="p-4">รูปภาพ</th>
-              <th className="p-4">SKU</th>
+              <th className="p-4">รหัส / สถานะ</th>
               <th className="p-4">ชื่อสินค้า</th>
               <th className="p-4">ราคา</th>
               <th className="p-4">สต็อก</th>
@@ -153,7 +160,7 @@ export default function ProductsTab() {
               products.map(p => (
                 <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
                   <td className="p-4">
-                    <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-900 overflow-hidden">
+                    <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-900 overflow-hidden relative">
                       {p.image_url ? (
                         <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
                       ) : (
@@ -161,7 +168,15 @@ export default function ProductsTab() {
                       )}
                     </div>
                   </td>
-                  <td className="p-4 text-gray-900 dark:text-white font-medium">{p.sku}</td>
+                  <td className="p-4 text-gray-900 dark:text-white">
+                    <div className="font-medium">{p.sku}</div>
+                    {/* ป้ายแสดงว่าเป็นสินค้ารอง */}
+                    {p.motherid && (
+                      <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-400">
+                        เป็นสินค้ารอง
+                      </span>
+                    )}
+                  </td>
                   <td className="p-4 text-gray-900 dark:text-white">{p.name}</td>
                   <td className="p-4 text-green-600 dark:text-green-400 font-bold">฿{p.price.toLocaleString()}</td>
                   <td className="p-4">
@@ -195,6 +210,25 @@ export default function ProductsTab() {
             </div>
             
             <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex flex-col gap-4">
+              
+              {/* === ส่วนเลือก สินค้าหลัก (Mother) === */}
+              <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-800/30">
+                <label className="block text-sm font-bold text-blue-800 dark:text-blue-300 mb-1">
+                  กลุ่มสินค้า (กำหนดให้เป็นรูปแบบย่อยของสินค้าอื่น)
+                </label>
+                <select 
+                  value={formData.motherid} 
+                  onChange={e => setFormData({...formData, motherid: e.target.value})} 
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white outline-none"
+                >
+                  <option value="">-- ไม่จัดกลุ่ม (เป็นสินค้าหลัก) --</option>
+                  {motherCandidates.map(c => (
+                    <option key={c.id} value={c.id.toString()}>{c.sku} - {c.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-2">* หากเว้นว่างไว้ สินค้านี้จะกลายเป็น "สินค้าหลัก" ในหน้าร้าน</p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SKU</label>
@@ -227,10 +261,10 @@ export default function ProductsTab() {
                 <input type="text" value={formData.image_url} onChange={e => setFormData({...formData, image_url: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://..." />
               </div>
 
-              {/* ส่วนจัดการ Media สำหรับ Carousel */}
+              {/* ส่วนจัดการ Media */}
               <div className="mt-2 p-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900/50">
                 <div className="flex justify-between items-center mb-4">
-                  <h4 className="font-bold text-gray-900 dark:text-white text-sm">สื่อหน้ารายละเอียด (รูป/วิดีโอ สไลด์โชว์)</h4>
+                  <h4 className="font-bold text-gray-900 dark:text-white text-sm">สื่อหน้ารายละเอียด (รูป/วิดีโอ)</h4>
                   <button type="button" onClick={addMediaField} className="text-xs font-bold bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-3 py-1.5 rounded-lg transition-colors">
                     + เพิ่มสื่อ
                   </button>
@@ -249,13 +283,13 @@ export default function ProductsTab() {
                       </select>
                       <div className="w-px h-6 bg-gray-200 dark:bg-gray-700"></div>
                       <input 
-                        placeholder="วาง URL รูปภาพหรือวิดีโอที่นี่..." 
+                        placeholder="วาง URL..." 
                         value={m.url} 
                         onChange={e => updateMedia(idx, 'url', e.target.value)} 
                         className="flex-1 p-2 border-none bg-transparent outline-none text-gray-900 dark:text-white text-sm" 
                       />
                       <button type="button" onClick={() => removeMediaField(idx)} className="text-red-500 hover:text-red-700 p-2 bg-red-50 dark:bg-red-900/20 rounded-md transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        ✕
                       </button>
                     </div>
                   ))}

@@ -21,6 +21,7 @@ CREATE TABLE categories (
 
 CREATE TABLE products (
     id SERIAL PRIMARY KEY,
+    motherid INTEGER REFERENCES products(id) ON DELETE SET NULL,
     sku VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -121,6 +122,6 @@ INSERT INTO categories (name) VALUES
 ('Electronics'), 
 ('Clothing'), 
 ('Food & Beverage');
-
+CREATE INDEX idx_products_motherid ON products(motherid);
 INSERT INTO news (title, content, image_url) VALUES 
 ('ยินดีต้อนรับสู่ระบบ Mall!', 'ระบบช้อปปิ้งออนไลน์เปิดให้บริการแล้ว พบกับสินค้ามากมาย พร้อมโปรโมชั่นพิเศษช่วงเปิดตัว', '');
