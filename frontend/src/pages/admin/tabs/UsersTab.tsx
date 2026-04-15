@@ -205,7 +205,6 @@ export default function UsersTab() {
                   onChange={e => setNewRole(e.target.value)} 
                   className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-base focus:ring-2 focus:ring-blue-500 outline-none"
                 >
-                  <option value="user">User (ผู้ใช้ทั่วไป)</option>
                   <option value="customer">Customer (ลูกค้า)</option>
                   <option value="owner">Owner (เจ้าของร้านค้า)</option>
                   <option value="center">Center (ศูนย์กระจายสินค้า)</option>

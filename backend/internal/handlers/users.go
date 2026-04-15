@@ -18,7 +18,10 @@ func (h *Handler) UsersMeGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var me userDTO
-	if err := h.Pure.Post(ctx, "/api/internal/find-user", map[string]any{"id": u.ID}, &me); err != nil {
+	// ป้องกัน Type Mismatch โดยแปลง ID เป็น String เสมอ
+	uidStr := fmt.Sprintf("%v", u.ID)
+
+	if err := h.Pure.Post(ctx, "/api/internal/find-user", map[string]any{"id": uidStr}, &me); err != nil {
 		h.writeErrFrom(w, err)
 		return
 	}
@@ -29,11 +32,11 @@ func (h *Handler) UsersMeGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// แทรก Role ในการตอบกลับด้วย
+	// แทรก Role จากตาราง user_roles ในการตอบกลับด้วย
 	var role string
-	err := h.MallDB.QueryRow("SELECT role FROM user_roles WHERE user_id = $1", u.ID).Scan(&role)
+	err := h.MallDB.QueryRow("SELECT role FROM user_roles WHERE user_id = $1", uidStr).Scan(&role)
 	if err != nil {
-		role = "customer" // Default
+		role = "customer" // Default ถ้าไม่มี
 	}
 
 	response := map[string]any{
@@ -58,7 +61,8 @@ func (h *Handler) UsersMePut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payload := map[string]any{"id": u.ID}
+	uidStr := fmt.Sprintf("%v", u.ID)
+	payload := map[string]any{"id": uidStr}
 	for k, v := range body {
 		payload[k] = v
 	}
@@ -119,8 +123,9 @@ func (h *Handler) UsersMeAvatar(w http.ResponseWriter, r *http.Request) {
 
 	dataURL := fmt.Sprintf("data:%s;base64,%s", mime, base64.StdEncoding.EncodeToString(b))
 
+	uidStr := fmt.Sprintf("%v", u.ID)
 	payload := map[string]any{
-		"id":                  u.ID,
+		"id":                  uidStr,
 		"profile_picture_url": dataURL,
 	}
 
@@ -136,6 +141,7 @@ func (h *Handler) UsersMeAvatar(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ฟังก์ชันลบบัญชีที่ขาดหายไป นำกลับมาใส่ให้ครบแล้วครับ
 func (h *Handler) UsersMeDelete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	u := GetUser(r)
@@ -144,8 +150,9 @@ func (h *Handler) UsersMeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uidStr := fmt.Sprintf("%v", u.ID)
 	payload := map[string]any{
-		"id":     u.ID,
+		"id":     uidStr,
 		"status": "deleted",
 	}
 
@@ -165,8 +172,9 @@ func (h *Handler) GetUserWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uidStr := fmt.Sprintf("%v", u.ID)
 	var balance float64
-	err := h.MallDB.QueryRow("SELECT balance FROM user_wallets WHERE user_id = $1", u.ID).Scan(&balance)
+	err := h.MallDB.QueryRow("SELECT balance FROM user_wallets WHERE user_id = $1", uidStr).Scan(&balance)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			balance = 0.00 
@@ -177,7 +185,7 @@ func (h *Handler) GetUserWallet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteJSON(w, http.StatusOK, map[string]interface{}{
-		"user_id": u.ID,
+		"user_id": uidStr,
 		"balance": balance,
 	})
 }
@@ -190,7 +198,8 @@ func (h *Handler) GetUserAddresses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := h.MallDB.Query("SELECT id, title, address, is_default, created_at FROM user_addresses WHERE user_id = $1 ORDER BY id DESC", u.ID)
+	uidStr := fmt.Sprintf("%v", u.ID)
+	rows, err := h.MallDB.Query("SELECT id, title, address, is_default, created_at FROM user_addresses WHERE user_id = $1 ORDER BY id DESC", uidStr)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -200,7 +209,7 @@ func (h *Handler) GetUserAddresses(w http.ResponseWriter, r *http.Request) {
 	var addresses []UserAddress
 	for rows.Next() {
 		var a UserAddress
-		a.UserID = fmt.Sprintf("%v", u.ID)
+		a.UserID = uidStr
 		if err := rows.Scan(&a.ID, &a.Title, &a.Address, &a.IsDefault, &a.CreatedAt); err == nil {
 			addresses = append(addresses, a)
 		}
@@ -228,7 +237,8 @@ func (h *Handler) AddUserAddress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.MallDB.Exec("INSERT INTO user_addresses (user_id, title, address) VALUES ($1, $2, $3)", u.ID, req.Title, req.Address)
+	uidStr := fmt.Sprintf("%v", u.ID)
+	_, err := h.MallDB.Exec("INSERT INTO user_addresses (user_id, title, address) VALUES ($1, $2, $3)", uidStr, req.Title, req.Address)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to add address")
 		return
