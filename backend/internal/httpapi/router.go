@@ -47,8 +47,10 @@ func NewRouter(cfg config.Config, mallDB *sql.DB) http.Handler {
 	r.Route("/api/admin", setupAdminRoutes(h))
 	r.Route("/api/products", setupProductRoutes(h))
 	r.Route("/api/orders", setupOrderRoutes(h))
+	
+	// เพิ่ม Route ของ Owner สำหรับจัดการร้านและสินค้า
+	r.Route("/api/owner", setupOwnerRoutes(h)) 
 
-	// Global / Public Routes
 	r.Get("/api/homepage", h.HomepageGet)
 	r.With(h.RequireAdmin).Put("/api/homepage", h.HomepageUpdate)
 	
@@ -69,27 +71,15 @@ func setupProductRoutes(h *handlers.Handler) func(chi.Router) {
 		r.Get("/", h.ListProducts)
 		r.Get("/{id}", h.GetProductByID)
 
-		// ==========================================
-		// 1. Route สำหรับอ่านคอมเมนต์ (ใครก็อ่านได้)
-		// ==========================================
 		r.Get("/{id}/comments", h.GetProductComments)
 
-		// ==========================================
-		// 2. Route สำหรับจัดการคอมเมนต์ (ต้อง Login ก่อน)
-		// ==========================================
 		r.Group(func(r chi.Router) {
-			r.Use(h.RequireAuth) // ใช้แค่ RequireAuth ไม่ต้อง RequireAdmin
-			
+			r.Use(h.RequireAuth)
 			r.Post("/{id}/comments", h.CreateProductComment)
 			r.Patch("/{id}/comments/{commentID}", h.UpdateProductComment)
 			r.Delete("/{id}/comments/{commentID}", h.DeleteProductComment)
 		})
 
-		// ==========================================
-		// 3. Route สำหรับจัดการสินค้า (ต้อง Login และเป็น Admin)
-		// *หมายเหตุ: Owner จะจัดการสินค้าตัวเองได้ในระบบ Admin ฝั่งร้านค้าในอนาคต 
-		// ส่วนของ Admin หลักยังคงสิทธิ์ทั้งหมดไว้ตามเดิม
-		// ==========================================
 		r.Group(func(r chi.Router) {
 			r.Use(h.RequireAuth)
 			r.Use(h.RequireAdmin)
@@ -107,8 +97,21 @@ func setupOrderRoutes(h *handlers.Handler) func(chi.Router) {
 		r.Get("/", h.GetMyOrders)
 		r.Get("/{id}", h.GetOrderByID)
 		r.Get("/{id}/tracking", h.GetOrderTracking)
-		
-		// เพิ่ม Route สำหรับระบบจัดการสถานะพัสดุสำหรับ (Owner, Center, Rider)
 		r.Put("/shipments/status", h.UpdateShipmentState) 
+	}
+}
+
+// สร้างชุด Route ใหม่เฉพาะสำหรับ Owner 
+func setupOwnerRoutes(h *handlers.Handler) func(chi.Router) {
+	return func(r chi.Router) {
+		r.Use(h.RequireAuth)
+		
+		r.Get("/shop", h.OwnerGetShop)
+		r.Put("/shop", h.OwnerUpdateShop)
+		
+		r.Get("/products", h.OwnerGetProducts)
+		r.Post("/products", h.OwnerCreateProduct)
+		r.Put("/products/{id}", h.OwnerUpdateProduct)
+		r.Delete("/products/{id}", h.OwnerDeleteProduct)
 	}
 }

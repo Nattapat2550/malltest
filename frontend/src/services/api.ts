@@ -50,9 +50,20 @@ export const adminUpdateOrderStatus = (id: number, status: string) =>
 export const adminUpdateUserWallet = (userId: string, balance: number) => 
   api.put(`/api/admin/users/${userId}/wallet`, { balance });
 
-// เพิ่ม API สำหรับอัปเดต Role ผู้ใช้งาน (ที่หายไป)
 export const adminUpdateUserRole = (userId: string, role: string) => 
   api.put(`/api/admin/users/${userId}/role`, { role });
+
+// ==========================================
+// Owner API (เพิ่มการเรียกข้อมูลสำหรับร้านค้า)
+// ==========================================
+export const ownerApi = {
+  getShop: () => api.get('/api/owner/shop'),
+  updateShop: (data: { name: string }) => api.put('/api/owner/shop', data),
+  getProducts: () => api.get('/api/owner/products'),
+  createProduct: (data: any) => api.post('/api/owner/products', data),
+  updateProduct: (id: number, data: any) => api.put(`/api/owner/products/${id}`, data),
+  deleteProduct: (id: number) => api.delete(`/api/owner/products/${id}`),
+};
 
 // ==========================================
 // Product Comments API
