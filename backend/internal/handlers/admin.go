@@ -14,13 +14,11 @@ func (h *Handler) AdminGetUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var users []map[string]any
 
-	// 1. ดึงข้อมูล User ทั้งหมดจากระบบ Auth ส่วนกลาง (Pure API)
 	if err := h.Pure.Get(ctx, "/api/internal/admin/users", &users); err != nil {
 		h.writeError(w, http.StatusInternalServerError, "ไม่สามารถดึงข้อมูล User จากระบบส่วนกลางได้")
 		return
 	}
 
-	// 2. ดึงยอดเงิน (Wallets) จาก MallDB
 	wRows, err := h.MallDB.Query("SELECT user_id, balance FROM user_wallets")
 	wallets := make(map[string]float64)
 	if err == nil {
@@ -34,7 +32,6 @@ func (h *Handler) AdminGetUsers(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 3. ดึงสิทธิ์ย่อย (Roles) จาก MallDB
 	rRows, err := h.MallDB.Query("SELECT user_id, role FROM user_roles")
 	roles := make(map[string]string)
 	if err == nil {
@@ -48,7 +45,6 @@ func (h *Handler) AdminGetUsers(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 4. ผสมข้อมูลทั้งหมดเตรียมส่งให้ Frontend
 	for i, user := range users {
 		var uid string
 		if idVal, ok := user["id"]; ok && idVal != nil {
@@ -56,25 +52,20 @@ func (h *Handler) AdminGetUsers(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if uid != "" {
-			// จัดการ Wallet
 			if bal, exists := wallets[uid]; exists {
 				users[i]["balance"] = bal
 			} else {
-				users[i]["balance"] = 0.00 // ค่าเริ่มต้นถ้ายังไม่เคยถูกเติมเงิน
+				users[i]["balance"] = 0.00 
 			}
 
-			// จัดการ Role
 			if dbRole, exists := roles[uid]; exists && dbRole != "" {
-				// ถ้าเคยถูก Admin อัปเดตสิทธิ์ใน Malltest แล้ว ให้ใช้สิทธิ์นั้น
 				users[i]["role"] = dbRole
 			} else {
-				// ถ้ายังไม่เคยถูกกำหนดสิทธิ์ใน Malltest:
-				// ตรวจสอบว่าในระบบศูนย์กลาง (Pure API) เป็น Admin หรือไม่
 				pureRole, _ := user["role"].(string)
 				if pureRole == "admin" {
-					users[i]["role"] = "admin" // คงความเป็น Admin ไว้
+					users[i]["role"] = "admin" 
 				} else {
-					users[i]["role"] = "customer" // User ทุกคนถูกบังคับให้เป็น Customer เป็นค่าเริ่มต้น
+					users[i]["role"] = "customer" 
 				}
 			}
 		} else {
@@ -97,7 +88,6 @@ func (h *Handler) AdminUpdateUserRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// บันทึก Role ลงตาราง user_roles ของระบบ Malltest เท่านั้น (ไม่ส่งกลับไปกวน Pure API)
 	_, err := h.MallDB.ExecContext(r.Context(), `
 		INSERT INTO user_roles (user_id, role) 
 		VALUES ($1, $2)
@@ -282,29 +272,58 @@ func (h *Handler) AdminGetAllOrders(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, orders)
 }
 
+// === แก้ไขแล้ว: รับข้อมูล Tracking และ Location มาบันทึก ===
 func (h *Handler) AdminUpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
 	orderID := chi.URLParam(r, "id")
+	
 	var input struct {
-		Status string `json:"status"`
+		Status       string `json:"status"`
+		StatusDetail string `json:"status_detail"` // เพิ่มการรับค่า Tracking
+		Location     string `json:"location"`      // เพิ่มการรับค่า Location
 	}
+	
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		http.Error(w, "Invalid input", http.StatusBadRequest)
 		return
 	}
 
-	_, err := h.MallDB.Exec(`
+	// ใช้ Transaction เพื่อให้ชัวร์ว่าอัปเดต 2 ตารางสำเร็จพร้อมกัน
+	tx, err := h.MallDB.Begin()
+	if err != nil {
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	// 1. อัปเดตสถานะออเดอร์หลัก
+	_, err = tx.Exec(`
 		UPDATE orders 
 		SET status = $1, updated_at = CURRENT_TIMESTAMP 
 		WHERE id = $2`, 
 		input.Status, orderID)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to update order status: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	// 2. ถ้ามีการส่งรายละเอียด Tracking มา (พิมพ์ใน Modal) ให้เพิ่มลง Timeline ลูกค้าด้วย
+	if input.StatusDetail != "" {
+		_, err = tx.Exec(`
+			INSERT INTO order_tracking (order_id, status_detail, location) 
+			VALUES ($1, $2, $3)`, 
+			orderID, input.StatusDetail, input.Location)
+
+		if err != nil {
+			http.Error(w, "Failed to insert tracking data: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	tx.Commit()
+
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Order status updated successfully"})
+	json.NewEncoder(w).Encode(map[string]string{"message": "Order status and tracking updated successfully"})
 }
 
 // --- Admin News Management ---
