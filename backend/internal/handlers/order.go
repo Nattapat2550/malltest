@@ -3,8 +3,9 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"net/http"
 	"fmt"
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 )
 
@@ -36,12 +37,8 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(req.Items) == 0 {
-		h.writeError(w, http.StatusBadRequest, "Order must contain at least one item")
-		return
-	}
-	if req.Address == "" {
-		h.writeError(w, http.StatusBadRequest, "Shipping address is required")
+	if len(req.Items) == 0 || req.Address == "" {
+		h.writeError(w, http.StatusBadRequest, "Order must contain items and address")
 		return
 	}
 
@@ -52,14 +49,12 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	// 1. เช็คยอดเงินในกระเป๋า
+	uidStr := fmt.Sprintf("%v", u.ID)
 	var balance float64
-	err = tx.QueryRow("SELECT balance FROM user_wallets WHERE user_id = $1 FOR UPDATE", u.ID).Scan(&balance)
+	err = tx.QueryRow("SELECT balance FROM user_wallets WHERE user_id = $1 FOR UPDATE", uidStr).Scan(&balance)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			balance = 0.00
-		} else {
-			h.writeError(w, http.StatusInternalServerError, "Failed to query wallet: "+err.Error())
+		if err == sql.ErrNoRows { balance = 0.00 } else {
+			h.writeError(w, http.StatusInternalServerError, "Failed to query wallet")
 			return
 		}
 	}
@@ -69,42 +64,39 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. หักเงินในกระเป๋า
 	newBalance := balance - req.TotalAmount
 	_, err = tx.Exec(`
 		INSERT INTO user_wallets (user_id, balance) VALUES ($1, $2) 
 		ON CONFLICT (user_id) DO UPDATE SET balance = EXCLUDED.balance, updated_at = CURRENT_TIMESTAMP`,
-		u.ID, newBalance)
+		uidStr, newBalance)
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Failed to deduct balance: "+err.Error())
+		h.writeError(w, http.StatusInternalServerError, "Failed to deduct balance")
 		return
 	}
 
-	// 3. สร้าง Order
 	var orderID int
 	err = tx.QueryRow(`
 		INSERT INTO orders (user_id, total_amount, address, shipping_method, note, promo_code, status)
 		VALUES ($1, $2, $3, $4, $5, $6, 'paid') RETURNING id`,
-		u.ID, req.TotalAmount, req.Address, req.ShippingMethod, req.Note, req.PromoCode).Scan(&orderID)
+		uidStr, req.TotalAmount, req.Address, req.ShippingMethod, req.Note, req.PromoCode).Scan(&orderID)
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Failed to create order: "+err.Error())
+		h.writeError(w, http.StatusInternalServerError, "Failed to create order")
 		return
 	}
 
 	shopMap := make(map[int]bool)
 
-	// 4. บันทึก Order Items และตัดสต็อกสินค้า พร้อมแยกพัสดุตามร้านค้า
 	for _, item := range req.Items {
 		_, err = tx.Exec("INSERT INTO order_items (order_id, product_id, quantity, price_at_time) VALUES ($1, $2, $3, $4)",
 			orderID, item.ProductID, item.Quantity, item.Price)
 		if err != nil {
-			h.writeError(w, http.StatusInternalServerError, "Failed to insert order item: "+err.Error())
+			h.writeError(w, http.StatusInternalServerError, "Failed to insert order item")
 			return
 		}
 
 		res, err := tx.Exec("UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1", item.Quantity, item.ProductID)
 		if err != nil {
-			h.writeError(w, http.StatusInternalServerError, "Failed to update stock: "+err.Error())
+			h.writeError(w, http.StatusInternalServerError, "Failed to update stock")
 			return
 		}
 
@@ -114,7 +106,6 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// ดึงข้อมูล shop_id ที่สินค้านี้สังกัดอยู่
 		var shopID sql.NullInt64
 		err = tx.QueryRow("SELECT shop_id FROM products WHERE id = $1", item.ProductID).Scan(&shopID)
 		if err == nil && shopID.Valid {
@@ -122,24 +113,22 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 5. แตกใบ Shipments ตาม Shop
 	for sID := range shopMap {
 		_, err = tx.Exec("INSERT INTO shipments (order_id, shop_id, status) VALUES ($1, $2, 'pending')", orderID, sID)
 		if err != nil {
-			h.writeError(w, http.StatusInternalServerError, "Failed to create shipment for shop: "+err.Error())
+			h.writeError(w, http.StatusInternalServerError, "Failed to create shipment")
 			return
 		}
 	}
 
-	// 6. เพิ่ม Tracking เริ่มต้น
 	_, err = tx.Exec("INSERT INTO order_tracking (order_id, status_detail, location) VALUES ($1, 'ระบบได้รับคำสั่งซื้อและชำระเงินเรียบร้อยแล้ว', 'System')", orderID)
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Failed to add initial tracking: "+err.Error())
+		h.writeError(w, http.StatusInternalServerError, "Failed to add initial tracking")
 		return
 	}
 
 	if err = tx.Commit(); err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Failed to commit tx: "+err.Error())
+		h.writeError(w, http.StatusInternalServerError, "Failed to commit tx")
 		return
 	}
 
@@ -158,11 +147,11 @@ func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uidStr := fmt.Sprintf("%v", u.ID)
 	rows, err := h.MallDB.QueryContext(r.Context(),
-		"SELECT id, total_amount, status, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC",
-		u.ID)
+		"SELECT id, total_amount, status, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC", uidStr)
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในการดึงข้อมูล: "+err.Error())
+		h.writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในการดึงข้อมูล")
 		return
 	}
 	defer rows.Close()
@@ -190,26 +179,19 @@ func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 					var sqlImageUrl sql.NullString 
 					
 					if err := itemRows.Scan(&itemId, &productId, &productName, &qty, &price, &sqlImageUrl); err == nil {
-						imgUrl := ""
-						if sqlImageUrl.Valid {
-							imgUrl = sqlImageUrl.String
-						}
 						items = append(items, map[string]any{
 							"id":           itemId,
 							"product_id":   productId,
 							"product_name": productName,
 							"quantity":     qty,
 							"price":        price,
-							"image_url":    imgUrl,
+							"image_url":    sqlImageUrl.String,
 						})
 					}
 				}
 				itemRows.Close()
 			}
-
-			if items == nil {
-				items = []map[string]any{}
-			}
+			if items == nil { items = []map[string]any{} }
 
 			orders = append(orders, map[string]any{
 				"id":           id,
@@ -220,11 +202,7 @@ func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-
-	if orders == nil {
-		orders = []map[string]any{}
-	}
-
+	if orders == nil { orders = []map[string]any{} }
 	WriteJSON(w, http.StatusOK, orders)
 }
 
@@ -236,6 +214,7 @@ func (h *Handler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uidStr := fmt.Sprintf("%v", u.ID)
 	var id int
 	var total float64
 	var status string
@@ -243,7 +222,7 @@ func (h *Handler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 
 	err := h.MallDB.QueryRowContext(r.Context(),
 		"SELECT id, total_amount, status, created_at FROM orders WHERE id = $1 AND user_id = $2",
-		orderID, u.ID).Scan(&id, &total, &status, &createdAt)
+		orderID, uidStr).Scan(&id, &total, &status, &createdAt)
 	
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -269,26 +248,19 @@ func (h *Handler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 			var sqlImageUrl sql.NullString
 			
 			if err := itemRows.Scan(&itemId, &productId, &productName, &qty, &price, &sqlImageUrl); err == nil {
-				imgUrl := ""
-				if sqlImageUrl.Valid {
-					imgUrl = sqlImageUrl.String
-				}
 				items = append(items, map[string]any{
 					"id":           itemId,
 					"product_id":   productId,
 					"product_name": productName,
 					"quantity":     qty,
 					"price":        price,
-					"image_url":    imgUrl,
+					"image_url":    sqlImageUrl.String,
 				})
 			}
 		}
 		itemRows.Close()
 	}
-
-	if items == nil {
-		items = []map[string]any{}
-	}
+	if items == nil { items = []map[string]any{} }
 
 	WriteJSON(w, http.StatusOK, map[string]any{
 		"id":           id,
@@ -336,15 +308,13 @@ func (h *Handler) GetOrderTracking(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, tracking)
 }
 
-// ===============================================
-// API อัปเดตสถานะการจัดส่งแบบ Multi-Roles (Owner, Center, Rider)
-// ===============================================
 func (h *Handler) UpdateShipmentState(w http.ResponseWriter, r *http.Request) {
 	u := GetUser(r)
 	if u == nil {
 		h.writeError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
+	uidStr := fmt.Sprintf("%v", u.ID)
 
 	var req ShipmentUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -353,11 +323,9 @@ func (h *Handler) UpdateShipmentState(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var role string
-	err := h.MallDB.QueryRow("SELECT role FROM user_roles WHERE user_id = $1", u.ID).Scan(&role)
+	err := h.MallDB.QueryRow("SELECT role FROM user_roles WHERE user_id = $1", uidStr).Scan(&role)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			role = "customer"
-		} else {
+		if err == sql.ErrNoRows { role = "customer" } else {
 			h.writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -377,16 +345,12 @@ func (h *Handler) UpdateShipmentState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// กฎการอนุญาตตาม Role
 	switch role {
-	case "owner":
+	case "owner", "admin":
 		if req.Status == "cancelled" {
 			_, err = tx.Exec("UPDATE shipments SET status = 'cancelled' WHERE id = $1", req.ShipmentID)
 		} else if req.Status == "shipped_to_center" && req.CenterID != nil {
 			_, err = tx.Exec("UPDATE shipments SET status = 'shipped_to_center', current_center_id = $1 WHERE id = $2", *req.CenterID, req.ShipmentID)
-		} else {
-			h.writeError(w, http.StatusBadRequest, "Invalid status or missing center_id for owner")
-			return
 		}
 	case "center":
 		if req.Status == "at_center" {
@@ -395,16 +359,10 @@ func (h *Handler) UpdateShipmentState(w http.ResponseWriter, r *http.Request) {
 			_, err = tx.Exec("UPDATE shipments SET status = 'delivering', rider_id = $1 WHERE id = $2", *req.RiderID, req.ShipmentID)
 		} else if req.Status == "shipped_to_center" && req.CenterID != nil {
 			_, err = tx.Exec("UPDATE shipments SET status = 'shipped_to_center', current_center_id = $1 WHERE id = $2", *req.CenterID, req.ShipmentID)
-		} else {
-			h.writeError(w, http.StatusBadRequest, "Invalid status for center")
-			return
 		}
 	case "rider":
 		if req.Status == "completed" {
 			_, err = tx.Exec("UPDATE shipments SET status = 'completed' WHERE id = $1", req.ShipmentID)
-		} else {
-			h.writeError(w, http.StatusBadRequest, "Invalid status for rider")
-			return
 		}
 	default:
 		h.writeError(w, http.StatusForbidden, "Role not authorized to update shipments")
@@ -416,7 +374,6 @@ func (h *Handler) UpdateShipmentState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// เพิ่มเส้นทางและอัปเดตให้ Customer ทราบทันที
 	_, err = tx.Exec("INSERT INTO order_tracking (order_id, status_detail, location) VALUES ($1, $2, $3)", 
 		orderID, req.TrackingDetail, req.Location)
 	if err != nil {
@@ -426,4 +383,93 @@ func (h *Handler) UpdateShipmentState(w http.ResponseWriter, r *http.Request) {
 
 	tx.Commit()
 	WriteJSON(w, http.StatusOK, map[string]string{"message": "Shipment updated successfully"})
+}
+
+// =========================================================================
+// API สำหรับ Center (ศูนย์กระจายสินค้า)
+// =========================================================================
+
+func (h *Handler) CenterGetDashboard(w http.ResponseWriter, r *http.Request) {
+	u := GetUser(r)
+	uidStr := fmt.Sprintf("%v", u.ID)
+
+	var center struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	}
+
+	err := h.MallDB.QueryRow("SELECT id, name FROM delivery_centers WHERE center_user_id = $1", uidStr).Scan(&center.ID, &center.Name)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]any{"has_center": false})
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	rows, err := h.MallDB.Query(`
+		SELECT s.id, s.status, o.id, o.address, s.updated_at
+		FROM shipments s
+		JOIN orders o ON s.order_id = o.id
+		WHERE s.current_center_id = $1
+		ORDER BY s.updated_at DESC
+	`, center.ID)
+
+	var shipments []map[string]any
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var sID, oID int
+			var status, address string
+			var updatedAt any
+			rows.Scan(&sID, &status, &oID, &address, &updatedAt)
+			shipments = append(shipments, map[string]any{
+				"shipment_id": sID,
+				"status": status,
+				"order_id": oID,
+				"address": address,
+				"updated_at": updatedAt,
+			})
+		}
+	}
+	if shipments == nil { shipments = []map[string]any{} }
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"has_center": true,
+		"center": center,
+		"shipments": shipments,
+	})
+}
+
+func (h *Handler) CenterUpdateProfile(w http.ResponseWriter, r *http.Request) {
+	u := GetUser(r)
+	uidStr := fmt.Sprintf("%v", u.ID)
+
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		return
+	}
+
+	var centerID int
+	err := h.MallDB.QueryRow("SELECT id FROM delivery_centers WHERE center_user_id = $1", uidStr).Scan(&centerID)
+	switch err {
+	case sql.ErrNoRows:
+		_, err = h.MallDB.Exec("INSERT INTO delivery_centers (center_user_id, name) VALUES ($1, $2)", uidStr, req.Name)
+	case nil:
+		_, err = h.MallDB.Exec("UPDATE delivery_centers SET name = $1 WHERE id = $2", req.Name, centerID)
+	}
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Center profile updated successfully"})
 }

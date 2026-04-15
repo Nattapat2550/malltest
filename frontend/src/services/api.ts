@@ -82,3 +82,11 @@ export const commentApi = {
   deleteComment: (productId: number, commentId: number) => 
     api.delete(`/api/products/${productId}/comments/${commentId}`),
 };
+
+// ==========================================
+// Center API (ศูนย์กระจายสินค้า)
+// ==========================================
+export const centerApi = {
+  getDashboard: () => api.get('/api/center/dashboard'),
+  updateProfile: (data: { name: string }) => api.put('/api/center/profile', data),
+};

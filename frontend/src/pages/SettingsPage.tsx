@@ -190,6 +190,19 @@ export default function SettingsPage() {
         )}
       </div>
 
+      {/* --- Section ศูนย์กระจายสินค้า (Delivery Center) --- */}
+      {(role === 'center' || role === 'admin') && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-purple-200 dark:border-purple-900/50 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div>
+            <h3 className="text-xl font-bold text-purple-900 dark:text-purple-400">ระบบคัดแยกพัสดุ (Delivery Center)</h3>
+            <p className="text-sm text-purple-600 dark:text-purple-300 mt-1">พื้นที่สำหรับรับเข้าพัสดุและกระจายงานต่อให้พนักงานขนส่ง</p>
+          </div>
+          <button onClick={() => navigate('/center')} className="px-6 py-2.5 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition shadow-md shadow-purple-500/20 whitespace-nowrap">
+            เข้าสู่ระบบจัดการศูนย์
+          </button>
+        </div>
+      )}
+
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold text-gray-900 dark:text-white">สมุดที่อยู่ (Address Book)</h3>
