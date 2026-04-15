@@ -49,6 +49,7 @@ func NewRouter(cfg config.Config, mallDB *sql.DB) http.Handler {
 	r.Route("/api/orders", setupOrderRoutes(h))
 	r.Route("/api/center", setupCenterRoutes(h))
 	r.Route("/api/owner", setupOwnerRoutes(h)) 
+	r.Route("/api/rider", setupRiderRoutes(h))
 
 	r.Get("/api/homepage", h.HomepageGet)
 	r.With(h.RequireAdmin).Put("/api/homepage", h.HomepageUpdate)
@@ -121,5 +122,12 @@ func setupCenterRoutes(h *handlers.Handler) func(chi.Router) {
 		r.Use(h.RequireAuth)
 		r.Get("/dashboard", h.CenterGetDashboard)
 		r.Put("/profile", h.CenterUpdateProfile)
+	}
+}
+
+func setupRiderRoutes(h *handlers.Handler) func(chi.Router) {
+	return func(r chi.Router) {
+		r.Use(h.RequireAuth)
+		r.Get("/dashboard", h.RiderGetDashboard)
 	}
 }

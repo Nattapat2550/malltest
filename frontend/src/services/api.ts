@@ -90,3 +90,10 @@ export const centerApi = {
   getDashboard: () => api.get('/api/center/dashboard'),
   updateProfile: (data: { name: string }) => api.put('/api/center/profile', data),
 };
+
+// ==========================================
+// Rider API (พนักงานจัดส่ง)
+// ==========================================
+export const riderApi = {
+  getDashboard: () => api.get('/api/rider/dashboard'),
+};

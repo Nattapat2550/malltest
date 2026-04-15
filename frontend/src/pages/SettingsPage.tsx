@@ -202,7 +202,19 @@ export default function SettingsPage() {
           </button>
         </div>
       )}
-
+      
+      {/* --- Section พนักงานจัดส่ง (Rider) --- */}
+      {(role === 'rider' || role === 'admin') && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-pink-200 dark:border-pink-900/50 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div>
+            <h3 className="text-xl font-bold text-pink-600 dark:text-pink-400">ระบบพนักงานจัดส่ง (Rider Dashboard)</h3>
+            <p className="text-sm text-pink-600/80 dark:text-pink-300 mt-1">ดูรายการพัสดุที่ต้องนำจ่าย และอัปเดตสถานะการจัดส่งให้ลูกค้า</p>
+          </div>
+          <button onClick={() => navigate('/rider')} className="px-6 py-2.5 bg-pink-600 text-white font-bold rounded-xl hover:bg-pink-700 transition shadow-md shadow-pink-500/20 whitespace-nowrap">
+            เปิดระบบนำจ่ายพัสดุ
+          </button>
+        </div>
+      )}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold text-gray-900 dark:text-white">สมุดที่อยู่ (Address Book)</h3>
