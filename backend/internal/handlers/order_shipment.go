@@ -37,8 +37,9 @@ func (h *Handler) UpdateShipmentState(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	var orderID int
-	err = tx.QueryRow("SELECT order_id FROM shipments WHERE id = $1 FOR UPDATE", req.ShipmentID).Scan(&orderID)
+	// แก้ไขให้ดึง shop_id ออกมาด้วย เพื่อนำไปใช้คำนวณเงินให้ถูกร้าน
+	var orderID, shopID int
+	err = tx.QueryRow("SELECT order_id, shop_id FROM shipments WHERE id = $1 FOR UPDATE", req.ShipmentID).Scan(&orderID, &shopID)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "Shipment not found")
 		return
@@ -48,13 +49,11 @@ func (h *Handler) UpdateShipmentState(w http.ResponseWriter, r *http.Request) {
 	case "owner", "admin":
 		if req.Status == "cancelled" {
 			_, err = tx.Exec("UPDATE shipments SET status = 'cancelled' WHERE id = $1", req.ShipmentID)
-			// ยกเลิกออเดอร์ด้วย หากร้านกดยกเลิก
 			if err == nil {
 				_, err = tx.Exec("UPDATE orders SET status = 'cancelled' WHERE id = $1", orderID)
 			}
 		} else if req.Status == "shipped_to_center" && req.CenterID != nil {
 			_, err = tx.Exec("UPDATE shipments SET status = 'shipped_to_center', current_center_id = $1 WHERE id = $2", *req.CenterID, req.ShipmentID)
-			// เปลี่ยนสถานะออเดอร์เป็นกำลังจัดส่ง (shipping) เมื่อร้านจัดส่ง
 			if err == nil {
 				_, err = tx.Exec("UPDATE orders SET status = 'shipping' WHERE id = $1", orderID)
 			}
@@ -70,9 +69,38 @@ func (h *Handler) UpdateShipmentState(w http.ResponseWriter, r *http.Request) {
 	case "rider":
 		if req.Status == "completed" {
 			_, err = tx.Exec("UPDATE shipments SET status = 'completed' WHERE id = $1", req.ShipmentID)
-			// เปลี่ยนสถานะออเดอร์เป็นจัดส่งสำเร็จ (completed) เมื่อไรเดอร์จัดส่งเสร็จ
+			
+			// อัปเดตสถานะออเดอร์หลัก
 			if err == nil {
 				_, err = tx.Exec("UPDATE orders SET status = 'completed' WHERE id = $1", orderID)
+			}
+
+			// โอนเงินให้เจ้าของร้าน
+			if err == nil {
+				// 1. คำนวณยอดรวมของสินค้าเฉพาะร้านนี้ (รองรับกรณีออเดอร์เดียวมีของจากหลายร้าน)
+				var shopTotal float64
+				err = tx.QueryRow(`
+					SELECT COALESCE(SUM(oi.quantity * oi.price_at_time), 0)
+					FROM order_items oi
+					JOIN products p ON oi.product_id = p.id
+					WHERE oi.order_id = $1 AND p.shop_id = $2
+				`, orderID, shopID).Scan(&shopTotal)
+
+				if err == nil && shopTotal > 0 {
+					// 2. หา User ID ของเจ้าของร้าน
+					var ownerID string
+					err = tx.QueryRow("SELECT owner_id FROM shops WHERE id = $1", shopID).Scan(&ownerID)
+
+					// 3. เพิ่มเงินเข้า Wallet ของเจ้าของร้าน (ถ้ายังไม่มีแถวข้อมูล ให้สร้างใหม่)
+					if err == nil {
+						_, err = tx.Exec(`
+							INSERT INTO user_wallets (user_id, balance) 
+							VALUES ($1, $2)
+							ON CONFLICT (user_id) DO UPDATE 
+							SET balance = user_wallets.balance + EXCLUDED.balance, updated_at = CURRENT_TIMESTAMP
+						`, ownerID, shopTotal)
+					}
+				}
 			}
 		}
 	default:
