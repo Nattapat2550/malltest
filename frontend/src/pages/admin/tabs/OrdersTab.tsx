@@ -1,6 +1,6 @@
 // frontend/src/pages/admin/tabs/OrdersTab.tsx
 import React, { useState, useEffect } from 'react';
-import api from '../../../services/api';
+import api, { shipmentApi } from '../../../services/api';
 
 interface Order {
   id: number;
@@ -17,10 +17,19 @@ export default function OrdersTab() {
   const [updateModal, setUpdateModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   
-  // Form State
+  // Tab ควบคุมใน Modal ว่าจะอัปเดต Order หลัก หรือ อัปเดต Shipment
+  const [updateType, setUpdateType] = useState<'order' | 'shipment'>('order');
+
+  // Form State (Order หลัก)
   const [newStatus, setNewStatus] = useState('pending');
-  const [statusDetail, setStatusDetail] = useState('');
-  const [location, setLocation] = useState('');
+  
+  // Form State (Shipment / การจัดส่งย่อย)
+  const [shipmentId, setShipmentId] = useState<number>(0);
+  const [shipmentStatus, setShipmentStatus] = useState('shipped_to_center');
+  const [centerId, setCenterId] = useState<number | ''>('');
+  const [riderId, setRiderId] = useState<number | ''>('');
+  const [trackingDetail, setTrackingDetail] = useState('');
+  const [locationStr, setLocationStr] = useState('');
 
   const fetchOrders = async () => {
     try {
@@ -41,9 +50,16 @@ export default function OrdersTab() {
 
   const openUpdateModal = (order: Order) => {
     setSelectedOrder(order);
+    setUpdateType('order');
     setNewStatus(order.status);
-    setStatusDetail(''); // เคลียร์ค่าเก่าทุกครั้งที่เปิด
-    setLocation('');
+    
+    // Clear Shipment states
+    setShipmentId(0);
+    setCenterId('');
+    setRiderId('');
+    setTrackingDetail('');
+    setLocationStr('');
+    
     setUpdateModal(true);
   };
 
@@ -52,18 +68,32 @@ export default function OrdersTab() {
     if (!selectedOrder) return;
     
     try {
-      await api.put(`/api/admin/orders/${selectedOrder.id}/status`, {
-        status: newStatus,
-        status_detail: statusDetail,
-        location: location
-      });
+      if (updateType === 'order') {
+        // อัปเดตสถานะออเดอร์หลัก
+        await api.put(`/api/admin/orders/${selectedOrder.id}/status`, {
+          status: newStatus,
+          status_detail: trackingDetail,
+          location: locationStr
+        });
+      } else {
+        // อัปเดตสถานะพัสดุย่อย (รองรับ Owner, Center, Rider)
+        if (!shipmentId) return alert('กรุณาระบุ Shipment ID');
+        
+        await shipmentApi.updateStatus({
+          shipment_id: shipmentId,
+          status: shipmentStatus,
+          center_id: centerId ? Number(centerId) : undefined,
+          rider_id: riderId ? Number(riderId) : undefined,
+          tracking_detail: trackingDetail,
+          location: locationStr
+        });
+      }
       
       setUpdateModal(false);
-      fetchOrders(); // โหลดข้อมูลใหม่
-      alert('อัปเดตสถานะและประวัติการจัดส่งเรียบร้อยแล้ว');
-    } catch (err) {
-      console.error(err);
-      alert('เกิดข้อผิดพลาดในการอัปเดต');
+      fetchOrders(); 
+      alert('อัปเดตข้อมูลสำเร็จ');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'เกิดข้อผิดพลาดในการอัปเดต หรือไม่มีสิทธิ์ทำรายการ');
     }
   };
 
@@ -84,7 +114,7 @@ export default function OrdersTab() {
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">จัดการคำสั่งซื้อ (Orders)</h2>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">จัดการคำสั่งซื้อและการจัดส่ง</h2>
 
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
@@ -120,9 +150,9 @@ export default function OrdersTab() {
                   <td className="p-4 flex justify-end">
                     <button 
                       onClick={() => openUpdateModal(o)} 
-                      className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 rounded-lg text-sm font-medium transition-colors"
+                      className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 rounded-lg text-sm font-bold transition-colors"
                     >
-                      อัปเดตสถานะ/การส่ง
+                      อัปเดตการจัดส่ง
                     </button>
                   </td>
                 </tr>
@@ -132,66 +162,101 @@ export default function OrdersTab() {
         </table>
       </div>
 
-      {/* Modal อัปเดตสถานะและเพิ่ม Tracking */}
+      {/* Modal อัปเดตสถานะและเพิ่ม Tracking แบบแยก Role */}
       {updateModal && selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg shadow-2xl p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">อัปเดตคำสั่งซื้อ #{selectedOrder.id}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">ผู้ซื้อ: {selectedOrder.user_id}</p>
+            
+            {/* สลับหน้าจอใน Modal */}
+            <div className="flex gap-2 mb-6 bg-gray-100 dark:bg-gray-900 p-1 rounded-xl">
+              <button type="button" onClick={()=>setUpdateType('order')} className={`flex-1 py-2 text-sm font-bold rounded-lg ${updateType === 'order' ? 'bg-white dark:bg-gray-700 shadow-sm' : 'text-gray-500'}`}>
+                ออเดอร์หลัก
+              </button>
+              <button type="button" onClick={()=>setUpdateType('shipment')} className={`flex-1 py-2 text-sm font-bold rounded-lg ${updateType === 'shipment' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500'}`}>
+                พัสดุ (Owner/Center/Rider)
+              </button>
+            </div>
             
             <form onSubmit={handleUpdate} className="space-y-4">
               
-              {/* 1. สถานะหลัก */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">สถานะหลักของ Order</label>
-                <select 
-                  value={newStatus} 
-                  onChange={e => setNewStatus(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="pending">Pending (รอชำระเงิน/รอดำเนินการ)</option>
-                  <option value="paid">Paid (ชำระเงินแล้ว)</option>
-                  <option value="shipped">Shipped (กำลังจัดส่ง)</option>
-                  <option value="completed">Completed (จัดส่งสำเร็จ)</option>
-                  <option value="cancelled">Cancelled (ยกเลิก)</option>
-                </select>
-              </div>
+              {updateType === 'order' ? (
+                // 1. อัปเดตออเดอร์หลัก (ระบบเดิมของ Admin)
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">สถานะหลักของ Order</label>
+                  <select 
+                    value={newStatus} 
+                    onChange={e => setNewStatus(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
+                  >
+                    <option value="pending">Pending (รอชำระเงิน/รอดำเนินการ)</option>
+                    <option value="paid">Paid (ชำระเงินแล้ว)</option>
+                    <option value="shipped">Shipped (กำลังจัดส่ง)</option>
+                    <option value="completed">Completed (จัดส่งสำเร็จ)</option>
+                    <option value="cancelled">Cancelled (ยกเลิก)</option>
+                  </select>
+                </div>
+              ) : (
+                // 2. อัปเดตพัสดุย่อยตาม Roles 
+                <div className="space-y-4 bg-blue-50/50 dark:bg-blue-900/10 p-4 border border-blue-100 dark:border-blue-800 rounded-xl">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">รหัสพัสดุร้านค้า (Shipment ID)</label>
+                    <input type="number" value={shipmentId || ''} onChange={e=>setShipmentId(Number(e.target.value))} required className="w-full px-4 py-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ปรับสถานะพัสดุนี้เป็น</label>
+                    <select value={shipmentStatus} onChange={e=>setShipmentStatus(e.target.value)} className="w-full px-4 py-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white">
+                      <option value="shipped_to_center">ส่งต่อให้ศูนย์จัดส่ง (Owner/Center)</option>
+                      <option value="at_center">รับเข้าศูนย์แล้ว (Center)</option>
+                      <option value="delivering">จ่ายงานให้ Rider (Center)</option>
+                      <option value="completed">จัดส่งสำเร็จ (Rider)</option>
+                      <option value="cancelled">ยกเลิกพัสดุ (Owner)</option>
+                    </select>
+                  </div>
+                  
+                  {shipmentStatus === 'shipped_to_center' && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">รหัสศูนย์เป้าหมาย (Center ID)</label>
+                      <input type="number" value={centerId} onChange={e=>setCenterId(Number(e.target.value))} required className="w-full px-4 py-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white" />
+                    </div>
+                  )}
+
+                  {shipmentStatus === 'delivering' && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">รหัสผู้ส่ง/ไรเดอร์ (Rider ID)</label>
+                      <input type="number" value={riderId} onChange={e=>setRiderId(Number(e.target.value))} required className="w-full px-4 py-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white" />
+                    </div>
+                  )}
+                </div>
+              )}
 
               <hr className="border-gray-200 dark:border-gray-700 my-4" />
               
-              <h4 className="font-bold text-gray-900 dark:text-white text-sm">เพิ่มประวัติการจัดส่ง (Tracking)</h4>
-              <p className="text-xs text-gray-500 mb-2">หากไม่ได้เคลื่อนย้ายสินค้า ให้เว้นว่าง 2 ช่องนี้ไว้</p>
-
-              {/* 2. รายละเอียดการส่ง */}
+              <h4 className="font-bold text-gray-900 dark:text-white text-sm">การแจ้งเตือนผู้ซื้อ (Tracking Text)</h4>
+              
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">รายละเอียด (เช่น สินค้าถึงศูนย์คัดแยก)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">รายละเอียด</label>
                 <input 
-                  type="text" 
-                  value={statusDetail} 
-                  onChange={e => setStatusDetail(e.target.value)} 
-                  placeholder="เช่น พัสดุถูกรับเข้าระบบแล้ว"
-                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                  type="text" value={trackingDetail} onChange={e => setTrackingDetail(e.target.value)} 
+                  placeholder="เช่น สินค้าถึงศูนย์คัดแยกแล้ว" required
+                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
                 />
               </div>
 
-              {/* 3. สถานที่ */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">สถานที่ / จังหวัด (ถ้ามี)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">สถานที่อัปเดต (ถ้ามี)</label>
                 <input 
-                  type="text" 
-                  value={location} 
-                  onChange={e => setLocation(e.target.value)} 
-                  placeholder="เช่น ศูนย์คัดแยกสินค้า จ.สมุทรปราการ"
-                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                  type="text" value={locationStr} onChange={e => setLocationStr(e.target.value)} 
+                  placeholder="เช่น ศูนย์คัดแยกสินค้า จ.สมุทรปราการ" required
+                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
                 />
               </div>
               
-              {/* ปุ่มกดยืนยัน */}
               <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button type="button" onClick={() => setUpdateModal(false)} className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium transition-colors">
+                <button type="button" onClick={() => setUpdateModal(false)} className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 font-bold">
                   ยกเลิก
                 </button>
-                <button type="submit" className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md transition-colors">
+                <button type="submit" className="px-6 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md">
                   บันทึกข้อมูล
                 </button>
               </div>

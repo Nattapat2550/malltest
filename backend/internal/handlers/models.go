@@ -12,7 +12,7 @@ type News struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// ===== Models สำหรับ Wallet =====
+// ===== Models สำหรับ Wallet & Users =====
 type UserWallet struct {
 	UserID  string  `json:"user_id"`
 	Balance float64 `json:"balance"`
@@ -20,6 +20,20 @@ type UserWallet struct {
 
 type TopupWalletRequest struct {
 	Amount float64 `json:"amount"`
+}
+
+type UserAddress struct {
+	ID        int       `json:"id"`
+	UserID    string    `json:"user_id"`
+	Title     string    `json:"title"`
+	Address   string    `json:"address"`
+	IsDefault bool      `json:"is_default"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type UserRoleInfo struct {
+	UserID string `json:"user_id"`
+	Role   string `json:"role"`
 }
 
 type Carousel struct {
@@ -53,7 +67,17 @@ type ProductComment struct {
 }
 
 type CreateCommentRequest struct {
-	OrderID int    `json:"order_id"` // ระบุ order ที่ต้องการคอมเมนต์
+	OrderID int    `json:"order_id"`
 	Rating  int    `json:"rating"`
 	Message string `json:"message"`
+}
+
+// ===== Models สำหรับระบบ Shipments & Tracking =====
+type ShipmentUpdateRequest struct {
+	ShipmentID     int    `json:"shipment_id"`
+	Status         string `json:"status"` // cancelled, shipped_to_center, at_center, delivering, completed
+	CenterID       *int   `json:"center_id,omitempty"` // สำหรับ Owner เลือกส่ง Center หรือ Center จ่ายต่อไป Center อื่น
+	RiderID        *int   `json:"rider_id,omitempty"`  // สำหรับ Center จ่ายงานให้ Rider
+	TrackingDetail string `json:"tracking_detail"`     // ข้อความแสดงในหน้าติดตามลูกค้า
+	Location       string `json:"location"`
 }

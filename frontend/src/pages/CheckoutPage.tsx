@@ -2,34 +2,46 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearCart } from '../store/slices/cartSlice';
-import api from '../services/api';
+import api, { getUserAddresses, addUserAddress } from '../services/api';
 
 export default function CheckoutPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
-  // รองรับทั้งแบบซื้อทันที (directBuy) หรือ ดึงจากตะกร้า (Redux Cart)
   const cartItems = useSelector((state: any) => state.cart.items);
   const items = location.state?.directBuy || cartItems;
   const initialPromo = location.state?.promoCode || '';
 
-  const [address, setAddress] = useState('');
+  // === Address State ===
+  const [addresses, setAddresses] = useState<any[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | 'new'>('new');
+  const [newAddressTitle, setNewAddressTitle] = useState('บ้าน');
+  const [newAddressText, setNewAddressText] = useState('');
+  
   const [shippingMethod, setShippingMethod] = useState('standard');
   const [note, setNote] = useState('');
   const [promoCode, setPromoCode] = useState(initialPromo);
 
-  // ส่วนของการจัดการ Wallet และ State การโหลด
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [loadingWallet, setLoadingWallet] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // ดึงข้อมูลยอดเงินในกระเป๋าเมื่อเข้าหน้า Checkout
+    // ดึง Wallet
     api.get('/api/users/me/wallet')
       .then(res => setWalletBalance(res.data.balance || 0))
       .catch(console.error)
       .finally(() => setLoadingWallet(false));
+
+    // ดึงสมุดที่อยู่ (Address Book)
+    getUserAddresses().then(res => {
+      const data = res.data;
+      setAddresses(data);
+      if (data.length > 0) {
+        setSelectedAddressId(data[0].id); // เลือกที่อยู่อันแรกเป็น Default
+      }
+    }).catch(console.error);
   }, []);
 
   if (items.length === 0) {
@@ -40,24 +52,33 @@ export default function CheckoutPage() {
   const shippingCost = shippingMethod === 'express' ? 50 : 30;
   const discount = promoCode === 'MALL20' ? subtotal * 0.2 : 0;
   const total = subtotal + shippingCost - discount;
-
-  // เช็คว่าเงินพอหรือไม่
   const isInsufficientBalance = walletBalance < total;
 
   const handlePlaceOrder = async () => {
-    if (!address.trim()) return alert('กรุณากรอกที่อยู่จัดส่ง');
+    let finalAddressString = '';
+
+    if (selectedAddressId === 'new') {
+      if (!newAddressText.trim()) return alert('กรุณากรอกที่อยู่จัดส่ง');
+      finalAddressString = newAddressText;
+      // บันทึกที่อยู่ใหม่เข้า Database ทันที
+      try { await addUserAddress({ title: newAddressTitle, address: newAddressText }); } catch (e) { console.error('Save address fail', e); }
+    } else {
+      const addrObj = addresses.find(a => a.id === selectedAddressId);
+      finalAddressString = addrObj ? addrObj.address : '';
+      if (!finalAddressString) return alert('กรุณาเลือกที่อยู่จัดส่ง');
+    }
+
     if (isInsufficientBalance) return alert('ยอดเงินในกระเป๋าไม่เพียงพอ กรุณาเติมเงินก่อนทำรายการ');
 
     setIsSubmitting(true);
     try {
-      // เตรียมข้อมูลให้ตรงกับ Backend struct
       const orderPayload = {
         items: items.map((item: any) => ({
-          product_id: item.productId || item.id, // รองรับทั้งจาก cart (productId) และ direct (id)
+          product_id: item.productId || item.id,
           quantity: item.quantity,
           price: item.price
         })),
-        address,
+        address: finalAddressString,
         shipping_method: shippingMethod,
         note,
         promo_code: promoCode,
@@ -65,12 +86,10 @@ export default function CheckoutPage() {
       };
 
       await api.post('/api/orders/checkout', orderPayload);
-      
-      // ล้างตะกร้าหลังสั่งซื้อสำเร็จ
       dispatch(clearCart());
       
       alert('สั่งซื้อสำเร็จ! หักยอดเงินเรียบร้อยแล้ว');
-      navigate('/settings'); // พาไปหน้า Settings เพื่อดูประวัติการสั่งซื้อ
+      navigate('/settings'); 
     } catch (err: any) {
       alert(err.response?.data?.error || err.response?.data?.message || 'เกิดข้อผิดพลาดในการสั่งซื้อ');
     } finally {
@@ -83,19 +102,46 @@ export default function CheckoutPage() {
       <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mb-10">การชำระเงิน</h1>
 
       <div className="flex flex-col lg:flex-row gap-10">
-        {/* ฟอร์มข้อมูลการจัดส่ง */}
         <div className="flex-1 flex flex-col gap-6">
+          
+          {/* ส่วนของการเลือกที่อยู่ (Address Selection) */}
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 lg:p-8 shadow-sm border border-gray-200 dark:border-gray-700">
             <h2 className="text-xl font-black text-gray-900 dark:text-white mb-6">ที่อยู่จัดส่ง</h2>
-            <textarea 
-              rows={3}
-              value={address}
-              onChange={e => setAddress(e.target.value)}
-              placeholder="บ้านเลขที่, ถนน, ซอย, จังหวัด, รหัสไปรษณีย์..."
-              className="w-full px-5 py-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-            ></textarea>
+            
+            {addresses.length > 0 && (
+              <div className="flex flex-col gap-3 mb-6">
+                {addresses.map(addr => (
+                  <label key={addr.id} className={`flex items-start gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all ${selectedAddressId === addr.id ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
+                    <input type="radio" name="address" checked={selectedAddressId === addr.id} onChange={() => setSelectedAddressId(addr.id)} className="mt-1" />
+                    <div>
+                      <p className="font-bold text-gray-900 dark:text-white">{addr.title}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{addr.address}</p>
+                    </div>
+                  </label>
+                ))}
+                
+                <label className={`flex items-start gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all ${selectedAddressId === 'new' ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
+                  <input type="radio" name="address" checked={selectedAddressId === 'new'} onChange={() => setSelectedAddressId('new')} className="mt-1" />
+                  <div className="font-bold text-gray-900 dark:text-white">เพิ่มที่อยู่ใหม่...</div>
+                </label>
+              </div>
+            )}
+
+            {(selectedAddressId === 'new' || addresses.length === 0) && (
+              <div className="space-y-4 animate-fade-in">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ป้ายกำกับ (เช่น บ้าน, ที่ทำงาน)</label>
+                  <input type="text" value={newAddressTitle} onChange={e => setNewAddressTitle(e.target.value)} className="w-full px-5 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none" placeholder="บ้าน" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">รายละเอียดที่อยู่เต็ม</label>
+                  <textarea rows={3} value={newAddressText} onChange={e => setNewAddressText(e.target.value)} placeholder="บ้านเลขที่, ถนน, ซอย, จังหวัด, รหัสไปรษณีย์..." className="w-full px-5 py-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea>
+                </div>
+              </div>
+            )}
           </div>
 
+          {/* ประเภทการจัดส่ง & Note เหมือนเดิม... */}
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 lg:p-8 shadow-sm border border-gray-200 dark:border-gray-700">
             <h2 className="text-xl font-black text-gray-900 dark:text-white mb-6">ประเภทการจัดส่ง</h2>
             <div className="flex gap-4">
@@ -115,19 +161,15 @@ export default function CheckoutPage() {
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 lg:p-8 shadow-sm border border-gray-200 dark:border-gray-700">
             <h2 className="text-xl font-black text-gray-900 dark:text-white mb-6">คำอธิบาย/ข้อความถึงผู้ส่ง (ถ้ามี)</h2>
             <textarea 
-              rows={2}
-              value={note}
-              onChange={e => setNote(e.target.value)}
+              rows={2} value={note} onChange={e => setNote(e.target.value)}
               placeholder="ระบุเพิ่มเติม เช่น โทรหาเมื่อถึง, ฝากไว้ที่ป้อมยาม..."
               className="w-full px-5 py-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"
             ></textarea>
           </div>
         </div>
 
-        {/* สรุปรายการสินค้าและ Wallet */}
+        {/* สรุปรายการสินค้าและ Wallet เหมือนเดิมทุกอย่าง... */}
         <div className="lg:w-112.5 flex flex-col gap-6">
-          
-          {/* กล่องแสดงยอดเงิน (Wallet) */}
           <div className={`rounded-3xl p-6 shadow-sm border-2 ${isInsufficientBalance ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'}`}>
             <h2 className={`text-lg font-bold mb-2 ${isInsufficientBalance ? 'text-red-800 dark:text-red-400' : 'text-blue-900 dark:text-blue-300'}`}>
               ยอดเงินในกระเป๋าของคุณ
@@ -168,28 +210,23 @@ export default function CheckoutPage() {
             <div className="mt-6">
               <h3 className="font-bold text-gray-900 dark:text-white mb-2">โค้ดส่วนลด</h3>
               <input 
-                type="text" 
-                placeholder="กรอกโค้ด เช่น MALL20" 
-                value={promoCode}
-                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none uppercase"
+                type="text" placeholder="กรอกโค้ด เช่น MALL20" 
+                value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none uppercase"
               />
               {promoCode === 'MALL20' && <p className="text-green-500 text-sm mt-2 font-bold">🎉 ลด 20% แล้ว</p>}
             </div>
 
             <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700 flex flex-col gap-3">
               <div className="flex justify-between text-gray-600 dark:text-gray-400 font-medium">
-                <span>ยอดรวมสินค้า</span>
-                <span>฿{subtotal.toLocaleString()}</span>
+                <span>ยอดรวมสินค้า</span><span>฿{subtotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-gray-600 dark:text-gray-400 font-medium">
-                <span>ค่าจัดส่ง</span>
-                <span>฿{shippingCost}</span>
+                <span>ค่าจัดส่ง</span><span>฿{shippingCost}</span>
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-green-500 font-medium">
-                  <span>ส่วนลด</span>
-                  <span>-฿{discount.toLocaleString()}</span>
+                  <span>ส่วนลด</span><span>-฿{discount.toLocaleString()}</span>
                 </div>
               )}
               <div className="flex justify-between items-end mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">

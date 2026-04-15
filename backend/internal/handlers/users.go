@@ -9,7 +9,6 @@ import (
 	"strings"
 )
 
-// GET /api/users/me
 func (h *Handler) UsersMeGet(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	u := GetUser(r)
@@ -24,17 +23,27 @@ func (h *Handler) UsersMeGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// ซ่อน User ที่โดนลบไปแล้วหากจำเป็น
 	if me.Status != nil && *me.Status == "deleted" {
 		h.clearAuthCookie(w)
 		h.writeError(w, http.StatusUnauthorized, "User not found")
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, me)
+	// แทรก Role ในการตอบกลับด้วย
+	var role string
+	err := h.MallDB.QueryRow("SELECT role FROM user_roles WHERE user_id = $1", u.ID).Scan(&role)
+	if err != nil {
+		role = "customer" // Default
+	}
+
+	response := map[string]any{
+		"user": me,
+		"role": role,
+	}
+
+	WriteJSON(w, http.StatusOK, response)
 }
 
-// PUT /api/users/me  (หรือ PATCH)
 func (h *Handler) UsersMePut(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	u := GetUser(r)
@@ -64,7 +73,6 @@ func (h *Handler) UsersMePut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ✅ ถ้า Payload เข้ามาสั่ง Soft Delete ให้ Clear Cookie ทันที (ให้หลุดออกจากระบบ)
 	if status, ok := body["status"].(string); ok && status == "deleted" {
 		h.clearAuthCookie(w)
 	}
@@ -72,7 +80,6 @@ func (h *Handler) UsersMePut(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, updated)
 }
 
-// POST /api/users/me/avatar (multipart: avatar)
 func (h *Handler) UsersMeAvatar(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	u := GetUser(r)
@@ -81,7 +88,6 @@ func (h *Handler) UsersMeAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 4MB limit (match Node)
 	r.Body = http.MaxBytesReader(w, r.Body, 4*1024*1024)
 	if err := r.ParseMultipartForm(4 * 1024 * 1024); err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid form")
@@ -130,7 +136,6 @@ func (h *Handler) UsersMeAvatar(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// DELETE /api/users/me
 func (h *Handler) UsersMeDelete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	u := GetUser(r)
@@ -139,7 +144,6 @@ func (h *Handler) UsersMeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ✅ เปลี่ยนจาก Hard Delete (ลบถาวร) เป็น Soft Delete (แก้ไขสถานะเป็น deleted)
 	payload := map[string]any{
 		"id":     u.ID,
 		"status": "deleted",
@@ -154,7 +158,6 @@ func (h *Handler) UsersMeDelete(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "Account has been soft-deleted"})
 }
 
-// GET /api/users/me/wallet
 func (h *Handler) GetUserWallet(w http.ResponseWriter, r *http.Request) {
 	u := GetUser(r)
 	if u == nil {
@@ -166,7 +169,7 @@ func (h *Handler) GetUserWallet(w http.ResponseWriter, r *http.Request) {
 	err := h.MallDB.QueryRow("SELECT balance FROM user_wallets WHERE user_id = $1", u.ID).Scan(&balance)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			balance = 0.00 // คืนค่า 0 หากผู้ใช้ยังไม่เคยถูกเติมเงินเลย
+			balance = 0.00 
 		} else {
 			h.writeError(w, http.StatusInternalServerError, "Failed to fetch wallet balance")
 			return
@@ -177,4 +180,59 @@ func (h *Handler) GetUserWallet(w http.ResponseWriter, r *http.Request) {
 		"user_id": u.ID,
 		"balance": balance,
 	})
+}
+
+// ===== จัดการ Addresses ของ User =====
+func (h *Handler) GetUserAddresses(w http.ResponseWriter, r *http.Request) {
+	u := GetUser(r)
+	if u == nil {
+		h.writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	rows, err := h.MallDB.Query("SELECT id, title, address, is_default, created_at FROM user_addresses WHERE user_id = $1 ORDER BY id DESC", u.ID)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	var addresses []UserAddress
+	for rows.Next() {
+		var a UserAddress
+		a.UserID = fmt.Sprintf("%v", u.ID)
+		if err := rows.Scan(&a.ID, &a.Title, &a.Address, &a.IsDefault, &a.CreatedAt); err == nil {
+			addresses = append(addresses, a)
+		}
+	}
+	if addresses == nil {
+		addresses = []UserAddress{}
+	}
+
+	WriteJSON(w, http.StatusOK, addresses)
+}
+
+func (h *Handler) AddUserAddress(w http.ResponseWriter, r *http.Request) {
+	u := GetUser(r)
+	if u == nil {
+		h.writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req struct {
+		Title   string `json:"title"`
+		Address string `json:"address"`
+	}
+	if err := ReadJSON(r, &req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid request")
+		return
+	}
+
+	_, err := h.MallDB.Exec("INSERT INTO user_addresses (user_id, title, address) VALUES ($1, $2, $3)", u.ID, req.Title, req.Address)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to add address")
+		return
+	}
+
+	WriteJSON(w, http.StatusCreated, map[string]string{"message": "Address added successfully"})
 }

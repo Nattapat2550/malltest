@@ -11,6 +11,46 @@ CREATE TABLE user_wallets (
 );
 
 -- ==========================================
+-- 1.5 ระบบ Roles และ ข้อมูลเสริม (Addresses, Shops, Centers, Riders)
+-- ==========================================
+CREATE TABLE user_roles (
+    user_id VARCHAR(255) PRIMARY KEY,
+    role VARCHAR(50) DEFAULT 'customer' -- roles: customer, owner, center, rider
+);
+
+CREATE TABLE user_addresses (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    title VARCHAR(100), -- เช่น "บ้าน", "ที่ทำงาน"
+    address TEXT NOT NULL,
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE delivery_centers (
+    id SERIAL PRIMARY KEY,
+    center_user_id VARCHAR(255) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    address_id INT REFERENCES user_addresses(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE shops (
+    id SERIAL PRIMARY KEY,
+    owner_id VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    address_id INT REFERENCES user_addresses(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE riders (
+    id SERIAL PRIMARY KEY,
+    rider_user_id VARCHAR(255) NOT NULL UNIQUE,
+    center_id INT REFERENCES delivery_centers(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==========================================
 -- 2. ระบบ E-commerce (Shopping Mall)
 -- ==========================================
 CREATE TABLE categories (
@@ -27,6 +67,7 @@ CREATE TABLE products (
     price DECIMAL(10, 2) NOT NULL,
     stock INT NOT NULL DEFAULT 0,
     category_id INT REFERENCES categories(id) ON DELETE SET NULL,
+    shop_id INT REFERENCES shops(id) ON DELETE CASCADE, -- ผูกสินค้ากับหน้าร้าน (Owner)
     image_url TEXT,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -36,13 +77,13 @@ CREATE TABLE products (
 
 CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL, -- อ้างอิง user_id จาก ProjectRust
+    user_id VARCHAR(255) NOT NULL,
     total_amount DECIMAL(10, 2) NOT NULL,
     address TEXT NOT NULL,
     shipping_method VARCHAR(50) DEFAULT 'standard',
     note TEXT,
     promo_code VARCHAR(50),
-    status VARCHAR(50) DEFAULT 'pending', -- pending, paid, shipped, completed, cancelled
+    status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -55,8 +96,20 @@ CREATE TABLE order_items (
     price_at_time DECIMAL(10, 2) NOT NULL
 );
 
+-- ระบบแยกย่อยการจัดส่งต่อร้านค้าในคำสั่งซื้อนั้น
+CREATE TABLE shipments (
+    id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(id) ON DELETE CASCADE,
+    shop_id INT REFERENCES shops(id) ON DELETE CASCADE,
+    current_center_id INT REFERENCES delivery_centers(id) ON DELETE SET NULL,
+    rider_id INT REFERENCES riders(id) ON DELETE SET NULL,
+    status VARCHAR(50) DEFAULT 'pending', -- pending, shipped_to_center, at_center, delivering, completed, cancelled
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ==========================================
--- 3. ระบบ Content Management (หน้าเว็บ & ข่าวสาร)
+-- 3. ระบบ Content Management & Tracking
 -- ==========================================
 CREATE TABLE news (
     id SERIAL PRIMARY KEY,
@@ -78,10 +131,10 @@ CREATE TABLE carousels (
 
 CREATE TABLE appeals (
     id SERIAL PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL, -- อ้างอิง user_id จาก ProjectRust
+    user_id VARCHAR(255) NOT NULL,
     topic VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
-    status VARCHAR(50) DEFAULT 'pending', -- pending, resolved
+    status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -90,7 +143,7 @@ CREATE TABLE documents (
     title VARCHAR(255) NOT NULL,
     description TEXT,
     cover_image TEXT,
-    gallery_urls TEXT DEFAULT '[]', -- เก็บ Array เป็น JSON String
+    gallery_urls TEXT DEFAULT '[]',
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -98,22 +151,22 @@ CREATE TABLE documents (
 CREATE TABLE order_tracking (
     id SERIAL PRIMARY KEY,
     order_id INT REFERENCES orders(id) ON DELETE CASCADE,
-    status_detail TEXT NOT NULL, -- เช่น "สินค้าถึงศูนย์คัดแยกบางพลี", "กำลังนำจ่าย"
-    location VARCHAR(255),       -- สถานที่ (ถ้ามี)
+    status_detail TEXT NOT NULL,
+    location VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE product_comments (
     id SERIAL PRIMARY KEY,
     product_id INT REFERENCES products(id) ON DELETE CASCADE,
-    user_id VARCHAR(255) NOT NULL, -- อ้างอิง user_id จาก ProjectRust
+    user_id VARCHAR(255) NOT NULL,
     order_id INT REFERENCES orders(id) ON DELETE CASCADE,
-    rating INT CHECK (rating >= 1 AND rating <= 5), -- ให้คะแนน 1-5 ดาว
+    rating INT CHECK (rating >= 1 AND rating <= 5),
     message TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    -- ป้องกันการคอมเมนต์ซ้ำ: 1 user สามารถคอมเมนต์สินค้านี้ได้ 1 ครั้ง ต่อ 1 คำสั่งซื้อ
     UNIQUE(user_id, product_id, order_id) 
 );
+
 -- ==========================================
 -- 4. ข้อมูลตัวอย่างเบื้องต้น (Mock Data)
 -- ==========================================

@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-
+	"fmt"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -45,7 +45,6 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// เริ่ม Transaction เพื่อความปลอดภัย
 	tx, err := h.MallDB.BeginTx(r.Context(), nil)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to start tx: "+err.Error())
@@ -53,7 +52,7 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	// 1. เช็คยอดเงินในกระเป๋า (FOR UPDATE ป้องกันการชนกันของข้อมูล)
+	// 1. เช็คยอดเงินในกระเป๋า
 	var balance float64
 	err = tx.QueryRow("SELECT balance FROM user_wallets WHERE user_id = $1 FOR UPDATE", u.ID).Scan(&balance)
 	if err != nil {
@@ -92,7 +91,9 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 4. บันทึก Order Items และตัดสต็อกสินค้า
+	shopMap := make(map[int]bool)
+
+	// 4. บันทึก Order Items และตัดสต็อกสินค้า พร้อมแยกพัสดุตามร้านค้า
 	for _, item := range req.Items {
 		_, err = tx.Exec("INSERT INTO order_items (order_id, product_id, quantity, price_at_time) VALUES ($1, $2, $3, $4)",
 			orderID, item.ProductID, item.Quantity, item.Price)
@@ -112,6 +113,29 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 			h.writeError(w, http.StatusBadRequest, "สินค้าบางรายการหมด หรือมีสต็อกไม่เพียงพอ")
 			return
 		}
+
+		// ดึงข้อมูล shop_id ที่สินค้านี้สังกัดอยู่
+		var shopID sql.NullInt64
+		err = tx.QueryRow("SELECT shop_id FROM products WHERE id = $1", item.ProductID).Scan(&shopID)
+		if err == nil && shopID.Valid {
+			shopMap[int(shopID.Int64)] = true
+		}
+	}
+
+	// 5. แตกใบ Shipments ตาม Shop
+	for sID := range shopMap {
+		_, err = tx.Exec("INSERT INTO shipments (order_id, shop_id, status) VALUES ($1, $2, 'pending')", orderID, sID)
+		if err != nil {
+			h.writeError(w, http.StatusInternalServerError, "Failed to create shipment for shop: "+err.Error())
+			return
+		}
+	}
+
+	// 6. เพิ่ม Tracking เริ่มต้น
+	_, err = tx.Exec("INSERT INTO order_tracking (order_id, status_detail, location) VALUES ($1, 'ระบบได้รับคำสั่งซื้อและชำระเงินเรียบร้อยแล้ว', 'System')", orderID)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to add initial tracking: "+err.Error())
+		return
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -127,7 +151,6 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GetMyOrders ดึงรายการสั่งซื้อทั้งหมดของ User ที่ Logged in อยู่ พร้อมรายการสินค้า
 func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 	u := GetUser(r)
 	if u == nil {
@@ -135,7 +158,6 @@ func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ดึงรายการคำสั่งซื้อหลัก
 	rows, err := h.MallDB.QueryContext(r.Context(),
 		"SELECT id, total_amount, status, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC",
 		u.ID)
@@ -153,7 +175,6 @@ func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 		var createdAt interface{}
 
 		if err := rows.Scan(&id, &total, &status, &createdAt); err == nil {
-			// ค้นหารายการสินค้า (Items) ที่อยู่ใน Order นี้
 			itemRows, errItem := h.MallDB.QueryContext(r.Context(), `
 				SELECT oi.id, oi.product_id, p.name, oi.quantity, oi.price_at_time, p.image_url
 				FROM order_items oi
@@ -166,7 +187,7 @@ func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 					var itemId, productId, qty int
 					var productName string
 					var price float64
-					var sqlImageUrl sql.NullString // เผื่อกรณีสินค้าไม่มีรูป
+					var sqlImageUrl sql.NullString 
 					
 					if err := itemRows.Scan(&itemId, &productId, &productName, &qty, &price, &sqlImageUrl); err == nil {
 						imgUrl := ""
@@ -195,7 +216,7 @@ func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 				"total_amount": total,
 				"status":       status,
 				"created_at":   createdAt,
-				"items":        items, // แนบ items เข้าไปใน JSON
+				"items":        items, 
 			})
 		}
 	}
@@ -207,7 +228,6 @@ func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, orders)
 }
 
-// GetOrderByID ดึงข้อมูลคำสั่งซื้อเดี่ยวๆ พร้อมรายละเอียดสินค้า
 func (h *Handler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	orderID := chi.URLParam(r, "id")
 	u := GetUser(r)
@@ -221,7 +241,6 @@ func (h *Handler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	var status string
 	var createdAt interface{}
 
-	// เช็คว่าเป็นออเดอร์ของ User คนนี้จริงๆ หรือไม่
 	err := h.MallDB.QueryRowContext(r.Context(),
 		"SELECT id, total_amount, status, created_at FROM orders WHERE id = $1 AND user_id = $2",
 		orderID, u.ID).Scan(&id, &total, &status, &createdAt)
@@ -235,7 +254,6 @@ func (h *Handler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ดึงรายการสินค้า
 	itemRows, err := h.MallDB.QueryContext(r.Context(), `
 		SELECT oi.id, oi.product_id, p.name, oi.quantity, oi.price_at_time, p.image_url
 		FROM order_items oi
@@ -281,7 +299,6 @@ func (h *Handler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GetOrderTracking ดึงประวัติการเดินทางของคำสั่งซื้อนั้นๆ
 func (h *Handler) GetOrderTracking(w http.ResponseWriter, r *http.Request) {
 	orderID := chi.URLParam(r, "id")
 	
@@ -291,11 +308,10 @@ func (h *Handler) GetOrderTracking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ตรวจสอบก่อนว่าเป็นเจ้าของ Order จริงไหม
-	var ownerID int64
+	var ownerID string
 	err := h.MallDB.QueryRow("SELECT user_id FROM orders WHERE id = $1", orderID).Scan(&ownerID)
 	
-	if err != nil || ownerID != u.ID {
+	if err != nil || ownerID != fmt.Sprintf("%v", u.ID) {
 		h.writeError(w, http.StatusForbidden, "คุณไม่มีสิทธิ์ดูข้อมูลนี้")
 		return
 	}
@@ -318,4 +334,96 @@ func (h *Handler) GetOrderTracking(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	WriteJSON(w, http.StatusOK, tracking)
+}
+
+// ===============================================
+// API อัปเดตสถานะการจัดส่งแบบ Multi-Roles (Owner, Center, Rider)
+// ===============================================
+func (h *Handler) UpdateShipmentState(w http.ResponseWriter, r *http.Request) {
+	u := GetUser(r)
+	if u == nil {
+		h.writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req ShipmentUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid request")
+		return
+	}
+
+	var role string
+	err := h.MallDB.QueryRow("SELECT role FROM user_roles WHERE user_id = $1", u.ID).Scan(&role)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			role = "customer"
+		} else {
+			h.writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+
+	tx, err := h.MallDB.Begin()
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer tx.Rollback()
+
+	var orderID int
+	err = tx.QueryRow("SELECT order_id FROM shipments WHERE id = $1 FOR UPDATE", req.ShipmentID).Scan(&orderID)
+	if err != nil {
+		h.writeError(w, http.StatusNotFound, "Shipment not found")
+		return
+	}
+
+	// กฎการอนุญาตตาม Role
+	switch role {
+	case "owner":
+		if req.Status == "cancelled" {
+			_, err = tx.Exec("UPDATE shipments SET status = 'cancelled' WHERE id = $1", req.ShipmentID)
+		} else if req.Status == "shipped_to_center" && req.CenterID != nil {
+			_, err = tx.Exec("UPDATE shipments SET status = 'shipped_to_center', current_center_id = $1 WHERE id = $2", *req.CenterID, req.ShipmentID)
+		} else {
+			h.writeError(w, http.StatusBadRequest, "Invalid status or missing center_id for owner")
+			return
+		}
+	case "center":
+		if req.Status == "at_center" {
+			_, err = tx.Exec("UPDATE shipments SET status = 'at_center' WHERE id = $1", req.ShipmentID)
+		} else if req.Status == "delivering" && req.RiderID != nil {
+			_, err = tx.Exec("UPDATE shipments SET status = 'delivering', rider_id = $1 WHERE id = $2", *req.RiderID, req.ShipmentID)
+		} else if req.Status == "shipped_to_center" && req.CenterID != nil {
+			_, err = tx.Exec("UPDATE shipments SET status = 'shipped_to_center', current_center_id = $1 WHERE id = $2", *req.CenterID, req.ShipmentID)
+		} else {
+			h.writeError(w, http.StatusBadRequest, "Invalid status for center")
+			return
+		}
+	case "rider":
+		if req.Status == "completed" {
+			_, err = tx.Exec("UPDATE shipments SET status = 'completed' WHERE id = $1", req.ShipmentID)
+		} else {
+			h.writeError(w, http.StatusBadRequest, "Invalid status for rider")
+			return
+		}
+	default:
+		h.writeError(w, http.StatusForbidden, "Role not authorized to update shipments")
+		return
+	}
+
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to update shipment status")
+		return
+	}
+
+	// เพิ่มเส้นทางและอัปเดตให้ Customer ทราบทันที
+	_, err = tx.Exec("INSERT INTO order_tracking (order_id, status_detail, location) VALUES ($1, $2, $3)", 
+		orderID, req.TrackingDetail, req.Location)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to add tracking")
+		return
+	}
+
+	tx.Commit()
+	WriteJSON(w, http.StatusOK, map[string]string{"message": "Shipment updated successfully"})
 }

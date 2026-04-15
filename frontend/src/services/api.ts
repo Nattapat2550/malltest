@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'https://gtymalltestbe.onrender.com',
-  withCredentials: true, // เพิ่มบรรทัดนี้ เพื่ออนุญาตให้ส่ง HttpOnly Cookie และยืนยันตัวตน
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
@@ -16,18 +16,41 @@ api.interceptors.request.use((config) => {
 
 export default api;
 
-// Wallet & User Orders API
+// ==========================================
+// User & Wallet API
+// ==========================================
 export const getUserWallet = () => api.get('/api/users/me/wallet');
+export const getUserAddresses = () => api.get('/api/users/addresses');
+export const addUserAddress = (data: { title: string, address: string }) => api.post('/api/users/addresses', data);
+
+// ==========================================
+// Orders & Shipments API
+// ==========================================
 export const getMyOrders = () => api.get('/api/orders');
 
-// Admin Orders API
+export const shipmentApi = {
+  updateStatus: (data: {
+    shipment_id: number;
+    status: string;
+    center_id?: number;
+    rider_id?: number;
+    tracking_detail: string;
+    location: string;
+  }) => api.put('/api/orders/shipments/status', data),
+};
+
+// ==========================================
+// Admin API
+// ==========================================
 export const adminGetAllOrders = () => api.get('/api/admin/orders');
 export const adminUpdateOrderStatus = (id: number, status: string) => 
   api.put(`/api/admin/orders/${id}/status`, { status });
-
-// Admin Wallet API (สำหรับแอดมินเติมเงินให้ User)
 export const adminUpdateUserWallet = (userId: string, balance: number) => 
   api.put(`/api/admin/users/${userId}/wallet`, { balance });
+
+// ==========================================
+// Product Comments API
+// ==========================================
 export const commentApi = {
   getComments: (productId: number) => 
     api.get(`/api/products/${productId}/comments`),

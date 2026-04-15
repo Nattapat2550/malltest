@@ -1,7 +1,7 @@
 // frontend/src/pages/SettingsPage.tsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../services/api';
+import api, { getUserAddresses, addUserAddress } from '../services/api';
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState({ username: '', first_name: '', last_name: '', tel: '', profile_picture_url: '' });
@@ -9,6 +9,12 @@ export default function SettingsPage() {
   const [successMsg, setSuccessMsg] = useState('');
   
   const [wallet, setWallet] = useState<number>(0);
+  const [addresses, setAddresses] = useState<any[]>([]);
+
+  // Address form state
+  const [newTitle, setNewTitle] = useState('');
+  const [newAddress, setNewAddress] = useState('');
+  const [showAddressForm, setShowAddressForm] = useState(false);
 
   useEffect(() => {
     // ดึงโปรไฟล์
@@ -22,9 +28,14 @@ export default function SettingsPage() {
 
     // ดึงยอดเงิน
     api.get('/api/users/me/wallet')
-      .then(res => setWallet(res.data.balance || 0))
-      .catch(console.error);
+      .then(res => setWallet(res.data.balance || 0)).catch(console.error);
+
+    fetchAddresses();
   }, []);
+
+  const fetchAddresses = () => {
+    getUserAddresses().then(res => setAddresses(res.data)).catch(console.error);
+  };
 
   const handleUpdateProfile = async (e: any) => {
     e.preventDefault();
@@ -74,6 +85,21 @@ export default function SettingsPage() {
     } catch (err: any) { alert('ไฟล์รูปภาพใหญ่เกินไป หรือเกิดข้อผิดพลาด'); }
   };
 
+  const handleAddNewAddress = async (e: any) => {
+    e.preventDefault();
+    if(!newTitle || !newAddress) return alert('กรุณากรอกข้อมูลให้ครบ');
+    try {
+      await addUserAddress({ title: newTitle, address: newAddress });
+      setNewTitle('');
+      setNewAddress('');
+      setShowAddressForm(false);
+      fetchAddresses();
+      alert('เพิ่มที่อยู่สำเร็จ');
+    } catch (error) {
+      alert('เกิดข้อผิดพลาดในการเพิ่มที่อยู่');
+    }
+  };
+
   const handleDeleteAccount = async () => {
     if (window.confirm("คุณแน่ใจหรือไม่ว่าต้องการลบบัญชี? (คุณสามารถกู้คืนได้เมื่อกลับมาล็อกอินใหม่)")) {
       try {
@@ -88,7 +114,6 @@ export default function SettingsPage() {
   return (
     <div className="max-w-4xl mx-auto p-6 mt-10 space-y-8 animate-fade-in pb-20">
       
-      {/* 1. Wallet Section */}
       <div className="bg-linear-to-r from-blue-600 to-blue-800 rounded-2xl p-6 lg:p-8 shadow-lg text-white flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h2 className="text-lg font-medium text-blue-100">กระเป๋าเงินดิจิทัล (Wallet Balance)</h2>
@@ -99,12 +124,9 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* 2. Profile Section */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8">
         <h2 className="text-2xl font-bold border-b border-gray-200 dark:border-gray-700 pb-4 mb-6 text-gray-900 dark:text-white">ตั้งค่าโปรไฟล์ส่วนตัว</h2>
-        
         {successMsg && <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 rounded-xl font-medium">{successMsg}</div>}
-
         <div className="flex flex-col md:flex-row gap-8">
           <div className="flex flex-col items-center space-y-4 shrink-0">
             <div className="w-32 h-32 rounded-full border-4 border-blue-100 dark:border-gray-600 overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
@@ -146,7 +168,43 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* 3. Order History Section (เปลี่ยนเป็นปุ่มลิงก์ไปหน้า MyOrdersPage) */}
+      {/* --- Section ใหม่ สมุดที่อยู่ --- */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">สมุดที่อยู่ (Address Book)</h3>
+          <button onClick={() => setShowAddressForm(!showAddressForm)} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg font-bold text-sm">
+            {showAddressForm ? 'ยกเลิก' : '+ เพิ่มที่อยู่ใหม่'}
+          </button>
+        </div>
+
+        {showAddressForm && (
+          <form onSubmit={handleAddNewAddress} className="mb-6 p-4 border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ป้ายกำกับ (เช่น บ้าน, คอนโด)</label>
+              <input type="text" value={newTitle} onChange={e=>setNewTitle(e.target.value)} required className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ที่อยู่จัดส่ง</label>
+              <textarea value={newAddress} onChange={e=>setNewAddress(e.target.value)} required rows={2} className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white"></textarea>
+            </div>
+            <button type="submit" className="px-6 py-2 bg-blue-600 text-white font-bold rounded-xl shadow-md">บันทึก</button>
+          </form>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {addresses.length === 0 ? (
+            <p className="text-gray-500">ยังไม่มีที่อยู่ที่บันทึกไว้</p>
+          ) : (
+            addresses.map(a => (
+              <div key={a.id} className="p-4 border dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900">
+                <p className="font-bold dark:text-white">{a.title}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{a.address}</p>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h3 className="text-xl font-bold text-gray-900 dark:text-white">ประวัติการสั่งซื้อและสถานะจัดส่ง</h3>
@@ -154,45 +212,17 @@ export default function SettingsPage() {
             ดูประวัติการสั่งซื้อทั้งหมดของคุณ และติดตามสถานะการจัดส่งแบบละเอียด
           </p>
         </div>
-        <Link 
-          to="/my-orders" 
-          className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-md shadow-blue-500/20 whitespace-nowrap"
-        >
+        <Link to="/my-orders" className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-md shadow-blue-500/20 whitespace-nowrap">
           ดูคำสั่งซื้อของฉัน
         </Link>
       </div>
 
-      {/* 4. Appeals Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">การช่วยเหลือและการร้องเรียน</h3>
-        <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-xl border border-orange-100 dark:border-orange-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <h4 className="font-bold text-orange-800 dark:text-orange-400">ยื่นคำร้องปลดแบน / รายงานปัญหา</h4>
-            <p className="text-sm text-orange-600 dark:text-orange-300 mt-1">
-              หากคุณพบปัญหาหรือต้องการติดต่อทีมงาน
-            </p>
-          </div>
-          <Link 
-            to="/appeals" 
-            className="px-6 py-2.5 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 transition shadow-md shadow-orange-500/20 whitespace-nowrap"
-          >
-            ยื่นคำร้อง
-          </Link>
-        </div>
-      </div>
-
-      {/* 5. Danger Zone */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-red-200 dark:border-red-900/50 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h3 className="text-xl font-bold text-red-600 dark:text-red-500">Danger Zone</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            ปิดการใช้งานบัญชี (หากล็อกอินกลับมาภายใน 30 วัน บัญชีจะถูกกู้คืน)
-          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">ปิดการใช้งานบัญชี (หากล็อกอินกลับมาภายใน 30 วัน บัญชีจะถูกกู้คืน)</p>
         </div>
-        <button 
-          onClick={handleDeleteAccount} 
-          className="bg-red-600 text-white py-2.5 px-6 rounded-xl hover:bg-red-700 transition font-bold whitespace-nowrap"
-        >
+        <button onClick={handleDeleteAccount} className="bg-red-600 text-white py-2.5 px-6 rounded-xl hover:bg-red-700 font-bold whitespace-nowrap">
           ปิดการใช้งานบัญชี
         </button>
       </div>

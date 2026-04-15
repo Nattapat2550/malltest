@@ -9,7 +9,7 @@ import (
 
 func setupAdminRoutes(h *handlers.Handler) func(chi.Router) {
 	return func(r chi.Router) {
-		// Middleware บังคับให้ต้อง Login และเป็น Admin
+		// Middleware บังคับให้ต้อง Login และเป็น Admin (Super Admin)
 		r.Use(h.RequireAuth)
 		r.Use(h.RequireAdmin)
 
@@ -33,7 +33,7 @@ func setupAdminRoutes(h *handlers.Handler) func(chi.Router) {
 		r.Put("/news/{id}", h.AdminUpdateNews)
 		r.Delete("/news/{id}", h.AdminDeleteNews)
 		
-		r.Get("/appeals", h.AdminGetAppeals) // แก้ไข 404 appeals
+		r.Get("/appeals", h.AdminGetAppeals) 
 		r.Put("/appeals/{id}", h.AdminUpdateAppealStatus)
 		r.Delete("/appeals/{id}", h.AdminDeleteAppeal)
 

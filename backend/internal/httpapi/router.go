@@ -52,7 +52,7 @@ func NewRouter(cfg config.Config, mallDB *sql.DB) http.Handler {
 	r.Get("/api/homepage", h.HomepageGet)
 	r.With(h.RequireAdmin).Put("/api/homepage", h.HomepageUpdate)
 	
-	r.Get("/api/news", h.GetLatestNews) // เพิ่มบรรทัดนี้สำหรับ News
+	r.Get("/api/news", h.GetLatestNews)
 	r.Get("/api/carousel", h.CarouselList)
 	r.Get("/api/documents/list", h.DocumentList)
 	r.Get("/api/documents/{id}", h.GetDocumentDetail)
@@ -87,6 +87,8 @@ func setupProductRoutes(h *handlers.Handler) func(chi.Router) {
 
 		// ==========================================
 		// 3. Route สำหรับจัดการสินค้า (ต้อง Login และเป็น Admin)
+		// *หมายเหตุ: Owner จะจัดการสินค้าตัวเองได้ในระบบ Admin ฝั่งร้านค้าในอนาคต 
+		// ส่วนของ Admin หลักยังคงสิทธิ์ทั้งหมดไว้ตามเดิม
 		// ==========================================
 		r.Group(func(r chi.Router) {
 			r.Use(h.RequireAuth)
@@ -105,5 +107,8 @@ func setupOrderRoutes(h *handlers.Handler) func(chi.Router) {
 		r.Get("/", h.GetMyOrders)
 		r.Get("/{id}", h.GetOrderByID)
 		r.Get("/{id}/tracking", h.GetOrderTracking)
+		
+		// เพิ่ม Route สำหรับระบบจัดการสถานะพัสดุสำหรับ (Owner, Center, Rider)
+		r.Put("/shipments/status", h.UpdateShipmentState) 
 	}
 }
