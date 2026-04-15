@@ -18,10 +18,9 @@ func (h *Handler) UsersMeGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var me userDTO
-	// ป้องกัน Type Mismatch โดยแปลง ID เป็น String เสมอ
-	uidStr := fmt.Sprintf("%v", u.ID)
-
-	if err := h.Pure.Post(ctx, "/api/internal/find-user", map[string]any{"id": uidStr}, &me); err != nil {
+	
+	// สำคัญ: ยิง Pure API ต้องส่ง u.ID (int64 ดั้งเดิม) เท่านั้น เพื่อไม่ให้ติด 422
+	if err := h.Pure.Post(ctx, "/api/internal/find-user", map[string]any{"id": u.ID}, &me); err != nil {
 		h.writeErrFrom(w, err)
 		return
 	}
@@ -32,11 +31,13 @@ func (h *Handler) UsersMeGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// แทรก Role จากตาราง user_roles ในการตอบกลับด้วย
+	// สำคัญ: ฐานข้อมูล MallDB ของเราตั้ง user_id เป็น VARCHAR ดังนั้นต้องแปลงเป็น String ป้องกัน Error
+	uidStr := fmt.Sprintf("%v", u.ID)
+	
 	var role string
 	err := h.MallDB.QueryRow("SELECT role FROM user_roles WHERE user_id = $1", uidStr).Scan(&role)
 	if err != nil {
-		role = "customer" // Default ถ้าไม่มี
+		role = "customer" // Default
 	}
 
 	response := map[string]any{
@@ -61,8 +62,7 @@ func (h *Handler) UsersMePut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uidStr := fmt.Sprintf("%v", u.ID)
-	payload := map[string]any{"id": uidStr}
+	payload := map[string]any{"id": u.ID}
 	for k, v := range body {
 		payload[k] = v
 	}
@@ -123,9 +123,8 @@ func (h *Handler) UsersMeAvatar(w http.ResponseWriter, r *http.Request) {
 
 	dataURL := fmt.Sprintf("data:%s;base64,%s", mime, base64.StdEncoding.EncodeToString(b))
 
-	uidStr := fmt.Sprintf("%v", u.ID)
 	payload := map[string]any{
-		"id":                  uidStr,
+		"id":                  u.ID,
 		"profile_picture_url": dataURL,
 	}
 
@@ -141,7 +140,6 @@ func (h *Handler) UsersMeAvatar(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ฟังก์ชันลบบัญชีที่ขาดหายไป นำกลับมาใส่ให้ครบแล้วครับ
 func (h *Handler) UsersMeDelete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	u := GetUser(r)
@@ -150,9 +148,8 @@ func (h *Handler) UsersMeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uidStr := fmt.Sprintf("%v", u.ID)
 	payload := map[string]any{
-		"id":     uidStr,
+		"id":     u.ID,
 		"status": "deleted",
 	}
 

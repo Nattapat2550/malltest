@@ -1,4 +1,3 @@
-// frontend/src/pages/SettingsPage.tsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api, { getUserAddresses, addUserAddress } from '../services/api';
@@ -11,22 +10,25 @@ export default function SettingsPage() {
   const [wallet, setWallet] = useState<number>(0);
   const [addresses, setAddresses] = useState<any[]>([]);
 
-  // Address form state
   const [newTitle, setNewTitle] = useState('');
   const [newAddress, setNewAddress] = useState('');
   const [showAddressForm, setShowAddressForm] = useState(false);
 
   useEffect(() => {
-    // ดึงโปรไฟล์
-    api.get('/api/users/me').then(({ data }) => setProfile({
-      username: data.username || '',
-      first_name: data.first_name || '', 
-      last_name: data.last_name || '', 
-      tel: data.tel || '', 
-      profile_picture_url: data.profile_picture_url || ''
-    })).catch(console.error);
+    // 1. แก้ไข: แกะข้อมูลจาก object 'user' ที่ Backend ห่อส่งมาให้
+    api.get('/api/users/me').then(({ data }) => {
+      const u = data.user || data; 
+      if (u) {
+        setProfile({
+          username: u.username || '',
+          first_name: u.first_name || '', 
+          last_name: u.last_name || '', 
+          tel: u.tel || '', 
+          profile_picture_url: u.profile_picture_url || ''
+        });
+      }
+    }).catch(console.error);
 
-    // ดึงยอดเงิน
     api.get('/api/users/me/wallet')
       .then(res => setWallet(res.data.balance || 0)).catch(console.error);
 
@@ -113,7 +115,6 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6 mt-10 space-y-8 animate-fade-in pb-20">
-      
       <div className="bg-linear-to-r from-blue-600 to-blue-800 rounded-2xl p-6 lg:p-8 shadow-lg text-white flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h2 className="text-lg font-medium text-blue-100">กระเป๋าเงินดิจิทัล (Wallet Balance)</h2>
@@ -168,7 +169,6 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* --- Section ใหม่ สมุดที่อยู่ --- */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold text-gray-900 dark:text-white">สมุดที่อยู่ (Address Book)</h3>
@@ -226,7 +226,6 @@ export default function SettingsPage() {
           ปิดการใช้งานบัญชี
         </button>
       </div>
-
     </div>
   );
 }
