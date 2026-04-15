@@ -48,8 +48,16 @@ func (h *Handler) UpdateShipmentState(w http.ResponseWriter, r *http.Request) {
 	case "owner", "admin":
 		if req.Status == "cancelled" {
 			_, err = tx.Exec("UPDATE shipments SET status = 'cancelled' WHERE id = $1", req.ShipmentID)
+			// ยกเลิกออเดอร์ด้วย หากร้านกดยกเลิก
+			if err == nil {
+				_, err = tx.Exec("UPDATE orders SET status = 'cancelled' WHERE id = $1", orderID)
+			}
 		} else if req.Status == "shipped_to_center" && req.CenterID != nil {
 			_, err = tx.Exec("UPDATE shipments SET status = 'shipped_to_center', current_center_id = $1 WHERE id = $2", *req.CenterID, req.ShipmentID)
+			// เปลี่ยนสถานะออเดอร์เป็นกำลังจัดส่ง (shipping) เมื่อร้านจัดส่ง
+			if err == nil {
+				_, err = tx.Exec("UPDATE orders SET status = 'shipping' WHERE id = $1", orderID)
+			}
 		}
 	case "center":
 		if req.Status == "at_center" {
@@ -62,6 +70,10 @@ func (h *Handler) UpdateShipmentState(w http.ResponseWriter, r *http.Request) {
 	case "rider":
 		if req.Status == "completed" {
 			_, err = tx.Exec("UPDATE shipments SET status = 'completed' WHERE id = $1", req.ShipmentID)
+			// เปลี่ยนสถานะออเดอร์เป็นจัดส่งสำเร็จ (completed) เมื่อไรเดอร์จัดส่งเสร็จ
+			if err == nil {
+				_, err = tx.Exec("UPDATE orders SET status = 'completed' WHERE id = $1", orderID)
+			}
 		}
 	default:
 		h.writeError(w, http.StatusForbidden, "Role not authorized to update shipments")
