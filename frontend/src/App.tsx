@@ -1,15 +1,19 @@
-import React, { Suspense, lazy, useEffect, useState } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import api from './services/api';
 
 import Layout from './layouts/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './pages/LandingPage';
-import 'react-quill-new/dist/quill.snow.css';
 import OwnerPage from './pages/owner/OwnerPage';
 import CenterPage from './pages/center/CenterPage';
 import RiderPage from './pages/rider/RiderPage';
+import 'react-quill-new/dist/quill.snow.css';
 
+// --- Custom Hooks ---
+import { useServerWakeup } from './hooks/useServerWakeup';
+import { useOAuthCallback } from './hooks/useOAuthCallback';
+
+// --- Lazy Loaded Components ---
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const CheckCodePage = lazy(() => import('./pages/CheckCodePage'));
@@ -24,68 +28,14 @@ const DownloadPage = lazy(() => import('./pages/DownloadPage'));
 const AppealsPage = lazy(() => import('./pages/AppealPage'));
 const DocumentDetailsPage = lazy(() => import('./pages/DocumentDetailsPage'));
 const ProductCatalog = lazy(() => import('./pages/ProductCatalog'));
-
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const CartPage = lazy(() => import('./pages/CartPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
-
-// 1. เพิ่ม Import หน้า MyOrdersPage ตรงนี้
 const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage'));
 
-const App = () => {
-  const [serverReady, setServerReady] = useState(false);
-  const [wakingUp, setWakingUp] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-    const wakeUpServers = async () => {
-      try {
-        await api.get('/api/homepage');
-        if (isMounted) setServerReady(true);
-      } catch (err: any) { 
-        if (isMounted) {
-          setWakingUp(true);
-          if (err.response && err.response.status === 429) {
-            setTimeout(wakeUpServers, 10000); 
-          } else {
-            setTimeout(wakeUpServers, 5000);
-          }
-        }
-      }
-    };
-    
-    wakeUpServers();
-    return () => { isMounted = false; };
-  }, []);
-
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash && hash.includes('token=')) {
-      const params = new URLSearchParams(hash.substring(1));
-      const token = params.get('token');
-      const role = params.get('role');
-
-      if (token) {
-        localStorage.setItem('token', token);
-        if (role) localStorage.setItem('role', role);
-        
-        api.get('/api/auth/status')
-          .then((res) => {
-            if (res.data && res.data.user) {
-              localStorage.setItem('user', JSON.stringify(res.data.user));
-              window.dispatchEvent(new Event('user-updated'));
-            }
-            const targetUrl = role === 'admin' ? '/admin' : '/home';
-            window.history.replaceState(null, '', targetUrl);
-            window.location.reload();
-          })
-          .catch(() => {
-            window.history.replaceState(null, '', '/home');
-            window.location.reload();
-          });
-      }
-    }
-  }, []);
+const App: React.FC = () => {
+  const { serverReady, wakingUp } = useServerWakeup();
+  useOAuthCallback();
 
   if (!serverReady) {
     return (
@@ -125,8 +75,6 @@ const App = () => {
           <Route path="/products/:id" element={<ProtectedRoute><ProductDetailPage /></ProtectedRoute>} />
           <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
           <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-          
-          {/* 2. เพิ่ม Route ไปหน้า MyOrdersPage */}
           <Route path="/my-orders" element={<ProtectedRoute><MyOrdersPage /></ProtectedRoute>} />
           
           <Route path="/malls" element={<Navigate to="/products" replace />} />

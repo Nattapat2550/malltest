@@ -1,9 +1,8 @@
-// backend/cmd/server/main.go
 package main
 
 import (
 	"context"
-	"database/sql"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,50 +12,23 @@ import (
 	"time"
 
 	"backend/internal/config"
+	"backend/internal/database"
 	"backend/internal/httpapi"
-
-	_ "github.com/lib/pq"
 )
 
 func main() {
-	// 🌟 ตั้งค่า slog ให้แสดงผลเป็น JSON เพื่อให้ Render และระบบ Monitoring อ่านง่าย
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	setupLogger()
 
 	cfg := config.Load()
+	port := getPort(cfg.Port)
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = cfg.Port
-	}
-	port = strings.TrimSpace(port)
-	if port == "" {
-		port = "5000"
-	}
-
-	mallDBUrl := os.Getenv("MALL_DB_URL")
-	var mallDB *sql.DB
-	if mallDBUrl != "" {
-		var err error
-		mallDB, err = sql.Open("postgres", mallDBUrl)
-		if err != nil {
-			slog.Error("Cannot connect to Mall DB", "error", err)
-			os.Exit(1)
-		}
-		if err = mallDB.Ping(); err != nil {
-			slog.Error("Mall DB ping failed", "error", err)
-			os.Exit(1)
-		}
-
-		// 🌟 ตั้งค่า Connection Pool ป้องกัน DB ล่มเมื่อโหลดหนัก
-		mallDB.SetMaxOpenConns(150)
-		mallDB.SetMaxIdleConns(30)
-		mallDB.SetConnMaxLifetime(15 * time.Minute)
-
+	// 1. Initialize Database
+	mallDB := database.InitDB(os.Getenv("MALL_DB_URL"))
+	if mallDB != nil {
 		defer mallDB.Close()
-		slog.Info("Connected to Mall DB successfully", "component", "backend")
 	}
 
+	// 2. Setup HTTP Server
 	srv := &http.Server{
 		Addr:              "0.0.0.0:" + port,
 		Handler:           httpapi.NewRouter(cfg, mallDB),
@@ -66,20 +38,47 @@ func main() {
 		IdleTimeout:       90 * time.Second,
 	}
 
+	// 3. Start Server with Graceful Shutdown
+	startServer(srv, port, cfg.NodeEnv)
+}
+
+func setupLogger() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+}
+
+func getPort(configPort string) string {
+	port := strings.TrimSpace(os.Getenv("PORT"))
+	if port == "" {
+		port = configPort
+	}
+	if port == "" {
+		port = "5000"
+	}
+	return port
+}
+
+func startServer(srv *http.Server, port, env string) {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		slog.Info("Server listening", "port", port, "env", cfg.NodeEnv)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		slog.Info("Server listening", "port", port, "env", env)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("listen error", "error", err)
 			os.Exit(1)
 		}
 	}()
 
 	<-stop
+	slog.Info("Shutting down server gracefully...")
+
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	_ = srv.Shutdown(ctx)
-	slog.Info("Server stopped gracefully")
+
+	if err := srv.Shutdown(ctx); err != nil {
+		slog.Error("Server shutdown failed", "error", err)
+	} else {
+		slog.Info("Server stopped cleanly")
+	}
 }
