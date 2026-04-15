@@ -6,7 +6,7 @@ import Layout from './layouts/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './pages/LandingPage';
 import 'react-quill-new/dist/quill.snow.css';
-
+import OwnerPage from './pages/owner/OwnerPage';
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const CheckCodePage = lazy(() => import('./pages/CheckCodePage'));
@@ -131,7 +131,7 @@ const App = () => {
           <Route path="/download" element={<ProtectedRoute><DownloadPage /></ProtectedRoute>} />
 
           <Route path="/admin" element={<ProtectedRoute roles={['admin']}><AdminPage /></ProtectedRoute>} />
-
+          <Route path="/owner" element={<ProtectedRoute><OwnerPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

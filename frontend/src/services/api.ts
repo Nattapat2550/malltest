@@ -63,6 +63,7 @@ export const ownerApi = {
   createProduct: (data: any) => api.post('/api/owner/products', data),
   updateProduct: (id: number, data: any) => api.put(`/api/owner/products/${id}`, data),
   deleteProduct: (id: number) => api.delete(`/api/owner/products/${id}`),
+  getOrders: () => api.get('/api/owner/orders'),
 };
 
 // ==========================================

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import api, { getUserAddresses, addUserAddress, ownerApi } from '../services/api';
+import { Link, useNavigate } from 'react-router-dom';
+import api, { getUserAddresses, addUserAddress } from '../services/api';
 
 export default function SettingsPage() {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState({ username: '', first_name: '', last_name: '', tel: '', profile_picture_url: '' });
   const [role, setRole] = useState<string>('customer');
   const [loading, setLoading] = useState(false);
@@ -14,16 +15,7 @@ export default function SettingsPage() {
   const [newTitle, setNewTitle] = useState('');
   const [newAddress, setNewAddress] = useState('');
   const [showAddressForm, setShowAddressForm] = useState(false);
-
-  // Shop Management State
   const [isRequestingShop, setIsRequestingShop] = useState(false);
-  const [showEditShopModal, setShowEditShopModal] = useState(false);
-  const [showAddProductModal, setShowAddProductModal] = useState(false);
-  
-  // Data for Owner
-  const [shopInfo, setShopInfo] = useState({ id: 0, name: '' });
-  const [ownerProducts, setOwnerProducts] = useState<any[]>([]);
-  const [editingProduct, setEditingProduct] = useState<any>(null); // State สำหรับแยก Add / Edit
 
   useEffect(() => {
     api.get('/api/users/me').then(({ data }) => {
@@ -37,36 +29,15 @@ export default function SettingsPage() {
           profile_picture_url: u.profile_picture_url || ''
         });
       }
-      if (data.role) {
-        setRole(data.role);
-        // หากเป็นเจ้าของร้าน ให้ดึงข้อมูลร้านและสินค้ามาโชว์
-        if (data.role === 'owner') {
-          fetchOwnerData();
-        }
-      }
+      if (data.role) setRole(data.role);
     }).catch(console.error);
 
-    api.get('/api/users/me/wallet')
-      .then(res => setWallet(res.data.balance || 0)).catch(console.error);
-
+    api.get('/api/users/me/wallet').then(res => setWallet(res.data.balance || 0)).catch(console.error);
     fetchAddresses();
   }, []);
 
   const fetchAddresses = () => {
     getUserAddresses().then(res => setAddresses(res.data)).catch(console.error);
-  };
-
-  const fetchOwnerData = async () => {
-    try {
-      const shopRes = await ownerApi.getShop();
-      if (shopRes.data.has_shop) {
-        setShopInfo(shopRes.data.shop);
-      }
-      const prodRes = await ownerApi.getProducts();
-      setOwnerProducts(prodRes.data);
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   const handleUpdateProfile = async (e: any) => {
@@ -96,9 +67,7 @@ export default function SettingsPage() {
     const formData = new FormData();
     formData.append('avatar', file);
     try {
-      const { data } = await api.post('/api/users/me/avatar', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const { data } = await api.post('/api/users/me/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setProfile({ ...profile, profile_picture_url: data.profile_picture_url });
       
       const userStr = localStorage.getItem('user');
@@ -122,9 +91,7 @@ export default function SettingsPage() {
       setShowAddressForm(false);
       fetchAddresses();
       alert('เพิ่มที่อยู่สำเร็จ');
-    } catch (error) {
-      alert('เกิดข้อผิดพลาดในการเพิ่มที่อยู่');
-    }
+    } catch (error) { alert('เกิดข้อผิดพลาดในการเพิ่มที่อยู่'); }
   };
 
   const handleRequestOpenShop = async () => {
@@ -132,64 +99,11 @@ export default function SettingsPage() {
     try {
       await api.post('/api/appeals', {
         topic: 'ขอเปิดร้านค้าใหม่ (Request to Open Shop)',
-        message: `ผู้ใช้ ID/Username: ${profile.username} ต้องการขอเปิดร้านค้า กรุณาตรวจสอบและอัปเดต Role เป็น Owner ให้ด้วยครับ`
+        message: `ผู้ใช้ ID/Username: ${profile.username} ต้องการขอเปิดร้านค้า`
       });
-      alert('ส่งคำขอเปิดร้านค้าเรียบร้อยแล้ว! กรุณารอการติดต่อกลับหรือการอนุมัติจาก Admin');
-    } catch (err) {
-      alert('ส่งคำขอสำเร็จ หรือคุณอาจจะเคยส่งคำขอไปแล้ว (โปรดรอตรวจสอบ)');
-    }
+      alert('ส่งคำขอเปิดร้านค้าเรียบร้อยแล้ว! กรุณารอการอนุมัติจาก Admin');
+    } catch (err) { alert('ส่งคำขอสำเร็จ หรือคุณอาจจะเคยส่งคำขอไปแล้ว'); }
     setIsRequestingShop(false);
-  };
-
-  const handleSaveShopInfo = async (e: any) => {
-    e.preventDefault();
-    try {
-      await ownerApi.updateShop({ name: e.target.shop_name.value });
-      alert("บันทึกข้อมูลหน้าร้านสำเร็จ");
-      setShowEditShopModal(false);
-      fetchOwnerData();
-    } catch (err) {
-      alert("เกิดข้อผิดพลาดในการบันทึกข้อมูลร้าน");
-    }
-  };
-
-  const handleSaveProduct = async (e: any) => {
-    e.preventDefault();
-    try {
-      const payload = {
-        sku: e.target.sku.value,
-        name: e.target.name.value,
-        description: e.target.description.value,
-        price: parseFloat(e.target.price.value),
-        stock: parseInt(e.target.stock.value),
-        image_url: e.target.image_url.value
-      };
-      
-      if (editingProduct) {
-        await ownerApi.updateProduct(editingProduct.id, payload);
-        alert("อัปเดตสินค้าสำเร็จ");
-      } else {
-        await ownerApi.createProduct(payload);
-        alert("เพิ่มสินค้าสำเร็จ");
-      }
-      
-      setShowAddProductModal(false);
-      setEditingProduct(null);
-      fetchOwnerData();
-    } catch (err) {
-      alert("เกิดข้อผิดพลาด: โปรดตรวจสอบว่า SKU ไม่ซ้ำกับสินค้าอื่นในระบบ");
-    }
-  };
-
-  const handleDeleteProduct = async (id: number) => {
-    if (window.confirm("คุณต้องการลบสินค้านี้ใช่หรือไม่?")) {
-      try {
-        await ownerApi.deleteProduct(id);
-        fetchOwnerData();
-      } catch (err) {
-        alert("ไม่สามารถลบสินค้าได้");
-      }
-    }
   };
 
   const handleDeleteAccount = async () => {
@@ -233,7 +147,6 @@ export default function SettingsPage() {
               <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
             </label>
           </div>
-
           <form onSubmit={handleUpdateProfile} className="flex-1 space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
@@ -260,82 +173,22 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* ================================================== */}
       {/* --- Section ร้านค้า (Seller Center) --- */}
-      {/* ================================================== */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">ศูนย์จัดการร้านค้า (Seller Center)</h3>
-
-        {role === 'owner' ? (
-          <div>
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="flex-1 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-xl p-5">
-                <h4 className="font-bold text-orange-800 dark:text-orange-400 mb-1">ข้อมูลหน้าร้าน: {shopInfo.name || "ยังไม่ได้ตั้งชื่อร้าน"}</h4>
-                <p className="text-sm text-orange-600 dark:text-orange-300 mb-4">ปรับปรุงชื่อร้านและรายละเอียดร้านค้าของคุณ</p>
-                <button onClick={() => setShowEditShopModal(true)} className="w-full py-2 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg transition shadow-sm">
-                  🏪 แก้ไขหน้าร้าน
-                </button>
-              </div>
-              <div className="flex-1 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-xl p-5">
-                <h4 className="font-bold text-blue-800 dark:text-blue-400 mb-1">ระบบคลังสินค้า</h4>
-                <p className="text-sm text-blue-600 dark:text-blue-300 mb-4">เพิ่มสินค้าเพื่อวางจำหน่ายบนหน้าเว็บ Mall</p>
-                <button onClick={() => { setEditingProduct(null); setShowAddProductModal(true); }} className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition shadow-sm">
-                  📦 เพิ่มสินค้าลงร้าน
-                </button>
-              </div>
-            </div>
-
-            {/* ตารางแสดงสินค้าของร้านตัวเอง */}
-            <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-xl">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-                  <tr>
-                    <th className="py-3 px-4 font-bold">SKU</th>
-                    <th className="py-3 px-4 font-bold">รูป</th>
-                    <th className="py-3 px-4 font-bold">ชื่อสินค้า</th>
-                    <th className="py-3 px-4 font-bold">ราคา</th>
-                    <th className="py-3 px-4 font-bold">สต็อก</th>
-                    <th className="py-3 px-4 font-bold text-right">จัดการ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ownerProducts.length === 0 ? (
-                    <tr><td colSpan={6} className="text-center py-6 text-gray-500">ยังไม่มีสินค้าในร้านของคุณ</td></tr>
-                  ) : (
-                    ownerProducts.map(p => (
-                      <tr key={p.id} className="border-b border-gray-100 dark:border-gray-750 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                        <td className="py-3 px-4 text-gray-500">{p.sku}</td>
-                        <td className="py-3 px-4">
-                          <img src={p.image_url} alt="product" className="w-10 h-10 object-cover rounded-md" />
-                        </td>
-                        <td className="py-3 px-4 font-bold text-gray-900 dark:text-white">{p.name}</td>
-                        <td className="py-3 px-4 text-blue-600 dark:text-blue-400 font-bold">฿{p.price}</td>
-                        <td className="py-3 px-4">{p.stock}</td>
-                        <td className="py-3 px-4 text-right">
-                          <button onClick={() => { setEditingProduct(p); setShowAddProductModal(true); }} className="mr-3 text-blue-500 font-bold hover:underline">แก้ไข</button>
-                          <button onClick={() => handleDeleteProduct(p.id)} className="text-red-500 font-bold hover:underline">ลบ</button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">ศูนย์จัดการร้านค้า (Seller Center)</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">พื้นที่สำหรับเจ้าของร้านค้าเพื่อจัดการหน้าร้าน สินค้า และออเดอร์</p>
+        </div>
+        {role === 'owner' || role === 'admin' ? (
+          <button onClick={() => navigate('/owner')} className="px-6 py-2.5 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition shadow-md shadow-orange-500/20 whitespace-nowrap">
+            เข้าสู่ระบบหลังบ้านร้านค้า
+          </button>
         ) : (
-          <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-xl p-6 text-center">
-            <h4 className="text-lg font-bold text-orange-800 dark:text-orange-400 mb-2">คุณยังไม่มีร้านค้าในระบบ</h4>
-            <p className="text-sm text-orange-600 dark:text-orange-300 mb-4">เริ่มต้นธุรกิจของคุณและเข้าถึงลูกค้ามากมาย สมัครเปิดร้านค้าได้ฟรี!</p>
-            <button onClick={handleRequestOpenShop} disabled={isRequestingShop} className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-md transition">
-              {isRequestingShop ? 'กำลังส่งคำขอ...' : '📝 ส่งคำขอเปิดร้านค้า'}
-            </button>
-          </div>
+          <button onClick={handleRequestOpenShop} disabled={isRequestingShop} className="px-6 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-bold rounded-xl hover:bg-gray-200 transition shadow-sm whitespace-nowrap">
+            {isRequestingShop ? 'กำลังส่งคำขอ...' : 'ส่งคำขอเปิดร้านค้า'}
+          </button>
         )}
       </div>
-
-      {/* ================================================== */}
-      {/* Sections เดิม (สมุดที่อยู่, ประวัติสั่งซื้อ, Danger Zone) */}
-      {/* ================================================== */}
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8">
         <div className="flex justify-between items-center mb-6">
@@ -360,16 +213,12 @@ export default function SettingsPage() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {addresses.length === 0 ? (
-            <p className="text-gray-500">ยังไม่มีที่อยู่ที่บันทึกไว้</p>
-          ) : (
-            addresses.map(a => (
-              <div key={a.id} className="p-4 border dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900">
-                <p className="font-bold dark:text-white">{a.title}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{a.address}</p>
-              </div>
-            ))
-          )}
+          {addresses.length === 0 ? <p className="text-gray-500">ยังไม่มีที่อยู่ที่บันทึกไว้</p> : addresses.map(a => (
+            <div key={a.id} className="p-4 border dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900">
+              <p className="font-bold dark:text-white">{a.title}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{a.address}</p>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -378,9 +227,7 @@ export default function SettingsPage() {
           <h3 className="text-xl font-bold text-gray-900 dark:text-white">ประวัติการสั่งซื้อและสถานะจัดส่ง</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">ดูประวัติการสั่งซื้อทั้งหมดของคุณ และติดตามสถานะการจัดส่งแบบละเอียด</p>
         </div>
-        <Link to="/my-orders" className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-md shadow-blue-500/20 whitespace-nowrap">
-          ดูคำสั่งซื้อของฉัน
-        </Link>
+        <Link to="/my-orders" className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-md shadow-blue-500/20 whitespace-nowrap">ดูคำสั่งซื้อของฉัน</Link>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-red-200 dark:border-red-900/50 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -388,76 +235,8 @@ export default function SettingsPage() {
           <h3 className="text-xl font-bold text-red-600 dark:text-red-500">Danger Zone</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">ปิดการใช้งานบัญชี (หากล็อกอินกลับมาภายใน 30 วัน บัญชีจะถูกกู้คืน)</p>
         </div>
-        <button onClick={handleDeleteAccount} className="bg-red-600 text-white py-2.5 px-6 rounded-xl hover:bg-red-700 font-bold whitespace-nowrap">
-          ปิดการใช้งานบัญชี
-        </button>
+        <button onClick={handleDeleteAccount} className="bg-red-600 text-white py-2.5 px-6 rounded-xl hover:bg-red-700 font-bold whitespace-nowrap">ปิดการใช้งานบัญชี</button>
       </div>
-
-      {/* ========================================== */}
-      {/* Modals สำหรับจัดการหน้าร้าน (เฉพาะ Owner) */}
-      {/* ========================================== */}
-      {showEditShopModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl p-6">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">แก้ไขข้อมูลร้าน</h3>
-            <form onSubmit={handleSaveShopInfo}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ชื่อร้านค้า (แสดงบนเว็บ)</label>
-                  <input type="text" name="shop_name" required className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" defaultValue={shopInfo.name} />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => setShowEditShopModal(false)} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl font-bold">ยกเลิก</button>
-                <button type="submit" className="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold">บันทึก</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showAddProductModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-y-auto max-h-[90vh]">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">{editingProduct ? 'แก้ไขข้อมูลสินค้า' : 'เพิ่มสินค้าชิ้นใหม่'}</h3>
-            <form onSubmit={handleSaveProduct}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">รหัส SKU (ห้ามซ้ำ)</label>
-                  <input type="text" name="sku" required className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" defaultValue={editingProduct?.sku || ''} />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ชื่อสินค้า</label>
-                  <input type="text" name="name" required className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" defaultValue={editingProduct?.name || ''} />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">รายละเอียด</label>
-                  <textarea name="description" rows={3} required className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" defaultValue={editingProduct?.description || ''} />
-                </div>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ราคา (฿)</label>
-                    <input type="number" name="price" step="0.01" required min="0" className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" defaultValue={editingProduct?.price || ''} />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">สต็อก (ชิ้น)</label>
-                    <input type="number" name="stock" required min="0" className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" defaultValue={editingProduct?.stock || ''} />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">URL รูปภาพ</label>
-                  <input type="url" name="image_url" placeholder="https://..." required className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" defaultValue={editingProduct?.image_url || ''} />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => setShowAddProductModal(false)} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl font-bold">ยกเลิก</button>
-                <button type="submit" className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold">{editingProduct ? 'อัปเดต' : 'เพิ่มสินค้า'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      
     </div>
   );
 }

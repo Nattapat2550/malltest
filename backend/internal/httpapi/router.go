@@ -48,7 +48,6 @@ func NewRouter(cfg config.Config, mallDB *sql.DB) http.Handler {
 	r.Route("/api/products", setupProductRoutes(h))
 	r.Route("/api/orders", setupOrderRoutes(h))
 	
-	// เพิ่ม Route ของ Owner สำหรับจัดการร้านและสินค้า
 	r.Route("/api/owner", setupOwnerRoutes(h)) 
 
 	r.Get("/api/homepage", h.HomepageGet)
@@ -70,7 +69,6 @@ func setupProductRoutes(h *handlers.Handler) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", h.ListProducts)
 		r.Get("/{id}", h.GetProductByID)
-
 		r.Get("/{id}/comments", h.GetProductComments)
 
 		r.Group(func(r chi.Router) {
@@ -101,7 +99,6 @@ func setupOrderRoutes(h *handlers.Handler) func(chi.Router) {
 	}
 }
 
-// สร้างชุด Route ใหม่เฉพาะสำหรับ Owner 
 func setupOwnerRoutes(h *handlers.Handler) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Use(h.RequireAuth)
@@ -113,5 +110,8 @@ func setupOwnerRoutes(h *handlers.Handler) func(chi.Router) {
 		r.Post("/products", h.OwnerCreateProduct)
 		r.Put("/products/{id}", h.OwnerUpdateProduct)
 		r.Delete("/products/{id}", h.OwnerDeleteProduct)
+
+		// API สำหรับดึงออเดอร์ของ Owner
+		r.Get("/orders", h.OwnerGetOrders)
 	}
 }

@@ -370,10 +370,8 @@ func (h *Handler) OwnerUpdateShop(w http.ResponseWriter, r *http.Request) {
 	err := h.MallDB.QueryRow("SELECT id FROM shops WHERE owner_id = $1", uidStr).Scan(&shopID)
 	switch err {
 	case sql.ErrNoRows:
-		// สร้างร้านค้าใหม่ถ้ายังไม่มี
 		_, err = h.MallDB.Exec("INSERT INTO shops (owner_id, name) VALUES ($1, $2)", uidStr, req.Name)
 	case nil:
-		// อัปเดตร้านค้าเดิม
 		_, err = h.MallDB.Exec("UPDATE shops SET name = $1 WHERE id = $2", req.Name, shopID)
 	}
 	
@@ -477,7 +475,6 @@ func (h *Handler) OwnerUpdateProduct(w http.ResponseWriter, r *http.Request) {
 	u := GetUser(r)
 	uidStr := fmt.Sprintf("%v", u.ID)
 
-	// ตรวจสอบสิทธิ์ว่าเป็นเจ้าของร้านจริงๆ หรือไม่
 	var shopID int
 	err := h.MallDB.QueryRow("SELECT id FROM shops WHERE owner_id = $1", uidStr).Scan(&shopID)
 	if err != nil {
@@ -493,7 +490,6 @@ func (h *Handler) OwnerUpdateProduct(w http.ResponseWriter, r *http.Request) {
 
 	mediaBytes, _ := json.Marshal(p.Media)
 
-	// บังคับการอัปเดตเฉพาะสินค้าที่ shop_id ตรงกับของ Owner
 	res, err := h.MallDB.Exec(`
 		UPDATE products 
 		SET sku=$1, name=$2, description=$3, price=$4, stock=$5, image_url=$6, media_urls=$7, updated_at=CURRENT_TIMESTAMP
@@ -527,7 +523,6 @@ func (h *Handler) OwnerDeleteProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ลบสินค้าเฉพาะที่ shop_id ตรงกับของ Owner
 	res, err := h.MallDB.Exec("DELETE FROM products WHERE id = $1 AND shop_id = $2", id, shopID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -542,4 +537,83 @@ func (h *Handler) OwnerDeleteProduct(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Product deleted successfully"})
+}
+
+// OwnerGetOrders API ใหม่สำหรับดึงออเดอร์ของลูกค้าที่สั่งสินค้าร้านตัวเอง
+func (h *Handler) OwnerGetOrders(w http.ResponseWriter, r *http.Request) {
+	u := GetUser(r)
+	uidStr := fmt.Sprintf("%v", u.ID)
+
+	var shopID int
+	err := h.MallDB.QueryRow("SELECT id FROM shops WHERE owner_id = $1", uidStr).Scan(&shopID)
+	if err != nil {
+		http.Error(w, "Shop not found", http.StatusForbidden)
+		return
+	}
+
+	// ค้นหาพัสดุ (shipments) ที่เป็นของร้านนี้
+	rows, err := h.MallDB.Query(`
+		SELECT 
+			s.id as shipment_id, s.status as shipment_status, 
+			o.id as order_id, o.user_id, o.address, o.created_at
+		FROM shipments s
+		JOIN orders o ON s.order_id = o.id
+		WHERE s.shop_id = $1
+		ORDER BY s.id DESC
+	`, shopID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var results []map[string]any
+	for rows.Next() {
+		var shipmentID, orderID int
+		var shipmentStatus, userID, address string
+		var createdAt any
+
+		if err := rows.Scan(&shipmentID, &shipmentStatus, &orderID, &userID, &address, &createdAt); err == nil {
+			
+			// ดึงเฉพาะไอเท็มของออเดอร์นั้น "ที่เป็นของร้านนี้เท่านั้น"
+			itemRows, errItem := h.MallDB.Query(`
+				SELECT oi.quantity, p.name, p.price, p.image_url
+				FROM order_items oi
+				JOIN products p ON oi.product_id = p.id
+				WHERE oi.order_id = $1 AND p.shop_id = $2
+			`, orderID, shopID)
+
+			var items []map[string]any
+			if errItem == nil {
+				for itemRows.Next() {
+					var qty int
+					var name string
+					var price float64
+					var img sql.NullString
+					itemRows.Scan(&qty, &name, &price, &img)
+					items = append(items, map[string]any{
+						"name": name,
+						"quantity": qty,
+						"price": price,
+						"image_url": img.String,
+					})
+				}
+				itemRows.Close()
+			}
+
+			results = append(results, map[string]any{
+				"shipment_id": shipmentID,
+				"shipment_status": shipmentStatus,
+				"order_id": orderID,
+				"user_id": userID,
+				"address": address,
+				"created_at": createdAt,
+				"items": items,
+			})
+		}
+	}
+	
+	if results == nil { results = []map[string]any{} }
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(results)
 }
