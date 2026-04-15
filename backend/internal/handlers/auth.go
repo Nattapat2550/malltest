@@ -88,16 +88,19 @@ func (h *Handler) AuthRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user userDTO
-	if err := h.Pure.Post(ctx, "/api/internal/create-user-email", map[string]any{"email": email}, &user); err != nil {
-		h.writeErrFrom(w, err)
-		return
-	}
+	// ลบการสร้าง User ลงฐานข้อมูลทิ้ง เพื่อไม่ให้มีข้อมูลขึ้น DB ก่อนการกดยืนยันในหน้าฟอร์ม
+	// var user userDTO
+	// if err := h.Pure.Post(ctx, "/api/internal/create-user-email", map[string]any{"email": email}, &user); err != nil {
+	// 	h.writeErrFrom(w, err)
+	// 	return
+	// }
 
 	code := generateSixDigitCode()
 	expiresAt := time.Now().Add(10 * time.Minute).Format(time.RFC3339)
+	
+	// ใช้ email เป็นตัวอ้างอิงแทนการใช้ userId เพราะ user ยังไม่ถูกสร้าง
 	_ = h.Pure.Post(ctx, "/api/internal/store-verification-code", map[string]any{
-		"userId":    user.ID,
+		"email":     email, 
 		"code":      code,
 		"expiresAt": expiresAt,
 	}, nil)
@@ -107,7 +110,7 @@ func (h *Handler) AuthRegister(w http.ResponseWriter, r *http.Request) {
 		subject := "Your verification code"
 		text := "Your verification code is: " + code + "\n\nThis code will expire in 10 minutes."
 		if err := h.Mail.Send(ctx, MailMessage{
-			To:      user.Email,
+			To:      email,
 			Subject: subject,
 			Text:    text,
 			HTML:    "",
@@ -192,6 +195,7 @@ func (h *Handler) AuthCompleteProfile(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		} else {
+			// User จะถูกสร้างตรงนี้เท่านั้น (เมื่อมีการกดยืนยันบันทึกข้อมูล)
 			if errCreate := h.Pure.Post(ctx, "/api/internal/create-user-email", map[string]any{"email": email}, &user); errCreate != nil {
 				h.writeError(w, http.StatusInternalServerError, "Failed to create user account")
 				return
@@ -351,7 +355,6 @@ func (h *Handler) AuthStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// แก้ไข: เพิ่ม object 'user' กลับไปให้ระบบสามารถเก็บลง localStorage สำหรับ Google Login ได้
 	WriteJSON(w, http.StatusOK, map[string]any{
 		"authenticated": true,
 		"id":            user.ID,

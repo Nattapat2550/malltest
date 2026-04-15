@@ -22,7 +22,8 @@ const CheckCodePage = () => {
     setMsg(null);
     try {
       await api.post('/api/auth/verify-code', { email, code: code.trim() });
-      navigate(`/form?email=${encodeURIComponent(email)}`);
+      // เปลี่ยนจาก /form ไปที่หน้า /complete-profile
+      navigate(`/complete-profile?email=${encodeURIComponent(email)}`);
     } catch (err: any) {
       setMsg(err.response?.data?.error || 'Invalid code');
     }
