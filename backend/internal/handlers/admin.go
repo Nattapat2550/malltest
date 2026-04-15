@@ -9,47 +9,77 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// --- Admin User Management (Fetch from ProjectRust) ---
+// --- Admin User Management ---
 func (h *Handler) AdminGetUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var users []map[string]any
 
-	// 1. ดึงข้อมูล User จากระบบ Auth ส่วนกลาง
+	// 1. ดึงข้อมูล User ทั้งหมดจากระบบ Auth ส่วนกลาง (Pure API)
 	if err := h.Pure.Get(ctx, "/api/internal/admin/users", &users); err != nil {
 		h.writeError(w, http.StatusInternalServerError, "ไม่สามารถดึงข้อมูล User จากระบบส่วนกลางได้")
 		return
 	}
 
-	// 2. ดึงยอดเงินกระเป๋าจากฐานข้อมูล MallDB
-	rows, err := h.MallDB.Query("SELECT user_id, balance FROM user_wallets")
+	// 2. ดึงยอดเงิน (Wallets) จาก MallDB
+	wRows, err := h.MallDB.Query("SELECT user_id, balance FROM user_wallets")
 	wallets := make(map[string]float64)
 	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
+		defer wRows.Close()
+		for wRows.Next() {
 			var uid string
 			var balance float64
-			if err := rows.Scan(&uid, &balance); err == nil {
+			if err := wRows.Scan(&uid, &balance); err == nil {
 				wallets[uid] = balance
 			}
 		}
 	}
 
-	// 3. แนบยอดเงินเข้าไปในข้อมูล User แต่ละคนก่อนส่งให้ Frontend
+	// 3. ดึงสิทธิ์ย่อย (Roles) จาก MallDB
+	rRows, err := h.MallDB.Query("SELECT user_id, role FROM user_roles")
+	roles := make(map[string]string)
+	if err == nil {
+		defer rRows.Close()
+		for rRows.Next() {
+			var uid string
+			var role string
+			if err := rRows.Scan(&uid, &role); err == nil {
+				roles[uid] = role
+			}
+		}
+	}
+
+	// 4. ผสมข้อมูลทั้งหมดเตรียมส่งให้ Frontend
 	for i, user := range users {
 		var uid string
-		// ปรับปรุงการดึง ID ให้รองรับทั้งกรณีที่เป็น String และ Number(Float64 จาก JSON)
 		if idVal, ok := user["id"]; ok && idVal != nil {
 			uid = fmt.Sprintf("%v", idVal)
 		}
 
 		if uid != "" {
+			// จัดการ Wallet
 			if bal, exists := wallets[uid]; exists {
 				users[i]["balance"] = bal
 			} else {
 				users[i]["balance"] = 0.00 // ค่าเริ่มต้นถ้ายังไม่เคยถูกเติมเงิน
 			}
+
+			// จัดการ Role
+			if dbRole, exists := roles[uid]; exists && dbRole != "" {
+				// ถ้าเคยถูก Admin อัปเดตสิทธิ์ใน Malltest แล้ว ให้ใช้สิทธิ์นั้น
+				users[i]["role"] = dbRole
+			} else {
+				// ถ้ายังไม่เคยถูกกำหนดสิทธิ์ใน Malltest:
+				// ตรวจสอบว่าในระบบศูนย์กลาง (Pure API) เป็น Admin หรือไม่
+				pureRole, _ := user["role"].(string)
+				if pureRole == "admin" {
+					users[i]["role"] = "admin" // คงความเป็น Admin ไว้
+				} else {
+					users[i]["role"] = "customer" // User ทุกคนถูกบังคับให้เป็น Customer เป็นค่าเริ่มต้น
+				}
+			}
 		} else {
 			users[i]["balance"] = 0.00
+			users[i]["role"] = "customer"
 		}
 	}
 
@@ -57,28 +87,33 @@ func (h *Handler) AdminGetUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) AdminUpdateUserRole(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
 	idStr := chi.URLParam(r, "id")
 
-	var body map[string]any
-	if err := ReadJSON(r, &body); err != nil {
+	var req struct {
+		Role string `json:"role"`
+	}
+	if err := ReadJSON(r, &req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
-	payload := map[string]any{"id": idStr}
-	for k, v := range body {
-		payload[k] = v
-	}
+	// บันทึก Role ลงตาราง user_roles ของระบบ Malltest เท่านั้น (ไม่ส่งกลับไปกวน Pure API)
+	_, err := h.MallDB.ExecContext(r.Context(), `
+		INSERT INTO user_roles (user_id, role) 
+		VALUES ($1, $2)
+		ON CONFLICT (user_id) 
+		DO UPDATE SET role = EXCLUDED.role
+	`, idStr, req.Role)
 
-	var updated any
-	// ส่งคำสั่งอัปเดตสิทธิ์ไปที่ ProjectRust
-	if err := h.Pure.Post(ctx, "/api/internal/admin/users/update", payload, &updated); err != nil {
-		h.writeError(w, http.StatusInternalServerError, "ไม่สามารถอัปเดตสิทธิ์การใช้งานได้")
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "ไม่สามารถอัปเดตสิทธิ์การใช้งานในระบบได้: "+err.Error())
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, updated)
+	WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Role updated successfully",
+		"role":    req.Role,
+	})
 }
 
 // --- Admin Appeals Management ---
@@ -93,7 +128,7 @@ func (h *Handler) AdminGetAppeals(w http.ResponseWriter, r *http.Request) {
 	var appeals []map[string]any
 	for rows.Next() {
 		var id int
-		var uid, topic, msg, status string // uid เป็น string ตามฐานข้อมูลใหม่
+		var uid, topic, msg, status string 
 		if err := rows.Scan(&id, &uid, &topic, &msg, &status); err == nil {
 			appeals = append(appeals, map[string]any{
 				"id": id, "user_id": uid, "topic": topic, "message": msg, "status": status,
@@ -165,7 +200,7 @@ func (h *Handler) AdminCreateProduct(w http.ResponseWriter, r *http.Request) {
 		Name     string  `json:"name"`
 		Price    float64 `json:"price"`
 		Stock    int     `json:"stock"`
-		ImageURL string  `json:"image_url"` // รับค่ารููปภาพ
+		ImageURL string  `json:"image_url"`
 	}
 	if err := ReadJSON(r, &p); err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid input data")
@@ -190,7 +225,7 @@ func (h *Handler) AdminUpdateProduct(w http.ResponseWriter, r *http.Request) {
 		Name     string  `json:"name"`
 		Price    float64 `json:"price"`
 		Stock    int     `json:"stock"`
-		ImageURL string  `json:"image_url"` // รับค่ารููปภาพ
+		ImageURL string  `json:"image_url"`
 	}
 	if err := ReadJSON(r, &p); err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid input data")
@@ -247,8 +282,6 @@ func (h *Handler) AdminGetAllOrders(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, orders)
 }
 
-// backend/internal/handlers/admin.go
-
 func (h *Handler) AdminUpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
 	orderID := chi.URLParam(r, "id")
 	var input struct {
@@ -259,8 +292,6 @@ func (h *Handler) AdminUpdateOrderStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// อัปเดตทั้ง status ในตาราง orders และอัปเดตเวลา
-	// เปลี่ยน input.status เป็น input.Status ตรงบรรทัดด้านล่างนี้
 	_, err := h.MallDB.Exec(`
 		UPDATE orders 
 		SET status = $1, updated_at = CURRENT_TIMESTAMP 

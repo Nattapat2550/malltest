@@ -43,10 +43,16 @@ export const shipmentApi = {
 // Admin API
 // ==========================================
 export const adminGetAllOrders = () => api.get('/api/admin/orders');
+
 export const adminUpdateOrderStatus = (id: number, status: string) => 
   api.put(`/api/admin/orders/${id}/status`, { status });
+
 export const adminUpdateUserWallet = (userId: string, balance: number) => 
   api.put(`/api/admin/users/${userId}/wallet`, { balance });
+
+// เพิ่ม API สำหรับอัปเดต Role ผู้ใช้งาน (ที่หายไป)
+export const adminUpdateUserRole = (userId: string, role: string) => 
+  api.put(`/api/admin/users/${userId}/role`, { role });
 
 // ==========================================
 // Product Comments API
