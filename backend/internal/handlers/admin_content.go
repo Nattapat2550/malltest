@@ -122,12 +122,68 @@ func (h *Handler) AdminGetCarousel(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	if items == nil {
-		items = []map[string]any{}
-	}
+	if items == nil { items = []map[string]any{} }
 	WriteJSON(w, http.StatusOK, items)
 }
 
+// เพิ่มฟังก์ชันสร้าง Carousel
+func (h *Handler) AdminCreateCarousel(w http.ResponseWriter, r *http.Request) {
+	var c struct {
+		ImageURL  string `json:"image_url"`
+		LinkURL   string `json:"link_url"`
+		SortOrder int    `json:"sort_order"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid input")
+		return
+	}
+
+	_, err := h.MallDB.ExecContext(r.Context(),
+		"INSERT INTO carousels (image_url, link_url, sort_order, is_active) VALUES ($1, $2, $3, true)",
+		c.ImageURL, c.LinkURL, c.SortOrder,
+	)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to create carousel")
+		return
+	}
+	WriteJSON(w, http.StatusCreated, map[string]string{"message": "Created successfully"})
+}
+
+// แก้ไขฟังก์ชันอัปเดต Carousel
 func (h *Handler) AdminUpdateCarousel(w http.ResponseWriter, r *http.Request) {
-	WriteJSON(w, http.StatusOK, map[string]string{"message": "Carousel updated"})
+	idStr := chi.URLParam(r, "id")
+	id, _ := strconv.Atoi(idStr)
+
+	var c struct {
+		ImageURL  string `json:"image_url"`
+		LinkURL   string `json:"link_url"`
+		SortOrder int    `json:"sort_order"`
+		IsActive  bool   `json:"is_active"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid input")
+		return
+	}
+
+	_, err := h.MallDB.ExecContext(r.Context(),
+		"UPDATE carousels SET image_url=$1, link_url=$2, sort_order=$3, is_active=$4 WHERE id=$5",
+		c.ImageURL, c.LinkURL, c.SortOrder, c.IsActive, id,
+	)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to update")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]string{"message": "Updated successfully"})
+}
+
+// เพิ่มฟังก์ชันลบ Carousel
+func (h *Handler) AdminDeleteCarousel(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, _ := strconv.Atoi(idStr)
+	_, err := h.MallDB.ExecContext(r.Context(), "DELETE FROM carousels WHERE id = $1", id)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to delete")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]string{"message": "Deleted successfully"})
 }

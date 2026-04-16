@@ -46,8 +46,10 @@ func setupAdminRoutes(h *handlers.Handler) func(chi.Router) {
 
 		// Carousel
 		r.Get("/carousel", h.AdminGetCarousel)
-		r.Post("/carousel", h.AdminUpdateCarousel)
-		
+		r.Post("/carousel", h.AdminCreateCarousel)       // สร้างใหม่
+		r.Put("/carousel/{id}", h.AdminUpdateCarousel)    // แก้ไข
+		r.Delete("/carousel/{id}", h.AdminDeleteCarousel) // ลบ
+
 		r.Put("/users/{id}/wallet", h.UpdateUserWallet)
 	}
 }
