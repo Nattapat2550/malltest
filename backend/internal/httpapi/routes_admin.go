@@ -28,17 +28,26 @@ func setupAdminRoutes(h *handlers.Handler) func(chi.Router) {
 		r.Put("/orders/{id}/status", h.AdminUpdateOrderStatus)
 
 		// --- Content & Support Management ---
+		// News
 		r.Get("/news", h.AdminGetNewsList)
 		r.Post("/news", h.AdminCreateNews)
 		r.Put("/news/{id}", h.AdminUpdateNews)
 		r.Delete("/news/{id}", h.AdminDeleteNews)
 		
+		// Documents (เพิ่ม Route ใหม่ 3 เส้นนี้เพื่อแก้ปัญหา 404 Not Found)
+		r.Post("/documents", h.AdminCreateDocument)
+		r.Put("/documents/{id}", h.AdminUpdateDocument)
+		r.Delete("/documents/{id}", h.AdminDeleteDocument)
+
+		// Appeals
 		r.Get("/appeals", h.AdminGetAppeals) 
 		r.Put("/appeals/{id}", h.AdminUpdateAppealStatus)
 		r.Delete("/appeals/{id}", h.AdminDeleteAppeal)
 
+		// Carousel
 		r.Get("/carousel", h.AdminGetCarousel)
 		r.Post("/carousel", h.AdminUpdateCarousel)
+		
 		r.Put("/users/{id}/wallet", h.UpdateUserWallet)
 	}
 }

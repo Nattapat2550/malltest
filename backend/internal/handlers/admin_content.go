@@ -1,7 +1,12 @@
+// backend/internal/handlers/admin_content.go
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
+	"strconv"
+
+	"github.com/go-chi/chi/v5"
 )
 
 // --- News ---
@@ -28,9 +33,74 @@ func (h *Handler) AdminGetNewsList(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, newsList)
 }
 
-func (h *Handler) AdminCreateNews(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusCreated) }
-func (h *Handler) AdminUpdateNews(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }
-func (h *Handler) AdminDeleteNews(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) }
+func (h *Handler) AdminCreateNews(w http.ResponseWriter, r *http.Request) {
+	var n struct {
+		Title    string `json:"title"`
+		Content  string `json:"content"`
+		ImageURL string `json:"image_url"`
+		IsActive bool   `json:"is_active"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&n); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid input")
+		return
+	}
+
+	_, err := h.MallDB.ExecContext(r.Context(),
+		"INSERT INTO news (title, content, image_url, is_active) VALUES ($1, $2, $3, $4)",
+		n.Title, n.Content, n.ImageURL, true, // กำหนดให้ is_active เริ่มต้นเป็น true เสมอ หรือเปลี่ยนเป็น n.IsActive หากหน้าบ้านส่งมา
+	)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to create news")
+		return
+	}
+	WriteJSON(w, http.StatusCreated, map[string]string{"message": "News created successfully"})
+}
+
+func (h *Handler) AdminUpdateNews(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid ID")
+		return
+	}
+
+	var n struct {
+		Title    string `json:"title"`
+		Content  string `json:"content"`
+		ImageURL string `json:"image_url"`
+		IsActive bool   `json:"is_active"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&n); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid input")
+		return
+	}
+
+	_, err = h.MallDB.ExecContext(r.Context(),
+		"UPDATE news SET title = $1, content = $2, image_url = $3, is_active = $4 WHERE id = $5",
+		n.Title, n.Content, n.ImageURL, true, id, // ปรับการอัปเดต is_active ตามความต้องการ
+	)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to update news")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]string{"message": "News updated successfully"})
+}
+
+func (h *Handler) AdminDeleteNews(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid ID")
+		return
+	}
+
+	_, err = h.MallDB.ExecContext(r.Context(), "DELETE FROM news WHERE id = $1", id)
+	if err != nil {
+		h.writeError(w, http.StatusInternalServerError, "Failed to delete news")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]string{"message": "News deleted successfully"})
+}
 
 // --- Carousel ---
 func (h *Handler) AdminGetCarousel(w http.ResponseWriter, r *http.Request) {
