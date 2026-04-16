@@ -26,8 +26,18 @@ export default function NewsTab() {
   const handleCreateNews = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    
+    // แปลง FormData เป็น JSON payload เพื่อให้ตรงกับ Backend
+    const payload = {
+      title: formData.get('title') as string,
+      content: formData.get('content') as string,
+      image_url: "", // การอัปโหลดไฟล์จริงต้องทำ API แยกแล้วนำ URL มาใส่ (ชั่วคราวให้เป็นค่าว่าง)
+      is_active: true
+    };
+
     try {
-      await api.post('/api/admin/news', formData, { headers: { 'Content-Type': 'multipart/form-data' }});
+      // เอา headers: { 'Content-Type': 'multipart/form-data' } ออกไป ให้มันส่งเป็น JSON ปกติ
+      await api.post('/api/admin/news', payload);
       alert("สร้างประกาศสำเร็จ!");
       (e.target as HTMLFormElement).reset();
       fetchNews();
@@ -38,8 +48,18 @@ export default function NewsTab() {
     e.preventDefault();
     if (!editingNews) return;
     const formData = new FormData(e.currentTarget);
+    
+    // แปลง FormData เป็น JSON payload
+    const payload = {
+      title: formData.get('title') as string,
+      content: formData.get('content') as string,
+      image_url: editingNews.image_url || "", // ใช้รูปเดิมไปก่อน
+      is_active: formData.get('is_active') === 'true'
+    };
+
     try {
-      await api.put(`/api/admin/news/${editingNews.id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' }});
+      // ส่งแบบ JSON
+      await api.put(`/api/admin/news/${editingNews.id}`, payload);
       alert("แก้ไขประกาศสำเร็จ!");
       setEditingNews(null);
       fetchNews();
@@ -76,8 +96,8 @@ export default function NewsTab() {
             <textarea name="content" placeholder="ใส่รายละเอียดข่าวสาร..." required rows={4} className={`${inputStyle} resize-y`}></textarea>
           </div>
           <div className="md:col-span-2">
-            <label className={labelStyle}>รูปภาพประกอบ</label>
-            <input type="file" name="image" accept="image/*" className={`${inputStyle} file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 bg-white`} />
+            <label className={labelStyle}>รูปภาพประกอบ (อัปเดตในอนาคต)</label>
+            <input type="file" name="image" accept="image/*" disabled className={`${inputStyle} file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 bg-gray-100 dark:bg-gray-800 cursor-not-allowed`} title="ระบบอัปโหลดรูปกำลังอยู่ในช่วงพัฒนา" />
           </div>
         </div>
         
@@ -150,8 +170,8 @@ export default function NewsTab() {
                   </select>
                 </div>
                 <div>
-                  <label className={labelStyle}>อัปเดตรูปภาพ (เว้นไว้หากใช้รูปเดิม)</label>
-                  <input type="file" name="image" accept="image/*" className={`${inputStyle} bg-white`} />
+                  <label className={labelStyle}>อัปเดตรูปภาพ (อัปเดตในอนาคต)</label>
+                  <input type="file" name="image" accept="image/*" disabled className={`${inputStyle} bg-gray-100 dark:bg-gray-800 cursor-not-allowed`} />
                 </div>
               </div>
             </div>
