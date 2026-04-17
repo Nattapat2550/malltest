@@ -17,12 +17,14 @@ const (
 )
 
 type AuthUser struct {
-	ID   int64  `json:"id"`
-	Role string `json:"role"`
+	ID     int64  `json:"id"`
+	UserID string `json:"user_id"` // เพิ่มฟิลด์สำหรับเก็บ Random UserID 
+	Role   string `json:"role"`
 }
 
 type jwtClaims struct {
-	UserID int64  `json:"userId"`
+	ID     int64  `json:"id"`      // เปลี่ยนมาเก็บ ID (int64 ดั้งเดิมสำหรับยิง Pure API)
+	UserID string `json:"user_id"` // เก็บ Random UserID (สำหรับใช้กับ MallDB)
 	Role   string `json:"role"`
 	jwt.RegisteredClaims
 }
@@ -41,7 +43,7 @@ func (h *Handler) RequireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		u := &AuthUser{ID: claims.UserID, Role: claims.Role}
+		u := &AuthUser{ID: claims.ID, UserID: claims.UserID, Role: claims.Role}
 		ctx := context.WithValue(r.Context(), ctxUser, u)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -80,9 +82,11 @@ func extractTokenFromReq(r *http.Request) string {
 	return ""
 }
 
-func (h *Handler) signToken(userID int64, role string) (string, error) {
+// เพิ่ม userID (string) เข้าไปในพารามิเตอร์เพื่อเซ็น Token
+func (h *Handler) signToken(id int64, userID string, role string) (string, error) {
 	now := time.Now()
 	claims := jwtClaims{
+		ID:     id,
 		UserID: userID,
 		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -103,7 +107,8 @@ func (h *Handler) parseToken(token string) (*jwtClaims, error) {
 	if err != nil {
 		return nil, err
 	}
-	if claims.UserID <= 0 {
+	// เช็คว่า ID (int64) ถูกต้องไหม
+	if claims.ID <= 0 {
 		return nil, errors.New("invalid claims")
 	}
 	return claims, nil

@@ -59,8 +59,16 @@ func (h *Handler) AuthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// ดึงค่า Random UserID จาก Object ส่งให้ Token
+	var randomUserID string
+	if user.UserID != nil {
+		randomUserID = *user.UserID
+	} else {
+		randomUserID = fmt.Sprintf("%v", user.ID)
+	}
+
 	// ✅ ถ้ามีข้อมูลและกรอกครบแล้ว (ไอดีเก่า) ให้เข้าสู่ระบบได้เลย
-	token, err := h.signToken(user.ID, user.Role)
+	token, err := h.signToken(user.ID, randomUserID, user.Role)
 	if err != nil {
 		http.Redirect(w, r, front+"/login?error=oauth_failed", http.StatusFound)
 		return
@@ -141,7 +149,15 @@ func (h *Handler) AuthGoogleMobileCallback(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	token, err := h.signToken(user.ID, user.Role)
+	// ดึงค่า Random UserID จาก Object ส่งให้ Token
+	var randomUserID string
+	if user.UserID != nil {
+		randomUserID = *user.UserID
+	} else {
+		randomUserID = fmt.Sprintf("%v", user.ID)
+	}
+
+	token, err := h.signToken(user.ID, randomUserID, user.Role)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Token error")
 		return

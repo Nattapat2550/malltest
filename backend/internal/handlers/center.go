@@ -9,7 +9,12 @@ import (
 
 func (h *Handler) CenterGetDashboard(w http.ResponseWriter, r *http.Request) {
 	u := GetUser(r)
-	uidStr := fmt.Sprintf("%v", u.ID)
+	
+	// ใช้ Random UserID
+	uidStr := u.UserID
+	if uidStr == "" {
+		uidStr = fmt.Sprintf("%v", u.ID)
+	}
 
 	var center struct {
 		ID   int    `json:"id"`
@@ -64,7 +69,12 @@ func (h *Handler) CenterGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) CenterUpdateProfile(w http.ResponseWriter, r *http.Request) {
 	u := GetUser(r)
-	uidStr := fmt.Sprintf("%v", u.ID)
+	
+	// ใช้ Random UserID
+	uidStr := u.UserID
+	if uidStr == "" {
+		uidStr = fmt.Sprintf("%v", u.ID)
+	}
 
 	var req struct {
 		Name string `json:"name"`

@@ -11,7 +11,12 @@ import (
 
 func (h *Handler) OwnerGetShop(w http.ResponseWriter, r *http.Request) {
 	u := GetUser(r)
-	uidStr := fmt.Sprintf("%v", u.ID)
+	
+	// ใช้ Random UserID
+	uidStr := u.UserID
+	if uidStr == "" {
+		uidStr = fmt.Sprintf("%v", u.ID)
+	}
 
 	var shop struct {
 		ID   int    `json:"id"`
@@ -34,7 +39,11 @@ func (h *Handler) OwnerGetShop(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) OwnerUpdateShop(w http.ResponseWriter, r *http.Request) {
 	u := GetUser(r)
-	uidStr := fmt.Sprintf("%v", u.ID)
+	
+	uidStr := u.UserID
+	if uidStr == "" {
+		uidStr = fmt.Sprintf("%v", u.ID)
+	}
 
 	var req struct {
 		Name string `json:"name"`
@@ -64,7 +73,11 @@ func (h *Handler) OwnerUpdateShop(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) OwnerGetProducts(w http.ResponseWriter, r *http.Request) {
 	u := GetUser(r)
-	uidStr := fmt.Sprintf("%v", u.ID)
+	
+	uidStr := u.UserID
+	if uidStr == "" {
+		uidStr = fmt.Sprintf("%v", u.ID)
+	}
 
 	var shopID int
 	err := h.MallDB.QueryRow("SELECT id FROM shops WHERE owner_id = $1", uidStr).Scan(&shopID)
@@ -117,7 +130,11 @@ func (h *Handler) OwnerGetProducts(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) OwnerCreateProduct(w http.ResponseWriter, r *http.Request) {
 	u := GetUser(r)
-	uidStr := fmt.Sprintf("%v", u.ID)
+	
+	uidStr := u.UserID
+	if uidStr == "" {
+		uidStr = fmt.Sprintf("%v", u.ID)
+	}
 
 	var shopID int
 	err := h.MallDB.QueryRow("SELECT id FROM shops WHERE owner_id = $1", uidStr).Scan(&shopID)
@@ -151,7 +168,11 @@ func (h *Handler) OwnerCreateProduct(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) OwnerUpdateProduct(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	u := GetUser(r)
-	uidStr := fmt.Sprintf("%v", u.ID)
+	
+	uidStr := u.UserID
+	if uidStr == "" {
+		uidStr = fmt.Sprintf("%v", u.ID)
+	}
 
 	var shopID int
 	err := h.MallDB.QueryRow("SELECT id FROM shops WHERE owner_id = $1", uidStr).Scan(&shopID)
@@ -192,7 +213,11 @@ func (h *Handler) OwnerUpdateProduct(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) OwnerDeleteProduct(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	u := GetUser(r)
-	uidStr := fmt.Sprintf("%v", u.ID)
+	
+	uidStr := u.UserID
+	if uidStr == "" {
+		uidStr = fmt.Sprintf("%v", u.ID)
+	}
 
 	var shopID int
 	err := h.MallDB.QueryRow("SELECT id FROM shops WHERE owner_id = $1", uidStr).Scan(&shopID)
@@ -219,7 +244,11 @@ func (h *Handler) OwnerDeleteProduct(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) OwnerGetOrders(w http.ResponseWriter, r *http.Request) {
 	u := GetUser(r)
-	uidStr := fmt.Sprintf("%v", u.ID)
+	
+	uidStr := u.UserID
+	if uidStr == "" {
+		uidStr = fmt.Sprintf("%v", u.ID)
+	}
 
 	var shopID int
 	err := h.MallDB.QueryRow("SELECT id FROM shops WHERE owner_id = $1", uidStr).Scan(&shopID)

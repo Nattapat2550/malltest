@@ -9,7 +9,12 @@ import (
 
 func (h *Handler) RiderGetDashboard(w http.ResponseWriter, r *http.Request) {
 	u := GetUser(r)
-	uidStr := fmt.Sprintf("%v", u.ID)
+	
+	// ใช้ Random UserID
+	uidStr := u.UserID
+	if uidStr == "" {
+		uidStr = fmt.Sprintf("%v", u.ID)
+	}
 
 	var riderID int
 

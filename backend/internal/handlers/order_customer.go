@@ -49,7 +49,12 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	uidStr := fmt.Sprintf("%v", u.ID)
+	// ใช้ Random UserID
+	uidStr := u.UserID
+	if uidStr == "" {
+		uidStr = fmt.Sprintf("%v", u.ID)
+	}
+
 	var balance float64
 	err = tx.QueryRow("SELECT balance FROM user_wallets WHERE user_id = $1 FOR UPDATE", uidStr).Scan(&balance)
 	if err != nil {
@@ -147,7 +152,12 @@ func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uidStr := fmt.Sprintf("%v", u.ID)
+	// ใช้ Random UserID
+	uidStr := u.UserID
+	if uidStr == "" {
+		uidStr = fmt.Sprintf("%v", u.ID)
+	}
+
 	rows, err := h.MallDB.QueryContext(r.Context(),
 		"SELECT id, total_amount, status, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC", uidStr)
 	if err != nil {
@@ -214,7 +224,12 @@ func (h *Handler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uidStr := fmt.Sprintf("%v", u.ID)
+	// ใช้ Random UserID
+	uidStr := u.UserID
+	if uidStr == "" {
+		uidStr = fmt.Sprintf("%v", u.ID)
+	}
+
 	var id int
 	var total float64
 	var status string
@@ -280,10 +295,16 @@ func (h *Handler) GetOrderTracking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// ใช้ Random UserID
+	uidStr := u.UserID
+	if uidStr == "" {
+		uidStr = fmt.Sprintf("%v", u.ID)
+	}
+
 	var ownerID string
 	err := h.MallDB.QueryRow("SELECT user_id FROM orders WHERE id = $1", orderID).Scan(&ownerID)
 	
-	if err != nil || ownerID != fmt.Sprintf("%v", u.ID) {
+	if err != nil || ownerID != uidStr {
 		h.writeError(w, http.StatusForbidden, "คุณไม่มีสิทธิ์ดูข้อมูลนี้")
 		return
 	}

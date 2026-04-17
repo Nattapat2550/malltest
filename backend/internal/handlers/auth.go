@@ -102,7 +102,7 @@ func (h *Handler) AuthRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ✅ เช็คก่อนว่าอีเมลนี้ลงทะเบียนและกรอกโปรไฟล์ไปเรียบร้อยหรือยัง (เพิ่มเข้ามาจาก concerttest)
+	// ✅ เช็คก่อนว่าอีเมลนี้ลงทะเบียนและกรอกโปรไฟล์ไปเรียบร้อยหรือยัง
 	var existingUser userDTO
 	err := h.Pure.Post(ctx, "/api/internal/find-user", map[string]any{"email": email}, &existingUser)
 	if err == nil && existingUser.ID != 0 {
@@ -241,7 +241,15 @@ func (h *Handler) AuthCompleteProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.signToken(user.ID, user.Role)
+	// ดึงค่า Random UserID จาก Object
+	var randomUserID string
+	if user.UserID != nil {
+		randomUserID = *user.UserID
+	} else {
+		randomUserID = fmt.Sprintf("%v", user.ID) // Fallback กรณียังไม่มี
+	}
+
+	token, err := h.signToken(user.ID, randomUserID, user.Role)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Token error")
 		return
@@ -320,7 +328,15 @@ func (h *Handler) AuthLogin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	token, err := h.signToken(user.ID, user.Role)
+	// ดึงค่า Random UserID จาก Object
+	var randomUserID string
+	if user.UserID != nil {
+		randomUserID = *user.UserID
+	} else {
+		randomUserID = fmt.Sprintf("%v", user.ID)
+	}
+
+	token, err := h.signToken(user.ID, randomUserID, user.Role)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Token error")
 		return
@@ -364,7 +380,8 @@ func (h *Handler) AuthStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user userDTO
-	if err := h.Pure.Post(ctx, "/api/internal/find-user", map[string]any{"id": claims.UserID}, &user); err != nil {
+	// เรียกใช้ API ด้วย claims.ID ที่เป็น int64 ตามเดิมเพื่อไม่ให้เกิด 422
+	if err := h.Pure.Post(ctx, "/api/internal/find-user", map[string]any{"id": claims.ID}, &user); err != nil {
 		WriteJSON(w, http.StatusOK, map[string]any{"authenticated": false})
 		return
 	}
