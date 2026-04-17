@@ -6,16 +6,15 @@ export default function CenterPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('shipments');
   
-  const [centerInfo, setCenterInfo] = useState({ id: 0, name: '' });
+  // เปลี่ยน id เป็น string
+  const [centerInfo, setCenterInfo] = useState({ id: '', name: '' });
   const [shipments, setShipments] = useState<any[]>([]);
 
-  // Modals Data
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedShipment, setSelectedShipment] = useState<any>(null);
 
-  // Form Data
-  const [updateAction, setUpdateAction] = useState('at_center'); // at_center, delivering, shipped_to_center
-  const [targetId, setTargetId] = useState(''); // Rider ID or Center ID
+  const [updateAction, setUpdateAction] = useState('at_center'); 
+  const [targetId, setTargetId] = useState(''); // Rider ID or Center ID (String)
   const [trackingDetail, setTrackingDetail] = useState('');
   const [locationStr, setLocationStr] = useState('');
 
@@ -72,8 +71,9 @@ export default function CenterPage() {
       await shipmentApi.updateStatus({
         shipment_id: selectedShipment.shipment_id,
         status: updateAction,
-        center_id: updateAction === 'shipped_to_center' ? Number(targetId) : undefined,
-        rider_id: updateAction === 'delivering' ? Number(targetId) : undefined,
+        // ไม่ครอบด้วย Number() แล้ว
+        center_id: updateAction === 'shipped_to_center' ? targetId : undefined,
+        rider_id: updateAction === 'delivering' ? targetId : undefined,
         tracking_detail: trackingDetail,
         location: locationStr
       });
@@ -107,7 +107,7 @@ export default function CenterPage() {
     <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 pt-8 pb-4 px-6 lg:px-12">
         <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2">Delivery Center</h1>
-        <p className="text-gray-500 dark:text-gray-400">ศูนย์: <span className="font-bold text-purple-600">{centerInfo.name || 'ยังไม่ได้ตั้งชื่อศูนย์'} (ID: {centerInfo.id})</span></p>
+        <p className="text-gray-500 dark:text-gray-400">ศูนย์: <span className="font-bold text-purple-600">{centerInfo.name || 'ยังไม่ได้ตั้งชื่อศูนย์'} <br className="md:hidden" /><span className="text-xs break-all">(ID: {centerInfo.id})</span></span></p>
         
         <div className="flex gap-4 mt-8 overflow-x-auto">
           {['shipments', 'profile'].map(tab => (
@@ -124,7 +124,6 @@ export default function CenterPage() {
 
       <div className="p-6 lg:p-12">
         
-        {/* TAB 1: SHIPMENTS */}
         {activeTab === 'shipments' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 shadow-sm">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">จัดการพัสดุในระบบ</h2>
@@ -144,8 +143,8 @@ export default function CenterPage() {
                   {shipments.length === 0 ? <tr><td colSpan={5} className="p-6 text-center text-gray-500">ไม่มีพัสดุที่เกี่ยวข้องกับศูนย์นี้</td></tr> :
                     shipments.map((s, idx) => (
                       <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                        <td className="p-4 font-bold text-gray-900 dark:text-white">#{s.shipment_id}</td>
-                        <td className="p-4 text-gray-500">#{s.order_id}</td>
+                        <td className="p-4 font-mono text-xs text-gray-900 dark:text-white">#{s.shipment_id}</td>
+                        <td className="p-4 text-xs font-mono text-gray-500">#{s.order_id}</td>
                         <td className="p-4 text-sm dark:text-gray-300 max-w-62.5 truncate" title={s.address}>{s.address}</td>
                         <td className="p-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(s.status)}`}>
@@ -168,7 +167,6 @@ export default function CenterPage() {
           </div>
         )}
 
-        {/* TAB 2: PROFILE */}
         {activeTab === 'profile' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 shadow-sm max-w-md">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">แก้ไขข้อมูลศูนย์กระจายสินค้า</h2>
@@ -184,11 +182,10 @@ export default function CenterPage() {
 
       </div>
 
-      {/* Shipment Update Modal */}
       {showUpdateModal && selectedShipment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md p-6">
-            <h3 className="text-xl font-bold dark:text-white mb-2">อัปเดตพัสดุ #{selectedShipment.shipment_id}</h3>
+            <h3 className="text-lg font-bold dark:text-white mb-2 break-all">อัปเดตพัสดุ #{selectedShipment.shipment_id}</h3>
             
             <form onSubmit={submitUpdate} className="space-y-4 mt-6">
               
@@ -209,14 +206,16 @@ export default function CenterPage() {
               {updateAction === 'delivering' && selectedShipment.status !== 'shipped_to_center' && (
                 <div>
                   <label className="block text-sm font-bold dark:text-gray-300 mb-1">รหัสพนักงานขนส่ง (Rider ID)</label>
-                  <input type="number" required value={targetId} onChange={e=>setTargetId(e.target.value)} className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white" />
+                  {/* เปลี่ยน type="number" เป็น type="text" */}
+                  <input type="text" required value={targetId} onChange={e=>setTargetId(e.target.value)} className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white" />
                 </div>
               )}
 
               {updateAction === 'shipped_to_center' && selectedShipment.status !== 'shipped_to_center' && (
                 <div>
                   <label className="block text-sm font-bold dark:text-gray-300 mb-1">รหัสศูนย์ปลายทาง (Center ID)</label>
-                  <input type="number" required value={targetId} onChange={e=>setTargetId(e.target.value)} className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white" />
+                  {/* เปลี่ยน type="number" เป็น type="text" */}
+                  <input type="text" required value={targetId} onChange={e=>setTargetId(e.target.value)} className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white" />
                 </div>
               )}
 
@@ -240,7 +239,6 @@ export default function CenterPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import api, { shipmentApi } from '../../../services/api';
 
 interface Order {
-  id: number;
+  id: string; // เปลี่ยนจาก number เป็น string
   user_id: string;
   total_amount: number;
   status: string;
@@ -23,11 +23,11 @@ export default function OrdersTab() {
   // Form State (Order หลัก)
   const [newStatus, setNewStatus] = useState('pending');
   
-  // Form State (Shipment / การจัดส่งย่อย)
-  const [shipmentId, setShipmentId] = useState<number>(0);
+  // Form State (Shipment / การจัดส่งย่อย) - เปลี่ยนให้เป็น string ทั้งหมด
+  const [shipmentId, setShipmentId] = useState<string>('');
   const [shipmentStatus, setShipmentStatus] = useState('shipped_to_center');
-  const [centerId, setCenterId] = useState<number | ''>('');
-  const [riderId, setRiderId] = useState<number | ''>('');
+  const [centerId, setCenterId] = useState<string>('');
+  const [riderId, setRiderId] = useState<string>('');
   const [trackingDetail, setTrackingDetail] = useState('');
   const [locationStr, setLocationStr] = useState('');
 
@@ -54,7 +54,7 @@ export default function OrdersTab() {
     setNewStatus(order.status);
     
     // Clear Shipment states
-    setShipmentId(0);
+    setShipmentId('');
     setCenterId('');
     setRiderId('');
     setTrackingDetail('');
@@ -76,14 +76,14 @@ export default function OrdersTab() {
           location: locationStr
         });
       } else {
-        // อัปเดตสถานะพัสดุย่อย (รองรับ Owner, Center, Rider)
+        // อัปเดตสถานะพัสดุย่อย
         if (!shipmentId) return alert('กรุณาระบุ Shipment ID');
         
         await shipmentApi.updateStatus({
           shipment_id: shipmentId,
           status: shipmentStatus,
-          center_id: centerId ? Number(centerId) : undefined,
-          rider_id: riderId ? Number(riderId) : undefined,
+          center_id: centerId || undefined, // ไม่ครอบด้วย Number() แล้ว
+          rider_id: riderId || undefined,   // ไม่ครอบด้วย Number() แล้ว
           tracking_detail: trackingDetail,
           location: locationStr
         });
@@ -137,8 +137,8 @@ export default function OrdersTab() {
             ) : (
               orders.map(o => (
                 <tr key={o.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                  <td className="p-4 font-bold text-gray-900 dark:text-white">#{o.id}</td>
-                  <td className="p-4 text-gray-500 dark:text-gray-400 text-sm">{o.user_id}</td>
+                  <td className="p-4 font-mono text-gray-900 dark:text-white text-xs">{o.id}</td>
+                  <td className="p-4 font-mono text-gray-500 dark:text-gray-400 text-xs">{o.user_id}</td>
                   <td className="p-4 font-medium text-blue-600 dark:text-blue-400">
                     ฿{o.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </td>
@@ -162,13 +162,11 @@ export default function OrdersTab() {
         </table>
       </div>
 
-      {/* Modal อัปเดตสถานะและเพิ่ม Tracking แบบแยก Role */}
       {updateModal && selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">อัปเดตคำสั่งซื้อ #{selectedOrder.id}</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 break-all">อัปเดตคำสั่งซื้อ #{selectedOrder.id}</h3>
             
-            {/* สลับหน้าจอใน Modal */}
             <div className="flex gap-2 mb-6 bg-gray-100 dark:bg-gray-900 p-1 rounded-xl">
               <button type="button" onClick={()=>setUpdateType('order')} className={`flex-1 py-2 text-sm font-bold rounded-lg ${updateType === 'order' ? 'bg-white dark:bg-gray-700 shadow-sm' : 'text-gray-500'}`}>
                 ออเดอร์หลัก
@@ -181,7 +179,6 @@ export default function OrdersTab() {
             <form onSubmit={handleUpdate} className="space-y-4">
               
               {updateType === 'order' ? (
-                // 1. อัปเดตออเดอร์หลัก (ระบบเดิมของ Admin)
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">สถานะหลักของ Order</label>
                   <select 
@@ -197,11 +194,11 @@ export default function OrdersTab() {
                   </select>
                 </div>
               ) : (
-                // 2. อัปเดตพัสดุย่อยตาม Roles 
                 <div className="space-y-4 bg-blue-50/50 dark:bg-blue-900/10 p-4 border border-blue-100 dark:border-blue-800 rounded-xl">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">รหัสพัสดุร้านค้า (Shipment ID)</label>
-                    <input type="number" value={shipmentId || ''} onChange={e=>setShipmentId(Number(e.target.value))} required className="w-full px-4 py-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white" />
+                    {/* เปลี่ยน type="number" เป็น type="text" */}
+                    <input type="text" value={shipmentId} onChange={e=>setShipmentId(e.target.value)} required className="w-full px-4 py-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ปรับสถานะพัสดุนี้เป็น</label>
@@ -217,14 +214,16 @@ export default function OrdersTab() {
                   {shipmentStatus === 'shipped_to_center' && (
                     <div>
                       <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">รหัสศูนย์เป้าหมาย (Center ID)</label>
-                      <input type="number" value={centerId} onChange={e=>setCenterId(Number(e.target.value))} required className="w-full px-4 py-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white" />
+                      {/* เปลี่ยน type="number" เป็น type="text" */}
+                      <input type="text" value={centerId} onChange={e=>setCenterId(e.target.value)} required className="w-full px-4 py-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white" />
                     </div>
                   )}
 
                   {shipmentStatus === 'delivering' && (
                     <div>
                       <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">รหัสผู้ส่ง/ไรเดอร์ (Rider ID)</label>
-                      <input type="number" value={riderId} onChange={e=>setRiderId(Number(e.target.value))} required className="w-full px-4 py-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white" />
+                      {/* เปลี่ยน type="number" เป็น type="text" */}
+                      <input type="text" value={riderId} onChange={e=>setRiderId(e.target.value)} required className="w-full px-4 py-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white" />
                     </div>
                   )}
                 </div>

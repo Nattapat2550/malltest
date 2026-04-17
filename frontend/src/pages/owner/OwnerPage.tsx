@@ -6,23 +6,22 @@ export default function OwnerPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('shop');
   
-  const [shopInfo, setShopInfo] = useState({ id: 0, name: '' });
+  // เปลี่ยน id เป็น string
+  const [shopInfo, setShopInfo] = useState({ id: '', name: '' });
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
 
-  // Modals Data
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [showProductModal, setShowProductModal] = useState(false);
   const [showShipmentModal, setShowShipmentModal] = useState(false);
   const [selectedShipment, setSelectedShipment] = useState<any>(null);
 
-  // Shipment Form Data
+  // Shipment Form Data (Center ID เป็น string)
   const [centerId, setCenterId] = useState('');
   const [trackingDetail, setTrackingDetail] = useState('');
   const [locationStr, setLocationStr] = useState('');
 
   useEffect(() => {
-    // Check Role
     api.get('/api/users/me').then(({ data }) => {
       if (data.role !== 'owner' && data.role !== 'admin') {
         alert("คุณไม่มีสิทธิ์เข้าถึงหน้านี้");
@@ -81,7 +80,7 @@ export default function OwnerPage() {
     } catch (err) { alert("เกิดข้อผิดพลาด: SKU อาจจะซ้ำ"); }
   };
 
-  const handleDeleteProduct = async (id: number) => {
+  const handleDeleteProduct = async (id: string) => {
     if (window.confirm("คุณต้องการลบสินค้านี้ใช่หรือไม่?")) {
       try {
         await ownerApi.deleteProduct(id);
@@ -97,7 +96,8 @@ export default function OwnerPage() {
       await shipmentApi.updateStatus({
         shipment_id: selectedShipment.shipment_id,
         status: 'shipped_to_center',
-        center_id: centerId ? Number(centerId) : undefined,
+        // ไม่ครอบด้วย Number() แล้ว
+        center_id: centerId || undefined,
         tracking_detail: trackingDetail,
         location: locationStr
       });
@@ -121,7 +121,6 @@ export default function OwnerPage() {
 
   return (
     <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      {/* Header */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 pt-8 pb-4 px-6 lg:px-12">
         <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2">Seller Center</h1>
         <p className="text-gray-500 dark:text-gray-400">ร้าน: <span className="font-bold text-orange-500">{shopInfo.name || 'ยังไม่ตั้งชื่อร้าน'}</span></p>
@@ -141,7 +140,6 @@ export default function OwnerPage() {
 
       <div className="p-6 lg:p-12">
         
-        {/* TAB 1: SHOP */}
         {activeTab === 'shop' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 shadow-sm">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">ตั้งค่าหน้าร้าน</h2>
@@ -155,7 +153,6 @@ export default function OwnerPage() {
           </div>
         )}
 
-        {/* TAB 2: PRODUCTS */}
         {activeTab === 'products' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 shadow-sm">
             <div className="flex justify-between items-center mb-6">
@@ -197,7 +194,6 @@ export default function OwnerPage() {
           </div>
         )}
 
-        {/* TAB 3: ORDERS */}
         {activeTab === 'orders' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 shadow-sm">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">ออเดอร์ของลูกค้าที่สั่งสินค้าร้านคุณ</h2>
@@ -206,8 +202,8 @@ export default function OwnerPage() {
                 orders.map((o, idx) => (
                   <div key={idx} className="p-4 border dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 flex flex-col md:flex-row justify-between gap-4">
                     <div>
-                      <p className="font-bold dark:text-white mb-1">รหัสพัสดุ (Shipment ID): #{o.shipment_id} <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${getStatusColor(o.shipment_status)}`}>{o.shipment_status.toUpperCase()}</span></p>
-                      <p className="text-sm text-gray-500 mb-3">Order ID หลัก: #{o.order_id} | วันที่: {new Date(o.created_at).toLocaleString()}</p>
+                      <p className="font-bold dark:text-white mb-1">รหัสพัสดุ (Shipment ID): <span className="font-mono text-xs">{o.shipment_id}</span> <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${getStatusColor(o.shipment_status)}`}>{o.shipment_status.toUpperCase()}</span></p>
+                      <p className="text-sm text-gray-500 mb-3 font-mono">Order ID หลัก: #{o.order_id} | วันที่: {new Date(o.created_at).toLocaleString()}</p>
                       
                       <div className="space-y-1 mb-3">
                         {o.items?.map((item: any, i: number) => (
@@ -236,7 +232,6 @@ export default function OwnerPage() {
 
       </div>
 
-      {/* Product Modal */}
       {showProductModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
@@ -259,16 +254,16 @@ export default function OwnerPage() {
         </div>
       )}
 
-      {/* Shipment Modal */}
       {showShipmentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-6">
             <h3 className="text-xl font-bold dark:text-white mb-2">อัปเดตสถานะพัสดุ</h3>
-            <p className="text-sm text-gray-500 mb-4">ส่งพัสดุรหัส #{selectedShipment?.shipment_id} ไปยังศูนย์จัดส่ง</p>
+            <p className="text-sm text-gray-500 mb-4 break-all">ส่งพัสดุรหัส #{selectedShipment?.shipment_id} ไปยังศูนย์จัดส่ง</p>
             <form onSubmit={handleUpdateShipment} className="space-y-4">
               <div>
                 <label className="block text-sm font-bold dark:text-gray-300 mb-1">รหัสศูนย์เป้าหมาย (Center ID)</label>
-                <input type="number" required value={centerId} onChange={e=>setCenterId(e.target.value)} className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white" placeholder="เช่น 1" />
+                {/* เปลี่ยน type="number" เป็น type="text" */}
+                <input type="text" required value={centerId} onChange={e=>setCenterId(e.target.value)} className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white" placeholder="กรอก Center ID (UUID)" />
               </div>
               <div>
                 <label className="block text-sm font-bold dark:text-gray-300 mb-1">ข้อความแจ้งลูกค้า</label>
@@ -286,7 +281,6 @@ export default function OwnerPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
