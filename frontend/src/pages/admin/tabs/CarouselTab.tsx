@@ -84,7 +84,7 @@ export default function CarouselTab() {
     <div className="space-y-10 w-full">
       {/* ---------------- ฟอร์มเพิ่มแบนเนอร์ ---------------- */}
       <form onSubmit={handleCreate} className="bg-white dark:bg-gray-800 p-8 lg:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-gray-100 dark:border-gray-700 relative overflow-hidden w-full">
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 to-indigo-500"></div>
+        <div className="absolute top-0 left-0 w-full h-2 bg-linear-to-r from-blue-400 to-indigo-500"></div>
         
         <h3 className="text-2xl font-black mb-6 dark:text-white flex items-center gap-3">
           <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
@@ -109,7 +109,7 @@ export default function CarouselTab() {
         </div>
         
         <div className="flex justify-end">
-          <button type="submit" className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5">
+          <button type="submit" className="flex items-center gap-2 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5">
             <img src={ideaImg} className="w-5 h-5 brightness-0 invert" alt="Add" />
             เพิ่มแบนเนอร์
           </button>
@@ -195,7 +195,7 @@ export default function CarouselTab() {
               <button type="button" onClick={() => setEditingItem(null)} className="px-6 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl font-bold hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                 ยกเลิก
               </button>
-              <button type="submit" className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5">
+              <button type="submit" className="px-8 py-3 bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5">
                 บันทึกการแก้ไข
               </button>
             </div>
