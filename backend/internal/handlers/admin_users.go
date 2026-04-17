@@ -12,11 +12,13 @@ func (h *Handler) AdminGetUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var users []map[string]any
 
+	// 1. ดึงข้อมูล User ทั้งหมดจากระบบส่วนกลาง (Pure API)
 	if err := h.Pure.Get(ctx, "/api/internal/admin/users", &users); err != nil {
 		h.writeError(w, http.StatusInternalServerError, "ไม่สามารถดึงข้อมูล User จากระบบส่วนกลางได้")
 		return
 	}
 
+	// 2. ดึงข้อมูล Wallet (เงินคงเหลือ) ทั้งหมดจาก Mall DB
 	wRows, err := h.MallDB.Query("SELECT user_id, balance FROM user_wallets")
 	wallets := make(map[string]float64)
 	if err == nil {
@@ -30,6 +32,7 @@ func (h *Handler) AdminGetUsers(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 3. ดึงข้อมูล Roles (สิทธิ์) ทั้งหมดจาก Mall DB
 	rRows, err := h.MallDB.Query("SELECT user_id, role FROM user_roles")
 	roles := make(map[string]string)
 	if err == nil {
@@ -43,22 +46,32 @@ func (h *Handler) AdminGetUsers(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 4. นำข้อมูลมาประกอบกัน
 	for i, user := range users {
 		var uid string
-		if idVal, ok := user["id"]; ok && idVal != nil {
+		// *** แก้ไข: มองหา user_id (UUID) ก่อนเพื่อใช้ match กับ Mall DB ***
+		if val, ok := user["user_id"]; ok && val != nil {
+			uid = fmt.Sprintf("%v", val)
+		} else if idVal, ok := user["id"]; ok && idVal != nil {
 			uid = fmt.Sprintf("%v", idVal)
 		}
 
 		if uid != "" {
+			// ตรวจสอบให้แน่ใจว่ามีฟิลด์ user_id ส่งกลับไปให้ Frontend ใช้งาน
+			users[i]["user_id"] = uid
+
+			// จับคู่ยอดเงิน
 			if bal, exists := wallets[uid]; exists {
 				users[i]["balance"] = bal
 			} else {
 				users[i]["balance"] = 0.00 
 			}
 
+			// จับคู่สิทธิ์การใช้งาน
 			if dbRole, exists := roles[uid]; exists && dbRole != "" {
 				users[i]["role"] = dbRole
 			} else {
+				// Fallback สิทธิ์จาก Pure API ถ้าใน Mall DB ไม่มีข้อมูล
 				pureRole, _ := user["role"].(string)
 				if pureRole == "admin" {
 					users[i]["role"] = "admin" 
