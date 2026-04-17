@@ -13,7 +13,12 @@ func (h *Handler) UpdateShipmentState(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	uidStr := fmt.Sprintf("%v", u.ID)
+	
+	// แก้ไข: ให้ดึง UserID (string UUID) มาใช้ก่อน 
+	uidStr := u.UserID
+	if uidStr == "" {
+		uidStr = fmt.Sprintf("%v", u.ID)
+	}
 
 	var req ShipmentUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
