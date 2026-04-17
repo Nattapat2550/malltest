@@ -5,7 +5,7 @@ import api from '../../services/api';
 interface AuthState {
   isAuthenticated: boolean;
   role: string | null;
-  userId: number | null;
+  userId: string | null; // เปลี่ยนเป็น string เพื่อรองรับ UUID
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
 }
@@ -76,10 +76,11 @@ const authSlice = createSlice({
       })
       .addCase(checkAuthStatus.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        const { authenticated, role, id } = action.payload || {};
+        // ดึง user_id (string) มาใช้งานเป็นหลัก ถ้าไม่มีให้ fallback ไปหา id
+        const { authenticated, role, id, user_id } = action.payload || {};
         state.isAuthenticated = !!authenticated;
         state.role = authenticated ? role : null;
-        state.userId = authenticated ? id : null;
+        state.userId = authenticated ? (user_id || id) : null; 
       })
       .addCase(checkAuthStatus.rejected, (state) => {
         state.status = 'failed';
@@ -92,14 +93,14 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(login.fulfilled, (state, action) => {
-        // ตรวจสอบว่า Server ส่ง ok และข้อมูล user กลับมา
         if (action.payload.ok && action.payload.user) {
           state.status = 'succeeded';
           state.isAuthenticated = true;
           state.role = action.payload.user.role;
-          state.userId = action.payload.user.id;
+          
+          // ดึง user_id ออกมาเก็บใน State เพื่อใช้ยืนยันตัวตนกับ Database ใหม่
+          state.userId = action.payload.user.user_id || action.payload.user.id;
 
-          // *** จุดที่ต้องเพิ่ม: บันทึก Token และข้อมูลลง LocalStorage ***
           if (action.payload.token) {
             localStorage.setItem('token', action.payload.token);
           }
@@ -108,20 +109,18 @@ const authSlice = createSlice({
           }
           localStorage.setItem('user', JSON.stringify(action.payload.user));
           
-          // แจ้งเตือนหน้าจออื่นๆ ว่าข้อมูลผู้ใช้เปลี่ยน
           window.dispatchEvent(new Event('storage'));
         }
       })
       .addCase(login.rejected, (state, action: PayloadAction<any>) => {
         state.status = 'failed';
-        state.error = action.payload as string; // บอกว่าเป็น String
+        state.error = action.payload as string;
       })
       .addCase(logout.fulfilled, (state) => {
         state.isAuthenticated = false;
         state.role = null;
         state.userId = null;
         
-        // *** จุดที่ต้องเพิ่ม: ลบข้อมูลเมื่อ Logout ***
         localStorage.removeItem('token');
         localStorage.removeItem('role');
         localStorage.removeItem('user');

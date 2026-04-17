@@ -4,6 +4,7 @@ import api from '../../../services/api';
 
 interface User {
   id: string;
+  user_id?: string; // เพิ่มฟิลด์ user_id
   email?: string;
   username?: string;
   role: string;
@@ -51,8 +52,12 @@ export default function UsersTab() {
   const handleUpdateWallet = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
+    
+    // เลือกใช้ user_id ก่อนเสมอ ถ้าไม่มีถึงจะใช้ id
+    const targetId = selectedUser.user_id || selectedUser.id;
+    
     try {
-      await api.put(`/api/admin/users/${selectedUser.id}/wallet`, { balance: newBalance });
+      await api.put(`/api/admin/users/${targetId}/wallet`, { balance: newBalance });
       setWalletModal(false);
       fetchUsers();
       alert('อัปเดตยอดเงินสำเร็จ');
@@ -72,8 +77,12 @@ export default function UsersTab() {
   const handleUpdateRole = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
+
+    // เลือกใช้ user_id ก่อนเสมอ ถ้าไม่มีถึงจะใช้ id
+    const targetId = selectedUser.user_id || selectedUser.id;
+
     try {
-      await api.put(`/api/admin/users/${selectedUser.id}/role`, { role: newRole });
+      await api.put(`/api/admin/users/${targetId}/role`, { role: newRole });
       setRoleModal(false);
       fetchUsers();
       alert('อัปเดตสิทธิ์การใช้งานสำเร็จ');
@@ -95,7 +104,7 @@ export default function UsersTab() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm border-b border-gray-200 dark:border-gray-700">
-              <th className="p-4">ID</th>
+              <th className="p-4">ID / User ID</th>
               <th className="p-4">Email / Username</th>
               <th className="p-4">สิทธิ์ (Role)</th>
               <th className="p-4">ยอดเงิน (Wallet)</th>
@@ -111,8 +120,11 @@ export default function UsersTab() {
               </tr>
             ) : (
               users.map(u => (
-                <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                  <td className="p-4 text-gray-500 dark:text-gray-400 text-xs font-mono">{u.id}</td>
+                <tr key={u.user_id || u.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                  {/* แสดง user_id เป็นหลัก */}
+                  <td className="p-4 text-gray-500 dark:text-gray-400 text-xs font-mono">
+                    {u.user_id || u.id}
+                  </td>
                   <td className="p-4 text-gray-900 dark:text-white font-medium">{u.email || u.username || 'ไม่มีข้อมูล'}</td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded text-xs font-bold ${
