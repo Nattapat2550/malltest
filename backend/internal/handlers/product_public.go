@@ -14,14 +14,14 @@ type Media struct {
 }
 
 type Product struct {
-	ID          int     `json:"id"`
+	ID          string  `json:"id"`
 	SKU         string  `json:"sku"`
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
 	Price       float64 `json:"price"`
 	Stock       int     `json:"stock"`
-	CategoryID  *int    `json:"category_id,omitempty"`
-	ShopID      *int    `json:"shop_id,omitempty"` 
+	CategoryID  *string `json:"category_id,omitempty"`
+	ShopID      *string `json:"shop_id,omitempty"` 
 	ImageURL    string  `json:"image_url"`
 	Media       []Media `json:"media"` 
 }
@@ -30,7 +30,7 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.MallDB.Query(`
 		SELECT id, sku, name, description, price, stock, category_id, shop_id, image_url, media_urls 
 		FROM products 
-		ORDER BY id DESC
+		ORDER BY created_at DESC
 	`)
 	if err != nil {
 		http.Error(w, "Database query error: "+err.Error(), http.StatusInternalServerError)
@@ -41,8 +41,7 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	var products []Product
 	for rows.Next() {
 		var p Product
-		var desc, img, mediaJSON sql.NullString
-		var catID, shopID sql.NullInt64
+		var desc, img, mediaJSON, catID, shopID sql.NullString
 
 		if err := rows.Scan(&p.ID, &p.SKU, &p.Name, &desc, &p.Price, &p.Stock, &catID, &shopID, &img, &mediaJSON); err != nil {
 			continue
@@ -51,11 +50,11 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		if desc.Valid { p.Description = desc.String }
 		if img.Valid { p.ImageURL = img.String }
 		if catID.Valid { 
-			cid := int(catID.Int64)
+			cid := catID.String
 			p.CategoryID = &cid 
 		}
 		if shopID.Valid { 
-			sid := int(shopID.Int64)
+			sid := shopID.String
 			p.ShopID = &sid 
 		}
 
@@ -80,8 +79,7 @@ func (h *Handler) GetProductByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var p Product
 	
-	var desc, img, mediaJSON sql.NullString
-	var catID, shopID sql.NullInt64
+	var desc, img, mediaJSON, catID, shopID sql.NullString
 
 	err := h.MallDB.QueryRow(`
 		SELECT id, sku, name, description, price, stock, category_id, shop_id, image_url, media_urls 
@@ -100,11 +98,11 @@ func (h *Handler) GetProductByID(w http.ResponseWriter, r *http.Request) {
 	if desc.Valid { p.Description = desc.String }
 	if img.Valid { p.ImageURL = img.String }
 	if catID.Valid { 
-		cid := int(catID.Int64)
+		cid := catID.String
 		p.CategoryID = &cid 
 	}
 	if shopID.Valid { 
-		sid := int(shopID.Int64)
+		sid := shopID.String
 		p.ShopID = &sid 
 	}
 

@@ -30,10 +30,10 @@ export const getMyOrders = () => api.get('/api/orders');
 
 export const shipmentApi = {
   updateStatus: (data: {
-    shipment_id: number;
+    shipment_id: string;
     status: string;
-    center_id?: number;
-    rider_id?: number;
+    center_id?: string;
+    rider_id?: string;
     tracking_detail: string;
     location: string;
   }) => api.put('/api/orders/shipments/status', data),
@@ -44,7 +44,7 @@ export const shipmentApi = {
 // ==========================================
 export const adminGetAllOrders = () => api.get('/api/admin/orders');
 
-export const adminUpdateOrderStatus = (id: number, status: string) => 
+export const adminUpdateOrderStatus = (id: string, status: string) => 
   api.put(`/api/admin/orders/${id}/status`, { status });
 
 export const adminUpdateUserWallet = (userId: string, balance: number) => 
@@ -61,8 +61,8 @@ export const ownerApi = {
   updateShop: (data: { name: string }) => api.put('/api/owner/shop', data),
   getProducts: () => api.get('/api/owner/products'),
   createProduct: (data: any) => api.post('/api/owner/products', data),
-  updateProduct: (id: number, data: any) => api.put(`/api/owner/products/${id}`, data),
-  deleteProduct: (id: number) => api.delete(`/api/owner/products/${id}`),
+  updateProduct: (id: string, data: any) => api.put(`/api/owner/products/${id}`, data),
+  deleteProduct: (id: string) => api.delete(`/api/owner/products/${id}`),
   getOrders: () => api.get('/api/owner/orders'),
 };
 
@@ -70,16 +70,16 @@ export const ownerApi = {
 // Product Comments API
 // ==========================================
 export const commentApi = {
-  getComments: (productId: number) => 
+  getComments: (productId: string) => 
     api.get(`/api/products/${productId}/comments`),
   
-  createComment: (productId: number, data: { order_id: number, rating: number, message: string }) => 
+  createComment: (productId: string, data: { order_id: string, rating: number, message: string }) => 
     api.post(`/api/products/${productId}/comments`, data),
   
-  updateComment: (productId: number, commentId: number, data: { rating: number, message: string }) => 
+  updateComment: (productId: string, commentId: string, data: { rating: number, message: string }) => 
     api.patch(`/api/products/${productId}/comments/${commentId}`, data),
   
-  deleteComment: (productId: number, commentId: number) => 
+  deleteComment: (productId: string, commentId: string) => 
     api.delete(`/api/products/${productId}/comments/${commentId}`),
 };
 

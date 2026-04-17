@@ -38,7 +38,7 @@ func (h *Handler) UpdateShipmentState(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback()
 
 	// แก้ไขให้ดึง shop_id ออกมาด้วย เพื่อนำไปใช้คำนวณเงินให้ถูกร้าน
-	var orderID, shopID int
+	var orderID, shopID string
 	err = tx.QueryRow("SELECT order_id, shop_id FROM shipments WHERE id = $1 FOR UPDATE", req.ShipmentID).Scan(&orderID, &shopID)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "Shipment not found")

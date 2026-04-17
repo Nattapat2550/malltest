@@ -16,7 +16,7 @@ func (h *Handler) RiderGetDashboard(w http.ResponseWriter, r *http.Request) {
 		uidStr = fmt.Sprintf("%v", u.ID)
 	}
 
-	var riderID int
+	var riderID string
 
 	// ค้นหา Rider ในระบบ ถ้ายังไม่เคยมีบันทึก ให้สร้างขึ้นมาอัตโนมัติ
 	err := h.MallDB.QueryRow("SELECT id FROM riders WHERE rider_user_id = $1", uidStr).Scan(&riderID)
@@ -46,7 +46,7 @@ func (h *Handler) RiderGetDashboard(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {
-			var sID, oID int
+			var sID, oID string
 			var status, address, customerID string
 			var updatedAt any
 			rows.Scan(&sID, &status, &oID, &address, &customerID, &updatedAt)

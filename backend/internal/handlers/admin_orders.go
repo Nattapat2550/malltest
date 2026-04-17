@@ -17,7 +17,7 @@ func (h *Handler) AdminGetAllOrders(w http.ResponseWriter, r *http.Request) {
 
 	var orders []map[string]any
 	for rows.Next() {
-		var id int
+		var id string
 		var uid string
 		var total float64
 		var status string

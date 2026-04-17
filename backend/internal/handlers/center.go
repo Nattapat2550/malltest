@@ -17,7 +17,7 @@ func (h *Handler) CenterGetDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var center struct {
-		ID   int    `json:"id"`
+		ID   string `json:"id"`
 		Name string `json:"name"`
 	}
 
@@ -44,7 +44,7 @@ func (h *Handler) CenterGetDashboard(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {
-			var sID, oID int
+			var sID, oID string
 			var status, address string
 			var updatedAt any
 			rows.Scan(&sID, &status, &oID, &address, &updatedAt)
@@ -84,7 +84,7 @@ func (h *Handler) CenterUpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var centerID int
+	var centerID string
 	err := h.MallDB.QueryRow("SELECT id FROM delivery_centers WHERE center_user_id = $1", uidStr).Scan(&centerID)
 	switch err {
 	case sql.ErrNoRows:

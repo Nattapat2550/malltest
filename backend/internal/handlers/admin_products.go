@@ -7,7 +7,7 @@ import (
 )
 
 func (h *Handler) AdminGetProducts(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.MallDB.Query("SELECT id, sku, name, price, stock, COALESCE(image_url, '') FROM products ORDER BY id DESC")
+	rows, err := h.MallDB.Query("SELECT id, sku, name, price, stock, COALESCE(image_url, '') FROM products ORDER BY created_at DESC")
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -16,8 +16,8 @@ func (h *Handler) AdminGetProducts(w http.ResponseWriter, r *http.Request) {
 
 	var products []map[string]any
 	for rows.Next() {
-		var id, stock int
-		var sku, name, img string
+		var id, sku, name, img string
+		var stock int
 		var price float64
 		if err := rows.Scan(&id, &sku, &name, &price, &stock, &img); err == nil {
 			products = append(products, map[string]any{

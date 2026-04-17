@@ -10,7 +10,7 @@ import (
 )
 
 type OrderItem struct {
-	ProductID int     `json:"product_id"`
+	ProductID string  `json:"product_id"`
 	Quantity  int     `json:"quantity"`
 	Price     float64 `json:"price"`
 }
@@ -79,7 +79,7 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var orderID int
+	var orderID string
 	err = tx.QueryRow(`
 		INSERT INTO orders (user_id, total_amount, address, shipping_method, note, promo_code, status)
 		VALUES ($1, $2, $3, $4, $5, $6, 'paid') RETURNING id`,
@@ -89,7 +89,7 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shopMap := make(map[int]bool)
+	shopMap := make(map[string]bool)
 
 	for _, item := range req.Items {
 		_, err = tx.Exec("INSERT INTO order_items (order_id, product_id, quantity, price_at_time) VALUES ($1, $2, $3, $4)",
@@ -111,10 +111,10 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var shopID sql.NullInt64
+		var shopID sql.NullString
 		err = tx.QueryRow("SELECT shop_id FROM products WHERE id = $1", item.ProductID).Scan(&shopID)
 		if err == nil && shopID.Valid {
-			shopMap[int(shopID.Int64)] = true
+			shopMap[shopID.String] = true
 		}
 	}
 
@@ -159,7 +159,7 @@ func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := h.MallDB.QueryContext(r.Context(),
-		"SELECT id, total_amount, status, created_at FROM orders WHERE user_id = $1 ORDER BY id DESC", uidStr)
+		"SELECT id, total_amount, status, created_at FROM orders WHERE user_id = $1 ORDER BY created_at DESC", uidStr)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "เกิดข้อผิดพลาดในการดึงข้อมูล")
 		return
@@ -168,7 +168,7 @@ func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 
 	var orders []map[string]any
 	for rows.Next() {
-		var id int
+		var id string
 		var total float64
 		var status string
 		var createdAt interface{}
@@ -183,7 +183,8 @@ func (h *Handler) GetMyOrders(w http.ResponseWriter, r *http.Request) {
 			var items []map[string]any
 			if errItem == nil {
 				for itemRows.Next() {
-					var itemId, productId, qty int
+					var itemId, productId string
+					var qty int
 					var productName string
 					var price float64
 					var sqlImageUrl sql.NullString 
@@ -230,7 +231,7 @@ func (h *Handler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 		uidStr = fmt.Sprintf("%v", u.ID)
 	}
 
-	var id int
+	var id string
 	var total float64
 	var status string
 	var createdAt interface{}
@@ -257,7 +258,8 @@ func (h *Handler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	var items []map[string]any
 	if err == nil {
 		for itemRows.Next() {
-			var itemId, productId, qty int
+			var itemId, productId string
+			var qty int
 			var productName string
 			var price float64
 			var sqlImageUrl sql.NullString

@@ -19,7 +19,7 @@ func (h *Handler) OwnerGetShop(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var shop struct {
-		ID   int    `json:"id"`
+		ID   string `json:"id"`
 		Name string `json:"name"`
 	}
 	err := h.MallDB.QueryRow("SELECT id, name FROM shops WHERE owner_id = $1", uidStr).Scan(&shop.ID, &shop.Name)
@@ -53,7 +53,7 @@ func (h *Handler) OwnerUpdateShop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var shopID int
+	var shopID string
 	err := h.MallDB.QueryRow("SELECT id FROM shops WHERE owner_id = $1", uidStr).Scan(&shopID)
 	switch err {
 	case sql.ErrNoRows:
@@ -79,7 +79,7 @@ func (h *Handler) OwnerGetProducts(w http.ResponseWriter, r *http.Request) {
 		uidStr = fmt.Sprintf("%v", u.ID)
 	}
 
-	var shopID int
+	var shopID string
 	err := h.MallDB.QueryRow("SELECT id FROM shops WHERE owner_id = $1", uidStr).Scan(&shopID)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -89,7 +89,7 @@ func (h *Handler) OwnerGetProducts(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.MallDB.Query(`
 		SELECT id, sku, name, description, price, stock, category_id, shop_id, image_url, media_urls 
-		FROM products WHERE shop_id = $1 ORDER BY id DESC
+		FROM products WHERE shop_id = $1 ORDER BY created_at DESC
 	`, shopID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -100,8 +100,7 @@ func (h *Handler) OwnerGetProducts(w http.ResponseWriter, r *http.Request) {
 	var products []Product
 	for rows.Next() {
 		var p Product
-		var desc, img, mediaJSON sql.NullString
-		var catID, sID sql.NullInt64
+		var desc, img, mediaJSON, catID, sID sql.NullString
 
 		if err := rows.Scan(&p.ID, &p.SKU, &p.Name, &desc, &p.Price, &p.Stock, &catID, &sID, &img, &mediaJSON); err != nil {
 			continue
@@ -109,11 +108,11 @@ func (h *Handler) OwnerGetProducts(w http.ResponseWriter, r *http.Request) {
 		if desc.Valid { p.Description = desc.String }
 		if img.Valid { p.ImageURL = img.String }
 		if catID.Valid { 
-			cid := int(catID.Int64)
+			cid := catID.String
 			p.CategoryID = &cid 
 		}
 		if sID.Valid { 
-			sid := int(sID.Int64)
+			sid := sID.String
 			p.ShopID = &sid 
 		}
 		if mediaJSON.Valid && mediaJSON.String != "" {
@@ -136,7 +135,7 @@ func (h *Handler) OwnerCreateProduct(w http.ResponseWriter, r *http.Request) {
 		uidStr = fmt.Sprintf("%v", u.ID)
 	}
 
-	var shopID int
+	var shopID string
 	err := h.MallDB.QueryRow("SELECT id FROM shops WHERE owner_id = $1", uidStr).Scan(&shopID)
 	if err != nil {
 		http.Error(w, "Shop not found", http.StatusForbidden)
@@ -174,7 +173,7 @@ func (h *Handler) OwnerUpdateProduct(w http.ResponseWriter, r *http.Request) {
 		uidStr = fmt.Sprintf("%v", u.ID)
 	}
 
-	var shopID int
+	var shopID string
 	err := h.MallDB.QueryRow("SELECT id FROM shops WHERE owner_id = $1", uidStr).Scan(&shopID)
 	if err != nil {
 		http.Error(w, "Shop not found", http.StatusForbidden)
@@ -219,7 +218,7 @@ func (h *Handler) OwnerDeleteProduct(w http.ResponseWriter, r *http.Request) {
 		uidStr = fmt.Sprintf("%v", u.ID)
 	}
 
-	var shopID int
+	var shopID string
 	err := h.MallDB.QueryRow("SELECT id FROM shops WHERE owner_id = $1", uidStr).Scan(&shopID)
 	if err != nil {
 		http.Error(w, "Shop not found", http.StatusForbidden)
@@ -250,7 +249,7 @@ func (h *Handler) OwnerGetOrders(w http.ResponseWriter, r *http.Request) {
 		uidStr = fmt.Sprintf("%v", u.ID)
 	}
 
-	var shopID int
+	var shopID string
 	err := h.MallDB.QueryRow("SELECT id FROM shops WHERE owner_id = $1", uidStr).Scan(&shopID)
 	if err != nil {
 		http.Error(w, "Shop not found", http.StatusForbidden)
@@ -264,7 +263,7 @@ func (h *Handler) OwnerGetOrders(w http.ResponseWriter, r *http.Request) {
 		FROM shipments s
 		JOIN orders o ON s.order_id = o.id
 		WHERE s.shop_id = $1
-		ORDER BY s.id DESC
+		ORDER BY s.created_at DESC
 	`, shopID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -274,7 +273,7 @@ func (h *Handler) OwnerGetOrders(w http.ResponseWriter, r *http.Request) {
 
 	var results []map[string]any
 	for rows.Next() {
-		var shipmentID, orderID int
+		var shipmentID, orderID string
 		var shipmentStatus, userID, address string
 		var createdAt any
 
