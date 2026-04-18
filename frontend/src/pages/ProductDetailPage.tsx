@@ -83,10 +83,11 @@ export default function ProductDetailPage() {
           const currentVariants = allProducts.filter((p: any) => getRootId(p) === currentRootId);
           setVariants(currentVariants);
 
-          // สุ่มสินค้าแนะนำ (ที่ไม่ใช่ตัวมันเอง และไม่ใช่ variant เดียวกัน)
-          setRelated(allProducts.filter((p: any) => 
-            p.id.toString() !== id && getRootId(p) !== currentRootId
-          ).slice(0, 4));
+          // แก้บัค 1: สุ่มสินค้าแนะนำ ต้องเป็นสินค้าคลาสแม่เท่านั้น (ไม่ให้คลาสลูกของสินค้าอื่นมาโผล่ที่นี่)
+          setRelated(allProducts.filter((p: any) => {
+            const isMotherProd = !p.parent_id || p.parent_id === "null" || p.parent_id === "undefined" || p.parent_id === "";
+            return p.id.toString() !== id && getRootId(p) !== currentRootId && isMotherProd;
+          }).slice(0, 4));
         }
       } catch (err) {
         console.error("Error fetching product", err);
@@ -189,9 +190,8 @@ export default function ProductDetailPage() {
                    </span>
                    <div className="flex flex-wrap gap-2">
                      {variants.map((v: any) => {
-                       // เช็คว่าเป็นตัวแม่หรือไม่ (ไม่มี parent_id หรือเป็น null)
-                       const isMother = !v.parent_id || v.parent_id === "null" || v.parent_id === "";
-                       const displayName = isMother ? `[หลัก] ${v.name}` : (v.variant_type || v.name);
+                       // แก้บัค 2: แสดงชื่อสินค้า (ตัวแม่ หรือ ตัวลูก) ตรงๆ โดยไม่ใส่ [หลัก] และไม่เอา variant_type (สี) มาโชว์
+                       const displayName = v.name; 
                        
                        return (
                          <button 
@@ -215,7 +215,7 @@ export default function ProductDetailPage() {
                {product.variant_value && (
                  <div>
                    <span className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">
-                     รายละเอียด {product.variant_type && `(${product.variant_type})`}
+                     รายละเอียดสินค้า
                    </span>
                    <div className="flex flex-wrap gap-2">
                      {product.variant_value.split(',').map((s: string) => s.trim()).filter(Boolean).map((val: string, idx: number) => (

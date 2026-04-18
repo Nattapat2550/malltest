@@ -70,8 +70,10 @@ const MyOrdersPage: React.FC = () => {
       return;
     }
     try {
-      await commentApi.createComment(reviewModal.productId, {
-        order_id: reviewModal.orderId,
+      // แปลง productId เป็น string
+      await commentApi.createComment(reviewModal.productId.toString(), {
+        // แก้ไข Error 2322: แปลง order_id ให้เป็น string
+        order_id: reviewModal.orderId.toString(), 
         rating: reviewForm.rating,
         message: reviewForm.message
       });
@@ -240,7 +242,6 @@ const MyOrdersPage: React.FC = () => {
 
       {/* Modal Tracking เดิม */}
       {trackingOrder && (
-        // ... (โค้ด Tracking เดิมของคุณ) ...
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-3xl p-6">
                 <div className="flex justify-between items-center mb-4">

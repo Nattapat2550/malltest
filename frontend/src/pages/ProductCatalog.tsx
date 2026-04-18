@@ -45,7 +45,8 @@ export default function ProductCatalog() {
     e.preventDefault(); // ป้องกันไม่ให้ Link ทำงานเมื่อกดปุ่มซื้อ
     if (p.stock > 0) {
       dispatch(addToCart({
-        productId: p.id,
+        // แก้ไข Error 2322: แปลง p.id ให้เป็น string ตามที่ cartSlice ต้องการ
+        productId: p.id.toString(),
         name: p.name,
         price: p.price,
         quantity: 1,
