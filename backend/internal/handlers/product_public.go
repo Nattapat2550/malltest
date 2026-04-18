@@ -14,28 +14,28 @@ type Media struct {
 }
 
 type Product struct {
-	ID           string  `json:"id"`
-	SKU          string  `json:"sku"`
-	Name         string  `json:"name"`
-	Description  string  `json:"description"`
-	Price        float64 `json:"price"`
-	Stock        int     `json:"stock"`
-	CategoryID   *string `json:"category_id,omitempty"`
-	ShopID       *string `json:"shop_id,omitempty"` 
-	ImageURL     string  `json:"image_url"`
-	Media        []Media `json:"media"` 
-	// เพิ่มฟิลด์สำหรับระบบตัวเลือกย่อย (Variants)
-	ParentID     *string `json:"parent_id,omitempty"`
-	VariantType  *string `json:"variant_type,omitempty"`
-	VariantValue *string `json:"variant_value,omitempty"`
+	ID           string    `json:"id"`
+	SKU          string    `json:"sku"`
+	Name         string    `json:"name"`
+	Description  string    `json:"description"`
+	Price        float64   `json:"price"`
+	Stock        int       `json:"stock"`
+	CategoryID   *string   `json:"category_id,omitempty"`
+	ShopID       *string   `json:"shop_id,omitempty"` 
+	ImageURL     string    `json:"image_url"`
+	Media        []Media   `json:"media"` 
+	ParentID     *string   `json:"parent_id,omitempty"`
+	VariantType  *string   `json:"variant_type,omitempty"`
+	VariantValue *string   `json:"variant_value,omitempty"`
+	// เพิ่มฟิลด์ Variants เพื่อเก็บ array ของสินค้าคลาสลูก
+	Variants     []Product `json:"variants,omitempty"` 
 }
 
 func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
-	// ดึงเฉพาะสินค้าที่เป็น Mother ID โดยเช็คจาก parent_id IS NULL
+	// ดึงสินค้าทั้งหมด (ทั้งแม่และลูก) ออกมาก่อนเพื่อจัดกลุ่มใน Code
 	rows, err := h.MallDB.Query(`
 		SELECT id, sku, name, description, price, stock, category_id, shop_id, image_url, media_urls, parent_id, variant_type, variant_value 
 		FROM products 
-		WHERE parent_id IS NULL
 		ORDER BY created_at DESC
 	`)
 	if err != nil {
@@ -44,7 +44,7 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var products []Product
+	var allProducts []Product
 	for rows.Next() {
 		var p Product
 		var desc, img, mediaJSON, catID, shopID, pID, vType, vValue sql.NullString
@@ -82,15 +82,37 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		if p.Media == nil {
 			p.Media = []Media{}
 		}
-		products = append(products, p)
+		
+		allProducts = append(allProducts, p)
 	}
 
-	if products == nil {
-		products = []Product{}
+	// 1. แยกสินค้าลูกตาม Parent ID
+	childrenMap := make(map[string][]Product)
+	for _, p := range allProducts {
+		if p.ParentID != nil {
+			childrenMap[*p.ParentID] = append(childrenMap[*p.ParentID], p)
+		}
+	}
+
+	// 2. ดึงเฉพาะ Mother ID และนำสินค้าลูกยัดเข้า Array ของแม่
+	var result []Product
+	for _, p := range allProducts {
+		if p.ParentID == nil {
+			if variants, ok := childrenMap[p.ID]; ok {
+				p.Variants = variants
+			} else {
+				p.Variants = []Product{}
+			}
+			result = append(result, p)
+		}
+	}
+
+	if result == nil {
+		result = []Product{}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(products)
+	json.NewEncoder(w).Encode(result)
 }
 
 func (h *Handler) GetProductByID(w http.ResponseWriter, r *http.Request) {
@@ -99,6 +121,7 @@ func (h *Handler) GetProductByID(w http.ResponseWriter, r *http.Request) {
 	
 	var desc, img, mediaJSON, catID, shopID, pID, vType, vValue sql.NullString
 
+	// ค้นหาสินค้าหลัก
 	err := h.MallDB.QueryRow(`
 		SELECT id, sku, name, description, price, stock, category_id, shop_id, image_url, media_urls, parent_id, variant_type, variant_value 
 		FROM products WHERE id = $1`, id).
@@ -141,6 +164,38 @@ func (h *Handler) GetProductByID(w http.ResponseWriter, r *http.Request) {
 	}
 	if p.Media == nil {
 		p.Media = []Media{}
+	}
+	p.Variants = []Product{} // เริ่มต้นเป็น Array ว่างเสมอเพื่อป้องกัน Null ในหน้าเว็บ
+
+	// หากสินค้านี้เป็น Mother ID ให้ค้นหาสินค้าลูก (Variants) พ่วงติดไปด้วย
+	if p.ParentID == nil {
+		rows, err := h.MallDB.Query(`
+			SELECT id, sku, name, description, price, stock, category_id, shop_id, image_url, media_urls, parent_id, variant_type, variant_value 
+			FROM products WHERE parent_id = $1
+			ORDER BY created_at ASC
+		`, p.ID)
+		
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var v Product
+				var vDesc, vImg, vMediaJSON, vCatID, vShopID, vPID, vvType, vvValue sql.NullString
+				
+				if err := rows.Scan(&v.ID, &v.SKU, &v.Name, &vDesc, &v.Price, &v.Stock, &vCatID, &vShopID, &vImg, &vMediaJSON, &vPID, &vvType, &vvValue); err == nil {
+					if vDesc.Valid { v.Description = vDesc.String }
+					if vImg.Valid { v.ImageURL = vImg.String }
+					if vCatID.Valid { cid := vCatID.String; v.CategoryID = &cid }
+					if vShopID.Valid { sid := vShopID.String; v.ShopID = &sid }
+					if vPID.Valid && vPID.String != "" { pidStr := vPID.String; v.ParentID = &pidStr }
+					if vvType.Valid && vvType.String != "" { vTypeStr := vvType.String; v.VariantType = &vTypeStr }
+					if vvValue.Valid && vvValue.String != "" { vValStr := vvValue.String; v.VariantValue = &vValStr }
+					if vMediaJSON.Valid && vMediaJSON.String != "" { json.Unmarshal([]byte(vMediaJSON.String), &v.Media) }
+					if v.Media == nil { v.Media = []Media{} }
+					
+					p.Variants = append(p.Variants, v)
+				}
+			}
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -1,3 +1,4 @@
+// frontend/src/pages/ProductDetailPage.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
@@ -26,49 +27,38 @@ export default function ProductDetailPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await api.get(`/api/products`);
-        const allProducts = res.data || [];
-        const current = allProducts.find((p: any) => p.id.toString() === id);
-        
+        // 1. ดึงข้อมูลสินค้าปัจจุบันที่กดเข้ามา
+        const res = await api.get(`/api/products/${id}`);
+        const current = res.data;
+
         if (current) {
-          // ฟังก์ชันช่วยหา Root ID ที่แท้จริง ป้องกันการดึงตัวเลือกของคนอื่นมาปน
-          const getRootId = (prod: any) => {
-            if (prod.parent_id && prod.parent_id !== "null" && prod.parent_id !== "undefined" && prod.parent_id !== "") {
-                return prod.parent_id;
-            }
-            return prod.id;
-          };
+          let motherProduct = current;
           
-          const currentRootId = getRootId(current);
-          const parentProduct = allProducts.find((p: any) => p.id === currentRootId);
-
-          // ถ้าไม่มี media_urls หรือ image_url ของตัวเอง ให้ใช้ของ Mother ID
-          let targetMediaUrls = current.media_urls;
-          if ((!targetMediaUrls || targetMediaUrls === '[]' || targetMediaUrls === '') && current.parent_id) {
-              if (parentProduct && parentProduct.media_urls) {
-                  targetMediaUrls = parentProduct.media_urls;
-              }
+          // 2. ถ้าสินค้าที่ดูอยู่เป็น "ตัวลูก" (มี parent_id) 
+          // ต้องไปดึงข้อมูล "ตัวแม่" มา เพื่อให้ได้ Array ตัวเลือก (variants) ทั้งหมด
+          if (current.parent_id) {
+             const motherRes = await api.get(`/api/products/${current.parent_id}`);
+             motherProduct = motherRes.data;
           }
 
-          let parsedMedia = [];
-          if (typeof targetMediaUrls === 'string') {
-             try { parsedMedia = JSON.parse(targetMediaUrls); } catch(e) {}
-          } else if (Array.isArray(targetMediaUrls)) {
-             parsedMedia = targetMediaUrls;
+          // 3. รวมสินค้าแม่ และ สินค้าลูกทั้งหมดเข้าด้วยกัน เพื่อทำปุ่มให้ผู้ใช้เลือก
+          const currentVariants = [
+              motherProduct,
+              ...(motherProduct.variants || [])
+          ];
+
+          // 4. จัดการรูปภาพ/วิดีโอ (ถ้าลูกไม่มี ให้ใช้ของแม่)
+          if (!current.media || current.media.length === 0) {
+             if (motherProduct.media && motherProduct.media.length > 0) {
+                 current.media = motherProduct.media;
+             } else {
+                 const defaultImg = current.image_url || motherProduct.image_url;
+                 current.media = defaultImg ? [{ type: 'image', url: defaultImg }] : [];
+             }
           }
 
-          let targetImageUrl = current.image_url;
-          if (!targetImageUrl && current.parent_id) {
-              if (parentProduct && parentProduct.image_url) {
-                  targetImageUrl = parentProduct.image_url;
-              }
-          }
-
-          current.media = parsedMedia.length > 0 
-            ? parsedMedia 
-            : [{ type: 'image', url: targetImageUrl }];
-            
           setProduct(current);
+          setVariants(currentVariants);
           
           // ตั้งค่าตัวเลือกย่อย (แถวล่าง) อัตโนมัติเป็นตัวแรกสุด
           if (current.variant_value) {
@@ -78,19 +68,15 @@ export default function ProductDetailPage() {
           } else {
              setSelectedSubVariant('');
           }
-          
-          // ดึงตัวเลือกสินค้าเฉพาะที่อยู่ในกลุ่ม Root ID เดียวกันอย่างเข้มงวด
-          const currentVariants = allProducts.filter((p: any) => getRootId(p) === currentRootId);
-          setVariants(currentVariants);
 
-          // แก้บัค 1: สุ่มสินค้าแนะนำ ต้องเป็นสินค้าคลาสแม่เท่านั้น (ไม่ให้คลาสลูกของสินค้าอื่นมาโผล่ที่นี่)
-          setRelated(allProducts.filter((p: any) => {
-            const isMotherProd = !p.parent_id || p.parent_id === "null" || p.parent_id === "undefined" || p.parent_id === "";
-            return p.id.toString() !== id && getRootId(p) !== currentRootId && isMotherProd;
-          }).slice(0, 4));
+          // 5. สุ่มสินค้าแนะนำ (ดึงจาก /api/products ซึ่งจะได้เฉพาะ Mother ID อยู่แล้ว)
+          const allRes = await api.get(`/api/products`);
+          const allProducts = allRes.data || [];
+          setRelated(allProducts.filter((p: any) => p.id !== motherProduct.id).slice(0, 4));
         }
       } catch (err) {
         console.error("Error fetching product", err);
+        setProduct(null);
       } finally {
         setLoading(false);
       }
@@ -190,9 +176,6 @@ export default function ProductDetailPage() {
                    </span>
                    <div className="flex flex-wrap gap-2">
                      {variants.map((v: any) => {
-                       // แก้บัค 2: แสดงชื่อสินค้า (ตัวแม่ หรือ ตัวลูก) ตรงๆ โดยไม่ใส่ [หลัก] และไม่เอา variant_type (สี) มาโชว์
-                       const displayName = v.name; 
-                       
                        return (
                          <button 
                            key={`prod-${v.id}`} 
@@ -203,7 +186,7 @@ export default function ProductDetailPage() {
                               : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-white dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
                            }`}
                          >
-                           {displayName}
+                           {v.name}
                          </button>
                        );
                      })}
