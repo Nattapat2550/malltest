@@ -18,6 +18,9 @@ export default function ProductDetailPage() {
   // Carousel State
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  
+  // State สำหรับเก็บตัวเลือกย่อย (แถวล่าง) ที่ผู้ใช้เลือก
+  const [selectedSubVariant, setSelectedSubVariant] = useState<string>('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,7 +42,7 @@ export default function ProductDetailPage() {
           const currentRootId = getRootId(current);
           const parentProduct = allProducts.find((p: any) => p.id === currentRootId);
 
-          // แก้ปัญหา Issue 2: ถ้าไม่มี media_urls หรือ image_url ของตัวเอง ให้ใช้ของ Mother ID
+          // ถ้าไม่มี media_urls หรือ image_url ของตัวเอง ให้ใช้ของ Mother ID
           let targetMediaUrls = current.media_urls;
           if ((!targetMediaUrls || targetMediaUrls === '[]' || targetMediaUrls === '') && current.parent_id) {
               if (parentProduct && parentProduct.media_urls) {
@@ -67,7 +70,16 @@ export default function ProductDetailPage() {
             
           setProduct(current);
           
-          // แก้ปัญหา Issue 3: ดึงตัวเลือกสินค้าเฉพาะที่อยู่ในกลุ่ม Root ID เดียวกันอย่างเข้มงวด
+          // ตั้งค่าตัวเลือกย่อย (แถวล่าง) อัตโนมัติเป็นตัวแรกสุด
+          if (current.variant_value) {
+             const vals = current.variant_value.split(',').map((s: string) => s.trim()).filter(Boolean);
+             if (vals.length > 0) setSelectedSubVariant(vals[0]);
+             else setSelectedSubVariant('');
+          } else {
+             setSelectedSubVariant('');
+          }
+          
+          // ดึงตัวเลือกสินค้าเฉพาะที่อยู่ในกลุ่ม Root ID เดียวกันอย่างเข้มงวด
           const currentVariants = allProducts.filter((p: any) => getRootId(p) === currentRootId);
           setVariants(currentVariants);
 
@@ -86,11 +98,15 @@ export default function ProductDetailPage() {
     window.scrollTo(0, 0);
   }, [id]);
 
+  const getFinalProductName = () => {
+    return selectedSubVariant ? `${product.name} (${selectedSubVariant})` : product.name;
+  };
+
   const handleAddToCart = () => {
     if (!product || product.stock < 1) return;
     dispatch(addToCart({
       productId: product.id,
-      name: product.name,
+      name: getFinalProductName(),
       price: product.price,
       quantity: quantity,
       image_url: product.image_url,
@@ -104,7 +120,7 @@ export default function ProductDetailPage() {
     navigate('/checkout', { state: { 
       directBuy: [{
         productId: product.id,
-        name: product.name,
+        name: getFinalProductName(),
         price: product.price,
         quantity: quantity,
         image_url: product.image_url,
@@ -162,29 +178,63 @@ export default function ProductDetailPage() {
           </div>
 
           {/* Variants Selector */}
-          {variants.length > 1 && (
-             <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
-               <span className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">
-                 ตัวเลือกสินค้า {product.variant_type && `(${product.variant_type})`}
-               </span>
-               <div className="flex flex-wrap gap-2">
-                 {/* แก้ปัญหา Issue 4: หั่นตัวเลือกที่เป็น comma ให้กลายเป็นปุ่มแยกกัน */}
-                 {variants.flatMap(v => {
-                   const variantValuesList = v.variant_value 
-                     ? v.variant_value.split(',').map((s: string) => s.trim()).filter(Boolean) 
-                     : [v.name];
-                     
-                   return variantValuesList.map((val: string, idx: number) => (
-                     <button 
-                       key={`${v.id}-${idx}`} 
-                       onClick={() => navigate(`/products/${v.id}`)}
-                       className={`px-4 py-2 border rounded-lg font-medium transition-all ${v.id === product.id ? 'border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'border-gray-300 text-gray-600 hover:border-gray-400 dark:border-gray-600 dark:text-gray-300'}`}
-                     >
-                       {val}
-                     </button>
-                   ));
-                 })}
-               </div>
+          {(variants.length > 1 || product.variant_value) && (
+             <div className="mb-6 p-5 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
+               
+               {/* แถวบน: เลือกรุ่น แม่/ลูก */}
+               {variants.length > 1 && (
+                 <div className="mb-5 pb-5 border-b border-gray-200 dark:border-gray-700">
+                   <span className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">
+                     รุ่น / รูปแบบสินค้า
+                   </span>
+                   <div className="flex flex-wrap gap-2">
+                     {variants.map((v: any) => {
+                       // เช็คว่าเป็นตัวแม่หรือไม่ (ไม่มี parent_id หรือเป็น null)
+                       const isMother = !v.parent_id || v.parent_id === "null" || v.parent_id === "";
+                       const displayName = isMother ? `[หลัก] ${v.name}` : (v.variant_type || v.name);
+                       
+                       return (
+                         <button 
+                           key={`prod-${v.id}`} 
+                           onClick={() => navigate(`/products/${v.id}`)}
+                           className={`px-4 py-2 border rounded-lg font-medium transition-all ${
+                             v.id === product.id 
+                              ? 'border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 shadow-sm' 
+                              : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-white dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+                           }`}
+                         >
+                           {displayName}
+                         </button>
+                       );
+                     })}
+                   </div>
+                 </div>
+               )}
+
+               {/* แถวล่าง: รายละเอียดของตัวที่เลือกปัจจุบัน */}
+               {product.variant_value && (
+                 <div>
+                   <span className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">
+                     รายละเอียด {product.variant_type && `(${product.variant_type})`}
+                   </span>
+                   <div className="flex flex-wrap gap-2">
+                     {product.variant_value.split(',').map((s: string) => s.trim()).filter(Boolean).map((val: string, idx: number) => (
+                       <button 
+                         key={`val-${idx}`} 
+                         onClick={() => setSelectedSubVariant(val)}
+                         className={`px-4 py-2 border rounded-lg font-medium transition-all ${
+                           selectedSubVariant === val 
+                            ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 shadow-sm' 
+                            : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-white dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+                         }`}
+                       >
+                         {val}
+                       </button>
+                     ))}
+                   </div>
+                 </div>
+               )}
+
              </div>
           )}
 
@@ -203,16 +253,16 @@ export default function ProductDetailPage() {
           <div className="flex flex-col sm:flex-row gap-4 mt-auto">
             <button 
               onClick={handleAddToCart}
-              disabled={product.stock < 1}
-              className="flex-1 py-4 rounded-2xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-bold text-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              disabled={product.stock < 1 || (product.variant_value && !selectedSubVariant)}
+              className="flex-1 py-4 rounded-2xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-bold text-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
               เพิ่มลงตะกร้า
             </button>
             <button 
               onClick={handleBuyNow}
-              disabled={product.stock < 1}
-              className="flex-1 py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30 font-bold text-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:shadow-none"
+              disabled={product.stock < 1 || (product.variant_value && !selectedSubVariant)}
+              className="flex-1 py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30 font-bold text-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed"
             >
               ซื้อทันที
             </button>
