@@ -29,6 +29,7 @@ const AppealsPage = lazy(() => import('./pages/AppealPage'));
 const DocumentDetailsPage = lazy(() => import('./pages/DocumentDetailsPage'));
 const ProductCatalog = lazy(() => import('./pages/ProductCatalog'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
+const ShopPage = lazy(() => import('./pages/ShopPage'));
 const CartPage = lazy(() => import('./pages/CartPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage'));
@@ -73,8 +74,10 @@ const App: React.FC = () => {
           <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/products" element={<ProtectedRoute><ProductCatalog /></ProtectedRoute>} />
           <Route path="/products/:id" element={<ProtectedRoute><ProductDetailPage /></ProtectedRoute>} />
-          {/* แก้ปัญหา Issue 1: เพิ่ม Route สำหรับหน้าร้านค้า */}
-          <Route path="/shop/:id" element={<ProtectedRoute><ProductCatalog /></ProtectedRoute>} />
+          
+          {/* หน้าร้านค้าแยกเฉพาะโชว์แบนเนอร์ */}
+          <Route path="/shop/:id" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
+          
           <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
           <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
           <Route path="/my-orders" element={<ProtectedRoute><MyOrdersPage /></ProtectedRoute>} />

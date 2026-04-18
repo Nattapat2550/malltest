@@ -59,6 +59,9 @@ func NewRouter(cfg config.Config, mallDB *sql.DB) http.Handler {
 	r.Route("/api/rider", setupRiderRoutes(h))
 
 	// 6. Public & Miscellaneous Routes
+	r.Get("/api/shops/{id}", h.GetShopByID)
+	r.Get("/api/shops/{id}/products", h.GetShopProductsPublic)
+
 	r.Get("/api/homepage", h.HomepageGet)
 	r.With(h.RequireAdmin).Put("/api/homepage", h.HomepageUpdate)
 	

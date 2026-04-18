@@ -54,7 +54,7 @@ export const adminUpdateUserRole = (userId: string, role: string) =>
   api.put(`/api/admin/users/${userId}/role`, { role });
 
 // ==========================================
-// Owner API (เพิ่มการเรียกข้อมูลสำหรับร้านค้า)
+// Owner API
 // ==========================================
 export const ownerApi = {
   getShop: () => api.get('/api/owner/shop'),
@@ -84,7 +84,7 @@ export const commentApi = {
 };
 
 // ==========================================
-// Center API (ศูนย์กระจายสินค้า)
+// Center API
 // ==========================================
 export const centerApi = {
   getDashboard: () => api.get('/api/center/dashboard'),
@@ -92,8 +92,16 @@ export const centerApi = {
 };
 
 // ==========================================
-// Rider API (พนักงานจัดส่ง)
+// Rider API
 // ==========================================
 export const riderApi = {
   getDashboard: () => api.get('/api/rider/dashboard'),
+};
+
+// ==========================================
+// Shop Public API
+// ==========================================
+export const shopApi = {
+  getShopInfo: (id: string) => api.get(`/api/shops/${id}`),
+  getShopProducts: (id: string) => api.get(`/api/shops/${id}/products`),
 };
