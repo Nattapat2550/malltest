@@ -145,7 +145,7 @@ export default function CarouselTab() {
               <button onClick={() => setEditingItem(item)} className="flex items-center justify-center gap-2 py-2 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-xl transition-colors font-bold text-sm">
                 <img src={settingsImg} className="w-4 h-4 dark:invert" alt="Edit" /> แก้ไข
               </button>
-              <button onClick={() => handleDelete(item.id)} className="flex items-center justify-center gap-2 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 rounded-xl transition-colors font-bold text-sm">
+              <button onClick={() => handleDelete(Number(item.id))} className="flex items-center justify-center gap-2 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 rounded-xl transition-colors font-bold text-sm">
                 <img src={eraserImg} className="w-4 h-4 object-contain" alt="Del" /> ลบ
               </button>
             </div>
