@@ -58,7 +58,7 @@ export const adminUpdateUserRole = (userId: string, role: string) =>
 // ==========================================
 export const ownerApi = {
   getShop: () => api.get('/api/owner/shop'),
-  updateShop: (data: { name: string }) => api.put('/api/owner/shop', data),
+  updateShop: (data: { name: string; description?: string; banner_url?: string }) => api.put('/api/owner/shop', data),
   getProducts: () => api.get('/api/owner/products'),
   createProduct: (data: any) => api.post('/api/owner/products', data),
   updateProduct: (id: string, data: any) => api.put(`/api/owner/products/${id}`, data),

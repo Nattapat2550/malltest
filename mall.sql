@@ -2,7 +2,6 @@
 
 -- ==========================================
 -- 1. ระบบกระเป๋าเงิน (User Wallets)
--- ใช้ user_id จาก ProjectRust โดยตรง ไม่มี Foreign Key
 -- ==========================================
 CREATE TABLE user_wallets (
     user_id VARCHAR(255) PRIMARY KEY,
@@ -15,13 +14,13 @@ CREATE TABLE user_wallets (
 -- ==========================================
 CREATE TABLE user_roles (
     user_id VARCHAR(255) PRIMARY KEY,
-    role VARCHAR(50) DEFAULT 'customer' -- roles: customer, owner, center, rider
+    role VARCHAR(50) DEFAULT 'customer' 
 );
 
 CREATE TABLE user_addresses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id VARCHAR(255) NOT NULL,
-    title VARCHAR(100), -- เช่น "บ้าน", "ที่ทำงาน"
+    title VARCHAR(100), 
     address TEXT NOT NULL,
     is_default BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -39,6 +38,8 @@ CREATE TABLE shops (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     owner_id VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
+    description TEXT, -- คำอธิบายร้านค้า
+    banner_url TEXT, -- รูปแบนเนอร์ตกแต่งร้าน
     address_id UUID REFERENCES user_addresses(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -67,12 +68,15 @@ CREATE TABLE products (
     price DECIMAL(10, 2) NOT NULL,
     stock INT NOT NULL DEFAULT 0,
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    shop_id UUID REFERENCES shops(id) ON DELETE CASCADE, -- ผูกสินค้ากับหน้าร้าน (Owner)
+    shop_id UUID REFERENCES shops(id) ON DELETE CASCADE, 
     image_url TEXT,
+    media_urls TEXT DEFAULT '[]', -- เก็บ Array ของรูปภาพ/วิดีโอ (Carousel)
+    parent_id UUID REFERENCES products(id) ON DELETE CASCADE, -- Mother ID (ดึงจากตัวเอง)
+    variant_type VARCHAR(100), -- ชนิดของตัวเลือก เช่น สี, ขนาด (กำหนดเอง)
+    variant_value VARCHAR(100), -- ค่าของตัวเลือก เช่น แดง, XL
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    media_urls TEXT DEFAULT '[]'
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE orders (
@@ -96,14 +100,13 @@ CREATE TABLE order_items (
     price_at_time DECIMAL(10, 2) NOT NULL
 );
 
--- ระบบแยกย่อยการจัดส่งต่อร้านค้าในคำสั่งซื้อนั้น
 CREATE TABLE shipments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
     shop_id UUID REFERENCES shops(id) ON DELETE CASCADE,
     current_center_id UUID REFERENCES delivery_centers(id) ON DELETE SET NULL,
     rider_id UUID REFERENCES riders(id) ON DELETE SET NULL,
-    status VARCHAR(50) DEFAULT 'pending', -- pending, shipped_to_center, at_center, delivering, completed, cancelled
+    status VARCHAR(50) DEFAULT 'pending', 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -167,9 +170,7 @@ CREATE TABLE product_comments (
     UNIQUE(user_id, product_id, order_id) 
 );
 
--- ==========================================
--- 4. ข้อมูลตัวอย่างเบื้องต้น (Mock Data)
--- ==========================================
+-- Mock Data เบื้องต้น
 INSERT INTO categories (name) VALUES 
 ('Electronics'), 
 ('Clothing'), 

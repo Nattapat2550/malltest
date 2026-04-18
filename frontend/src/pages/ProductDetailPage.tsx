@@ -12,6 +12,7 @@ export default function ProductDetailPage() {
   
   const [product, setProduct] = useState<any>(null);
   const [related, setRelated] = useState<any[]>([]);
+  const [variants, setVariants] = useState<any[]>([]); // สำหรับสินค้าย่อย (Mother/Sub)
   const [loading, setLoading] = useState(true);
   
   // Carousel State
@@ -22,22 +23,35 @@ export default function ProductDetailPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // ดึงข้อมูลสินค้าทั้งหมด
         const res = await api.get(`/api/products`);
         const allProducts = res.data || [];
         const current = allProducts.find((p: any) => p.id.toString() === id);
         
         if (current) {
-          // ใช้ข้อมูล Media จากฐานข้อมูลจริงๆ 
-          // (ถ้าไม่มีข้อมูล media ให้ดึง image_url รูปหลักมาแสดงแทนเป็น fallback)
-          current.media = current.media && current.media.length > 0 
-            ? current.media 
+          // ดึง Media มาทำ Carousel หรือตก fallback
+          let parsedMedia = [];
+          if (typeof current.media_urls === 'string') {
+             try { parsedMedia = JSON.parse(current.media_urls); } catch(e) {}
+          } else if (Array.isArray(current.media_urls)) {
+             parsedMedia = current.media_urls;
+          }
+          current.media = parsedMedia.length > 0 
+            ? parsedMedia 
             : [{ type: 'image', url: current.image_url }];
             
           setProduct(current);
           
-          // สุ่มสินค้าแนะนำ
-          setRelated(allProducts.filter((p: any) => p.id.toString() !== id).slice(0, 4));
+          // ดึงตัวเลือกสินค้า (Variants) โดยเช็คว่าสินค้านี้เป็น Mother ID หรือมี Parent ID เดียวกัน
+          const targetParentId = current.parent_id || current.id;
+          const currentVariants = allProducts.filter((p: any) => 
+            p.parent_id === targetParentId || p.id === targetParentId
+          );
+          setVariants(currentVariants);
+
+          // สุ่มสินค้าแนะนำ (ที่ไม่ใช่ตัวมันเอง และไม่ใช่ variant เดียวกัน)
+          setRelated(allProducts.filter((p: any) => 
+            p.id.toString() !== id && p.parent_id !== targetParentId
+          ).slice(0, 4));
         }
       } catch (err) {
         console.error("Error fetching product", err);
@@ -64,7 +78,6 @@ export default function ProductDetailPage() {
 
   const handleBuyNow = () => {
     if (!product || product.stock < 1) return;
-    // ส่งข้อมูลไปหน้า Checkout ผ่าน state (bypass cart)
     navigate('/checkout', { state: { 
       directBuy: [{
         productId: product.id,
@@ -121,9 +134,29 @@ export default function ProductDetailPage() {
           <h1 className="text-3xl lg:text-4xl font-black text-gray-900 dark:text-white leading-tight mb-4">{product.name}</h1>
           <div className="text-4xl font-black text-green-600 dark:text-green-400 mb-6">฿{product.price.toLocaleString()}</div>
           
-          <div className="prose dark:prose-invert max-w-none text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
+          <div className="prose dark:prose-invert max-w-none text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
             {product.description}
           </div>
+
+          {/* Variants Selector */}
+          {variants.length > 1 && (
+             <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+               <span className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">
+                 ตัวเลือกสินค้า {product.variant_type && `(${product.variant_type})`}
+               </span>
+               <div className="flex flex-wrap gap-2">
+                 {variants.map(v => (
+                   <button 
+                     key={v.id} 
+                     onClick={() => navigate(`/products/${v.id}`)}
+                     className={`px-4 py-2 border rounded-lg font-medium transition-all ${v.id === product.id ? 'border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'border-gray-300 text-gray-600 hover:border-gray-400 dark:border-gray-600 dark:text-gray-300'}`}
+                   >
+                     {v.variant_value || v.name}
+                   </button>
+                 ))}
+               </div>
+             </div>
+          )}
 
           <div className="mb-8">
             <span className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">จำนวน</span>
@@ -157,8 +190,26 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
+      {/* ไปที่ร้านค้า Section */}
+      {product.shop_id && (
+        <div className="mt-8 bg-white dark:bg-gray-800 rounded-3xl p-6 lg:p-8 shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-2xl font-bold">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">{product.shop?.name || 'จำหน่ายโดยร้านค้านี้'}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">คลิกเพื่อดูสินค้าอื่นๆ หรือดูคะแนนรีวิวร้านค้า</p>
+            </div>
+          </div>
+          <Link to={`/shop/${product.shop_id}`} className="px-6 py-3 border-2 border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white rounded-xl font-bold transition-colors w-full md:w-auto text-center">
+            ไปที่หน้าร้านค้า
+          </Link>
+        </div>
+      )}
+
       {/* 3. Review Section */}
-      <div className="mt-16 bg-white dark:bg-gray-800 rounded-3xl p-6 lg:p-10 shadow-sm border border-gray-200 dark:border-gray-700">
+      <div className="mt-8 bg-white dark:bg-gray-800 rounded-3xl p-6 lg:p-10 shadow-sm border border-gray-200 dark:border-gray-700">
         <ProductComments productId={Number(id)} />
       </div>
 

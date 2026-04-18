@@ -12,17 +12,22 @@ import (
 func (h *Handler) OwnerGetShop(w http.ResponseWriter, r *http.Request) {
 	u := GetUser(r)
 	
-	// ใช้ Random UserID
 	uidStr := u.UserID
 	if uidStr == "" {
 		uidStr = fmt.Sprintf("%v", u.ID)
 	}
 
 	var shop struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
+		ID          string `json:"id"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		BannerURL   string `json:"banner_url"`
 	}
-	err := h.MallDB.QueryRow("SELECT id, name FROM shops WHERE owner_id = $1", uidStr).Scan(&shop.ID, &shop.Name)
+	
+	// เพิ่มการ Query description และ banner_url
+	var desc, banner sql.NullString
+	err := h.MallDB.QueryRow("SELECT id, name, description, banner_url FROM shops WHERE owner_id = $1", uidStr).Scan(&shop.ID, &shop.Name, &desc, &banner)
+	
 	if err != nil {
 		if err == sql.ErrNoRows {
 			w.Header().Set("Content-Type", "application/json")
@@ -32,6 +37,9 @@ func (h *Handler) OwnerGetShop(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	if desc.Valid { shop.Description = desc.String }
+	if banner.Valid { shop.BannerURL = banner.String }
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"has_shop": true, "shop": shop})
@@ -45,8 +53,11 @@ func (h *Handler) OwnerUpdateShop(w http.ResponseWriter, r *http.Request) {
 		uidStr = fmt.Sprintf("%v", u.ID)
 	}
 
+	// รับค่า description และ banner_url เพิ่มเติม
 	var req struct {
-		Name string `json:"name"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		BannerURL   string `json:"banner_url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid input", http.StatusBadRequest)
@@ -57,9 +68,11 @@ func (h *Handler) OwnerUpdateShop(w http.ResponseWriter, r *http.Request) {
 	err := h.MallDB.QueryRow("SELECT id FROM shops WHERE owner_id = $1", uidStr).Scan(&shopID)
 	switch err {
 	case sql.ErrNoRows:
-		_, err = h.MallDB.Exec("INSERT INTO shops (owner_id, name) VALUES ($1, $2)", uidStr, req.Name)
+		// Insert ฟิลด์ใหม่
+		_, err = h.MallDB.Exec("INSERT INTO shops (owner_id, name, description, banner_url) VALUES ($1, $2, $3, $4)", uidStr, req.Name, req.Description, req.BannerURL)
 	case nil:
-		_, err = h.MallDB.Exec("UPDATE shops SET name = $1 WHERE id = $2", req.Name, shopID)
+		// Update ฟิลด์ใหม่
+		_, err = h.MallDB.Exec("UPDATE shops SET name = $1, description = $2, banner_url = $3 WHERE id = $4", req.Name, req.Description, req.BannerURL, shopID)
 	}
 	
 	if err != nil {
@@ -87,8 +100,9 @@ func (h *Handler) OwnerGetProducts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// เพิ่ม SELECT parent_id, variant_type, variant_value
 	rows, err := h.MallDB.Query(`
-		SELECT id, sku, name, description, price, stock, category_id, shop_id, image_url, media_urls 
+		SELECT id, sku, name, description, price, stock, category_id, shop_id, image_url, media_urls, parent_id, variant_type, variant_value 
 		FROM products WHERE shop_id = $1 ORDER BY created_at DESC
 	`, shopID)
 	if err != nil {
@@ -100,11 +114,12 @@ func (h *Handler) OwnerGetProducts(w http.ResponseWriter, r *http.Request) {
 	var products []Product
 	for rows.Next() {
 		var p Product
-		var desc, img, mediaJSON, catID, sID sql.NullString
+		var desc, img, mediaJSON, catID, sID, pID, vType, vValue sql.NullString
 
-		if err := rows.Scan(&p.ID, &p.SKU, &p.Name, &desc, &p.Price, &p.Stock, &catID, &sID, &img, &mediaJSON); err != nil {
+		if err := rows.Scan(&p.ID, &p.SKU, &p.Name, &desc, &p.Price, &p.Stock, &catID, &sID, &img, &mediaJSON, &pID, &vType, &vValue); err != nil {
 			continue
 		}
+		
 		if desc.Valid { p.Description = desc.String }
 		if img.Valid { p.ImageURL = img.String }
 		if catID.Valid { 
@@ -114,6 +129,18 @@ func (h *Handler) OwnerGetProducts(w http.ResponseWriter, r *http.Request) {
 		if sID.Valid { 
 			sid := sID.String
 			p.ShopID = &sid 
+		}
+		if pID.Valid && pID.String != "" {
+			pidStr := pID.String
+			p.ParentID = &pidStr
+		}
+		if vType.Valid && vType.String != "" {
+			vTypeStr := vType.String
+			p.VariantType = &vTypeStr
+		}
+		if vValue.Valid && vValue.String != "" {
+			vValStr := vValue.String
+			p.VariantValue = &vValStr
 		}
 		if mediaJSON.Valid && mediaJSON.String != "" {
 			json.Unmarshal([]byte(mediaJSON.String), &p.Media)
@@ -150,10 +177,11 @@ func (h *Handler) OwnerCreateProduct(w http.ResponseWriter, r *http.Request) {
 
 	mediaBytes, _ := json.Marshal(p.Media)
 
+	// เพิ่มฟิลด์ ParentID, VariantType, VariantValue ใน Insert
 	_, err = h.MallDB.Exec(`
-		INSERT INTO products (sku, name, description, price, stock, category_id, shop_id, image_url, media_urls) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-		p.SKU, p.Name, p.Description, p.Price, p.Stock, p.CategoryID, shopID, p.ImageURL, string(mediaBytes))
+		INSERT INTO products (sku, name, description, price, stock, category_id, shop_id, image_url, media_urls, parent_id, variant_type, variant_value) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+		p.SKU, p.Name, p.Description, p.Price, p.Stock, p.CategoryID, shopID, p.ImageURL, string(mediaBytes), p.ParentID, p.VariantType, p.VariantValue)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -188,11 +216,12 @@ func (h *Handler) OwnerUpdateProduct(w http.ResponseWriter, r *http.Request) {
 
 	mediaBytes, _ := json.Marshal(p.Media)
 
+	// เพิ่มฟิลด์ ParentID, VariantType, VariantValue ใน Update
 	res, err := h.MallDB.Exec(`
 		UPDATE products 
-		SET sku=$1, name=$2, description=$3, price=$4, stock=$5, image_url=$6, media_urls=$7, updated_at=CURRENT_TIMESTAMP
-		WHERE id=$8 AND shop_id=$9`,
-		p.SKU, p.Name, p.Description, p.Price, p.Stock, p.ImageURL, string(mediaBytes), id, shopID)
+		SET sku=$1, name=$2, description=$3, price=$4, stock=$5, image_url=$6, media_urls=$7, parent_id=$8, variant_type=$9, variant_value=$10, updated_at=CURRENT_TIMESTAMP
+		WHERE id=$11 AND shop_id=$12`,
+		p.SKU, p.Name, p.Description, p.Price, p.Stock, p.ImageURL, string(mediaBytes), p.ParentID, p.VariantType, p.VariantValue, id, shopID)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

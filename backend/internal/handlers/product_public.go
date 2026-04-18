@@ -14,21 +14,25 @@ type Media struct {
 }
 
 type Product struct {
-	ID          string  `json:"id"`
-	SKU         string  `json:"sku"`
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	Stock       int     `json:"stock"`
-	CategoryID  *string `json:"category_id,omitempty"`
-	ShopID      *string `json:"shop_id,omitempty"` 
-	ImageURL    string  `json:"image_url"`
-	Media       []Media `json:"media"` 
+	ID           string  `json:"id"`
+	SKU          string  `json:"sku"`
+	Name         string  `json:"name"`
+	Description  string  `json:"description"`
+	Price        float64 `json:"price"`
+	Stock        int     `json:"stock"`
+	CategoryID   *string `json:"category_id,omitempty"`
+	ShopID       *string `json:"shop_id,omitempty"` 
+	ImageURL     string  `json:"image_url"`
+	Media        []Media `json:"media"` 
+	// เพิ่มฟิลด์สำหรับระบบตัวเลือกย่อย (Variants)
+	ParentID     *string `json:"parent_id,omitempty"`
+	VariantType  *string `json:"variant_type,omitempty"`
+	VariantValue *string `json:"variant_value,omitempty"`
 }
 
 func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.MallDB.Query(`
-		SELECT id, sku, name, description, price, stock, category_id, shop_id, image_url, media_urls 
+		SELECT id, sku, name, description, price, stock, category_id, shop_id, image_url, media_urls, parent_id, variant_type, variant_value 
 		FROM products 
 		ORDER BY created_at DESC
 	`)
@@ -41,9 +45,9 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	var products []Product
 	for rows.Next() {
 		var p Product
-		var desc, img, mediaJSON, catID, shopID sql.NullString
+		var desc, img, mediaJSON, catID, shopID, pID, vType, vValue sql.NullString
 
-		if err := rows.Scan(&p.ID, &p.SKU, &p.Name, &desc, &p.Price, &p.Stock, &catID, &shopID, &img, &mediaJSON); err != nil {
+		if err := rows.Scan(&p.ID, &p.SKU, &p.Name, &desc, &p.Price, &p.Stock, &catID, &shopID, &img, &mediaJSON, &pID, &vType, &vValue); err != nil {
 			continue
 		}
 
@@ -56,6 +60,18 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		if shopID.Valid { 
 			sid := shopID.String
 			p.ShopID = &sid 
+		}
+		if pID.Valid && pID.String != "" {
+			pidStr := pID.String
+			p.ParentID = &pidStr
+		}
+		if vType.Valid && vType.String != "" {
+			vTypeStr := vType.String
+			p.VariantType = &vTypeStr
+		}
+		if vValue.Valid && vValue.String != "" {
+			vValStr := vValue.String
+			p.VariantValue = &vValStr
 		}
 
 		if mediaJSON.Valid && mediaJSON.String != "" {
@@ -79,12 +95,12 @@ func (h *Handler) GetProductByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var p Product
 	
-	var desc, img, mediaJSON, catID, shopID sql.NullString
+	var desc, img, mediaJSON, catID, shopID, pID, vType, vValue sql.NullString
 
 	err := h.MallDB.QueryRow(`
-		SELECT id, sku, name, description, price, stock, category_id, shop_id, image_url, media_urls 
+		SELECT id, sku, name, description, price, stock, category_id, shop_id, image_url, media_urls, parent_id, variant_type, variant_value 
 		FROM products WHERE id = $1`, id).
-		Scan(&p.ID, &p.SKU, &p.Name, &desc, &p.Price, &p.Stock, &catID, &shopID, &img, &mediaJSON)
+		Scan(&p.ID, &p.SKU, &p.Name, &desc, &p.Price, &p.Stock, &catID, &shopID, &img, &mediaJSON, &pID, &vType, &vValue)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -104,6 +120,18 @@ func (h *Handler) GetProductByID(w http.ResponseWriter, r *http.Request) {
 	if shopID.Valid { 
 		sid := shopID.String
 		p.ShopID = &sid 
+	}
+	if pID.Valid && pID.String != "" {
+		pidStr := pID.String
+		p.ParentID = &pidStr
+	}
+	if vType.Valid && vType.String != "" {
+		vTypeStr := vType.String
+		p.VariantType = &vTypeStr
+	}
+	if vValue.Valid && vValue.String != "" {
+		vValStr := vValue.String
+		p.VariantValue = &vValStr
 	}
 
 	if mediaJSON.Valid && mediaJSON.String != "" {
