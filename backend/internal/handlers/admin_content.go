@@ -3,28 +3,52 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
 
 // --- News ---
 func (h *Handler) AdminGetNewsList(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.MallDB.Query("SELECT id, title, content, COALESCE(image_url, '') FROM news ORDER BY id DESC")
+	// เพิ่มการดึง is_active และ created_at พร้อมใส่ COALESCE ป้องกันค่า NULL
+	rows, err := h.MallDB.Query(`
+		SELECT 
+			id, 
+			COALESCE(title, ''), 
+			COALESCE(content, ''), 
+			COALESCE(image_url, ''), 
+			COALESCE(is_active, true),
+			COALESCE(created_at, NOW())
+		FROM news 
+		ORDER BY id DESC
+	`)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	defer rows.Close()
+
 	var newsList []map[string]any
 	for rows.Next() {
 		var id int
 		var title, content, img string
-		if err := rows.Scan(&id, &title, &content, &img); err == nil {
+		var isActive bool
+		var createdAt time.Time
+
+		if err := rows.Scan(&id, &title, &content, &img, &isActive, &createdAt); err == nil {
 			newsList = append(newsList, map[string]any{
-				"id": id, "title": title, "content": content, "image_url": img,
+				"id":         id, 
+				"title":      title, 
+				"content":    content, 
+				"image_url":  img,
+				"is_active":  isActive,
+				"created_at": createdAt.Format(time.RFC3339),
 			})
+		} else {
+			log.Println("Error scanning news row:", err)
 		}
 	}
 	if newsList == nil {
@@ -47,7 +71,7 @@ func (h *Handler) AdminCreateNews(w http.ResponseWriter, r *http.Request) {
 
 	_, err := h.MallDB.ExecContext(r.Context(),
 		"INSERT INTO news (title, content, image_url, is_active) VALUES ($1, $2, $3, $4)",
-		n.Title, n.Content, n.ImageURL, true, // กำหนดให้ is_active เริ่มต้นเป็น true เสมอ หรือเปลี่ยนเป็น n.IsActive หากหน้าบ้านส่งมา
+		n.Title, n.Content, n.ImageURL, n.IsActive, 
 	)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to create news")
@@ -75,9 +99,10 @@ func (h *Handler) AdminUpdateNews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// แก้ไขให้ใช้ค่า n.IsActive ที่ส่งมาจากหน้าบ้านแทนการล็อกเป็น true
 	_, err = h.MallDB.ExecContext(r.Context(),
 		"UPDATE news SET title = $1, content = $2, image_url = $3, is_active = $4 WHERE id = $5",
-		n.Title, n.Content, n.ImageURL, true, id, // ปรับการอัปเดต is_active ตามความต้องการ
+		n.Title, n.Content, n.ImageURL, n.IsActive, id, 
 	)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to update news")
@@ -104,7 +129,17 @@ func (h *Handler) AdminDeleteNews(w http.ResponseWriter, r *http.Request) {
 
 // --- Carousel ---
 func (h *Handler) AdminGetCarousel(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.MallDB.Query("SELECT id, image_url, COALESCE(link_url, ''), is_active, sort_order FROM carousels ORDER BY sort_order ASC, id DESC")
+	// เพิ่ม COALESCE ปกป้องค่า NULL ให้ครบทุกคอลัมน์ ป้องกัน Scan error
+	rows, err := h.MallDB.Query(`
+		SELECT 
+			id, 
+			COALESCE(image_url, ''), 
+			COALESCE(link_url, ''), 
+			COALESCE(is_active, true), 
+			COALESCE(sort_order, 0) 
+		FROM carousels 
+		ORDER BY sort_order ASC, id DESC
+	`)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -116,17 +151,25 @@ func (h *Handler) AdminGetCarousel(w http.ResponseWriter, r *http.Request) {
 		var id, sort int
 		var img, link string
 		var isActive bool
+
 		if err := rows.Scan(&id, &img, &link, &isActive, &sort); err == nil {
 			items = append(items, map[string]any{
-				"id": id, "image_url": img, "link_url": link, "is_active": isActive, "sort_order": sort,
+				"id":         id, 
+				"image_url":  img, 
+				"link_url":   link, 
+				"is_active":  isActive, 
+				"sort_order": sort,
 			})
+		} else {
+			log.Println("Error scanning carousel row:", err)
 		}
 	}
-	if items == nil { items = []map[string]any{} }
+	if items == nil { 
+		items = []map[string]any{} 
+	}
 	WriteJSON(w, http.StatusOK, items)
 }
 
-// เพิ่มฟังก์ชันสร้าง Carousel
 func (h *Handler) AdminCreateCarousel(w http.ResponseWriter, r *http.Request) {
 	var c struct {
 		ImageURL  string `json:"image_url"`
@@ -149,7 +192,6 @@ func (h *Handler) AdminCreateCarousel(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusCreated, map[string]string{"message": "Created successfully"})
 }
 
-// แก้ไขฟังก์ชันอัปเดต Carousel
 func (h *Handler) AdminUpdateCarousel(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, _ := strconv.Atoi(idStr)
@@ -176,7 +218,6 @@ func (h *Handler) AdminUpdateCarousel(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]string{"message": "Updated successfully"})
 }
 
-// เพิ่มฟังก์ชันลบ Carousel
 func (h *Handler) AdminDeleteCarousel(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, _ := strconv.Atoi(idStr)
