@@ -8,6 +8,7 @@ import CarouselTab from './tabs/CarouselTab';
 import DocumentsTab from './tabs/DocumentsTab';
 import ProductsTab from './tabs/ProductsTab'; // สมมติว่ามี ProductsTab เพื่อจัดการสินค้า
 import OrdersTab from './tabs/OrdersTab';
+import PromotionsTab from './tabs/PromotionsTab';
 
 // นำเข้าไอคอนสำหรับเมนู
 import userImg from '../../assets/user.png';
@@ -39,6 +40,8 @@ export default function AdminPage() {
             <TabButton id="appeals" label="ระบบคำร้องเรียน" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
             <TabButton id="carousel" label="จัดการแบนเนอร์" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
             <TabButton id="documents" label="จัดการข้อมูล & แกลเลอรี" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
+            <TabButton id="promotions" label="จัดการโปรโมชั่น" active={activeTab} onClick={setActiveTab} icon={ideaImg} /> 
+            <TabButton id="promotions" label="จัดการโค้ดส่วนลด" active={activeTab} onClick={setActiveTab} icon={ideaImg} />
           </div>
         </div>
 
@@ -52,6 +55,7 @@ export default function AdminPage() {
           {activeTab === 'carousel' && <CarouselTab />}
           {activeTab === 'documents' && <DocumentsTab />}
           {activeTab === 'orders' && <OrdersTab />}
+          {activeTab === 'promotions' && <PromotionsTab />}    
         </div>
         
       </div>

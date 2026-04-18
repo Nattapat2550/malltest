@@ -24,15 +24,23 @@ export default function HomePage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
 
+  // State สำหรับโปรโมชั่น
+  const [activePromos, setActivePromos] = useState<any[]>([]);
+  const [myPromos, setMyPromos] = useState<any[]>([]);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [carouselRes, docRes] = await Promise.all([
+        const [carouselRes, docRes, promoRes, myPromoRes] = await Promise.all([
           api.get('/api/carousel').catch(() => ({ data: [] })), 
-          api.get('/api/documents/list').catch(() => ({ data: [] }))
+          api.get('/api/documents/list').catch(() => ({ data: [] })),
+          api.get('/api/users/promotions/active').catch(() => ({ data: [] })),
+          api.get('/api/users/promotions/my').catch(() => ({ data: [] }))
         ]);
         setCarousels(carouselRes.data || []);
         setDocuments(docRes.data || []);
+        setActivePromos(promoRes.data || []);
+        setMyPromos(myPromoRes.data || []);
       } catch (err: any) { 
         console.error("Failed to load initial data");
       }
@@ -47,6 +55,17 @@ export default function HomePage() {
     }, 5000);
     return () => clearInterval(timer);
   }, [carousels.length]);
+
+  const handleCollectPromo = async (id: string) => {
+    try {
+      await api.post('/api/users/promotions/collect', { promotion_id: id });
+      alert('เก็บโค้ดสำเร็จ! สามารถใช้ได้ในหน้าชำระเงิน');
+      // Update State ทันทีเพื่อให้ปุ่มเปลี่ยนเป็น "เก็บแล้ว"
+      setMyPromos([...myPromos, { promotion_id: id, id }]);
+    } catch (err: any) {
+      alert(err.response?.data?.error || err.response?.data?.message || 'เกิดข้อผิดพลาดในการเก็บโค้ด');
+    }
+  };
 
   return (
     <div className="w-full overflow-x-hidden bg-gray-50 dark:bg-gray-900 pb-20 transition-colors duration-300">
@@ -81,6 +100,33 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* --- โค้ดส่วนลดพิเศษ --- */}
+      {activePromos.length > 0 && (
+        <div className="w-full px-6 lg:px-12 2xl:px-20 mt-16">
+          <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight mb-6">🎟️ โค้ดส่วนลดพิเศษ</h2>
+          <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
+            {activePromos.map(promo => {
+              const isCollected = myPromos.some(mp => mp.id === promo.id || mp.promotion_id === promo.id);
+              return (
+                <div key={promo.id} className="min-w-70 bg-linear-to-r from-orange-500 to-pink-500 rounded-2xl p-6 text-white shadow-lg snap-center relative overflow-hidden">
+                  <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/20 rounded-full blur-2xl"></div>
+                  <h3 className="text-2xl font-black mb-1 drop-shadow-md">{promo.code}</h3>
+                  <p className="text-sm font-medium mb-3 text-orange-50">{promo.description}</p>
+                  <p className="text-xs mb-4 bg-black/20 inline-block px-2 py-1 rounded">ขั้นต่ำ ฿{promo.min_purchase.toLocaleString()}</p>
+                  <button 
+                    onClick={() => handleCollectPromo(promo.id)}
+                    disabled={isCollected}
+                    className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all shadow-md ${isCollected ? 'bg-white/30 cursor-not-allowed text-white' : 'bg-white text-orange-600 hover:bg-orange-50 hover:scale-105'}`}
+                  >
+                    {isCollected ? 'เก็บแล้ว' : 'เก็บโค้ด'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {carousels.length > 0 && (
         <div className="w-full px-6 lg:px-12 2xl:px-20 mt-10">

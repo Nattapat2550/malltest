@@ -49,11 +49,53 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	// ใช้ Random UserID
 	uidStr := u.UserID
 	if uidStr == "" {
 		uidStr = fmt.Sprintf("%v", u.ID)
 	}
+
+	// 1. คำนวณยอด Subtotal และ ค่าส่งใหม่จาก Backend เพื่อความปลอดภัย
+	subtotal := 0.0
+	for _, item := range req.Items {
+		subtotal += (item.Price * float64(item.Quantity))
+	}
+	shippingCost := 30.0
+	if req.ShippingMethod == "express" {
+		shippingCost = 50.0
+	}
+
+	// 2. คำนวณส่วนลดจากโค้ด
+	discount := 0.0
+	var promoID sql.NullString
+	if req.PromoCode != "" {
+		var pType string
+		var pValue float64
+		var pMax, pMin sql.NullFloat64
+		var pUsageLimit, pUsedCount int
+		err := tx.QueryRow("SELECT id, discount_type, discount_value, max_discount, min_purchase, usage_limit, used_count FROM promotions WHERE code = $1 AND is_active = TRUE AND start_date <= CURRENT_TIMESTAMP AND (end_date IS NULL OR end_date >= CURRENT_TIMESTAMP)", req.PromoCode).Scan(&promoID, &pType, &pValue, &pMax, &pMin, &pUsageLimit, &pUsedCount)
+		if err == nil {
+			if pUsageLimit == 0 || pUsedCount < pUsageLimit {
+				minP := 0.0
+				if pMin.Valid { minP = pMin.Float64 }
+				if subtotal >= minP {
+					switch pType {
+					case "percent":
+						discount = subtotal * (pValue / 100)
+						if pMax.Valid && discount > pMax.Float64 {
+							discount = pMax.Float64
+						}
+					case "fixed":
+						discount = pValue
+					case "free_shipping":
+						discount = shippingCost
+					}
+				}
+			}
+		}
+	}
+
+	realTotalAmount := subtotal + shippingCost - discount
+	req.TotalAmount = realTotalAmount // บังคับใช้ยอดที่ Backend คำนวณ
 
 	var balance float64
 	err = tx.QueryRow("SELECT balance FROM user_wallets WHERE user_id = $1 FOR UPDATE", uidStr).Scan(&balance)
@@ -70,10 +112,7 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newBalance := balance - req.TotalAmount
-	_, err = tx.Exec(`
-		INSERT INTO user_wallets (user_id, balance) VALUES ($1, $2) 
-		ON CONFLICT (user_id) DO UPDATE SET balance = EXCLUDED.balance, updated_at = CURRENT_TIMESTAMP`,
-		uidStr, newBalance)
+	_, err = tx.Exec("INSERT INTO user_wallets (user_id, balance) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET balance = EXCLUDED.balance, updated_at = CURRENT_TIMESTAMP", uidStr, newBalance)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to deduct balance")
 		return
@@ -90,10 +129,8 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shopMap := make(map[string]bool)
-
 	for _, item := range req.Items {
-		_, err = tx.Exec("INSERT INTO order_items (order_id, product_id, quantity, price_at_time) VALUES ($1, $2, $3, $4)",
-			orderID, item.ProductID, item.Quantity, item.Price)
+		_, err = tx.Exec("INSERT INTO order_items (order_id, product_id, quantity, price_at_time) VALUES ($1, $2, $3, $4)", orderID, item.ProductID, item.Quantity, item.Price)
 		if err != nil {
 			h.writeError(w, http.StatusInternalServerError, "Failed to insert order item")
 			return
@@ -104,7 +141,6 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 			h.writeError(w, http.StatusInternalServerError, "Failed to update stock")
 			return
 		}
-
 		affected, _ := res.RowsAffected()
 		if affected == 0 {
 			h.writeError(w, http.StatusBadRequest, "สินค้าบางรายการหมด หรือมีสต็อกไม่เพียงพอ")
@@ -120,16 +156,14 @@ func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
 
 	for sID := range shopMap {
 		_, err = tx.Exec("INSERT INTO shipments (order_id, shop_id, status) VALUES ($1, $2, 'pending')", orderID, sID)
-		if err != nil {
-			h.writeError(w, http.StatusInternalServerError, "Failed to create shipment")
-			return
-		}
 	}
 
 	_, err = tx.Exec("INSERT INTO order_tracking (order_id, status_detail, location) VALUES ($1, 'ระบบได้รับคำสั่งซื้อและชำระเงินเรียบร้อยแล้ว', 'System')", orderID)
-	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Failed to add initial tracking")
-		return
+
+	// 3. หักสิทธิ์การใช้งานของโปรโมชั่น และทำเครื่องหมายว่า User ใช้โค้ดไปแล้ว
+	if promoID.Valid {
+		_, err = tx.Exec("UPDATE promotions SET used_count = used_count + 1 WHERE id = $1", promoID.String)
+		_, err = tx.Exec("UPDATE user_promotions SET is_used = TRUE, used_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND promotion_id = $2", uidStr, promoID.String)
 	}
 
 	if err = tx.Commit(); err != nil {

@@ -27,6 +27,10 @@ export default function CheckoutPage() {
   const [loadingWallet, setLoadingWallet] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // === Promotion State ===
+  const [activePromos, setActivePromos] = useState<any[]>([]);
+  const [myPromos, setMyPromos] = useState<any[]>([]);
+
   useEffect(() => {
     // ดึง Wallet
     api.get('/api/users/me/wallet')
@@ -42,6 +46,10 @@ export default function CheckoutPage() {
         setSelectedAddressId(data[0].id); // เลือกที่อยู่อันแรกเป็น Default
       }
     }).catch(console.error);
+
+    // ดึงโปรโมชั่นที่ใช้งานได้และโปรโมชั่นที่เก็บไว้
+    api.get('/api/users/promotions/active').then(res => setActivePromos(res.data)).catch(console.error);
+    api.get('/api/users/promotions/my').then(res => setMyPromos(res.data)).catch(console.error);
   }, []);
 
   if (items.length === 0) {
@@ -50,7 +58,39 @@ export default function CheckoutPage() {
 
   const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
   const shippingCost = shippingMethod === 'express' ? 50 : 30;
-  const discount = promoCode === 'MALL20' ? subtotal * 0.2 : 0;
+
+  // === คำนวณส่วนลดจากโค้ดแบบ Dynamic (เช็คจาก Database) ===
+  let discount = 0;
+  let isPromoValid = false;
+  let promoErrorMsg = '';
+
+  const selectedPromo = activePromos.find(p => p.code === promoCode);
+  if (promoCode && selectedPromo) {
+      if (subtotal >= (selectedPromo.min_purchase || 0)) {
+          isPromoValid = true;
+          if (selectedPromo.discount_type === 'percent') {
+              discount = subtotal * (selectedPromo.discount_value / 100);
+              if (selectedPromo.max_discount && discount > selectedPromo.max_discount) {
+                  discount = selectedPromo.max_discount;
+              }
+          } else if (selectedPromo.discount_type === 'fixed') {
+              discount = selectedPromo.discount_value;
+          } else if (selectedPromo.discount_type === 'free_shipping') {
+              discount = shippingCost;
+          }
+      } else {
+          promoErrorMsg = `ยอดซื้อขั้นต่ำไม่ถึง ฿${selectedPromo.min_purchase.toLocaleString()}`;
+      }
+  } else if (promoCode && !selectedPromo) {
+      // ตรวจจับโค้ด MALL20 เป็น Fallback เดิมกรณี Backend ปิดอยู่ (หรือจะเอาออกก็ได้)
+      if (promoCode === 'MALL20') {
+         discount = subtotal * 0.2;
+         isPromoValid = true;
+      } else {
+         promoErrorMsg = 'โค้ดไม่ถูกต้องหรือหมดอายุ';
+      }
+  }
+
   const total = subtotal + shippingCost - discount;
   const isInsufficientBalance = walletBalance < total;
 
@@ -81,7 +121,7 @@ export default function CheckoutPage() {
         address: finalAddressString,
         shipping_method: shippingMethod,
         note,
-        promo_code: promoCode,
+        promo_code: isPromoValid ? promoCode : '',
         total_amount: total
       };
 
@@ -141,7 +181,6 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          {/* ประเภทการจัดส่ง & Note เหมือนเดิม... */}
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 lg:p-8 shadow-sm border border-gray-200 dark:border-gray-700">
             <h2 className="text-xl font-black text-gray-900 dark:text-white mb-6">ประเภทการจัดส่ง</h2>
             <div className="flex gap-4">
@@ -168,7 +207,6 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* สรุปรายการสินค้าและ Wallet เหมือนเดิมทุกอย่าง... */}
         <div className="lg:w-112.5 flex flex-col gap-6">
           <div className={`rounded-3xl p-6 shadow-sm border-2 ${isInsufficientBalance ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'}`}>
             <h2 className={`text-lg font-bold mb-2 ${isInsufficientBalance ? 'text-red-800 dark:text-red-400' : 'text-blue-900 dark:text-blue-300'}`}>
@@ -208,13 +246,31 @@ export default function CheckoutPage() {
             </div>
 
             <div className="mt-6">
-              <h3 className="font-bold text-gray-900 dark:text-white mb-2">โค้ดส่วนลด</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white mb-3">โค้ดส่วนลดของคุณ</h3>
+              
+              {/* โชว์ปุ่มโค้ดที่เก็บมา */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                {myPromos.filter(p => !p.is_used).map(p => (
+                  <button 
+                    key={p.id} 
+                    onClick={() => setPromoCode(p.code)} 
+                    className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all ${promoCode === p.code ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-200'}`}
+                  >
+                    {p.code}
+                  </button>
+                ))}
+                {myPromos.filter(p => !p.is_used).length === 0 && <p className="text-xs text-gray-500">ไม่มีโค้ดที่เก็บไว้</p>}
+              </div>
+
               <input 
-                type="text" placeholder="กรอกโค้ด เช่น MALL20" 
+                type="text" placeholder="หรือกรอกโค้ด เช่น NEWYEAR2024" 
                 value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none uppercase"
               />
-              {promoCode === 'MALL20' && <p className="text-green-500 text-sm mt-2 font-bold">🎉 ลด 20% แล้ว</p>}
+              
+              {/* ตรวจสอบโค้ด */}
+              {promoCode && isPromoValid && <p className="text-green-500 text-sm mt-2 font-bold">🎉 โค้ดใช้งานได้ ลด {discount.toLocaleString()} บาท</p>}
+              {promoCode && !isPromoValid && <p className="text-red-500 text-sm mt-2 font-bold">{promoErrorMsg}</p>}
             </div>
 
             <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700 flex flex-col gap-3">

@@ -10,15 +10,18 @@ func setupUserRoutes(h *handlers.Handler) func(chi.Router) {
 	return func(ur chi.Router) {
 		ur.Use(h.RequireAuth)
 		
-		// ข้อมูลโปรไฟล์หลัก
 		ur.Get("/me", h.UsersMeGet)
 		ur.Put("/me", h.UsersMePut)
 		ur.Post("/me/avatar", h.UsersMeAvatar)
 		ur.Delete("/me", h.UsersMeDelete)
 		ur.Get("/me/wallet", h.GetUserWallet)
 
-		// เพิ่ม Route สำหรับจัดการ Address (ที่อยู่จัดส่งของลูกค้า)
 		ur.Get("/addresses", h.GetUserAddresses)
 		ur.Post("/addresses", h.AddUserAddress)
+
+		// --- Promotions (ส่วนที่เพิ่มใหม่) ---
+		ur.Get("/promotions/active", h.GetActivePromotions)
+		ur.Get("/promotions/my", h.GetMyPromotions)
+		ur.Post("/promotions/collect", h.CollectPromotion)
 	}
 }

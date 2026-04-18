@@ -169,7 +169,34 @@ CREATE TABLE product_comments (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, product_id, order_id) 
 );
+-- ==========================================
+-- 4. ระบบโปรโมชั่น (Promotions)
+-- ==========================================
+CREATE TABLE promotions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code VARCHAR(50) UNIQUE NOT NULL,
+    description TEXT,
+    discount_type VARCHAR(50) DEFAULT 'fixed', -- fixed, percent, free_shipping
+    discount_value DECIMAL(10, 2) NOT NULL,
+    max_discount DECIMAL(10, 2), -- สำหรับลดเป็น %
+    min_purchase DECIMAL(10, 2) DEFAULT 0,
+    usage_limit INT DEFAULT 0, -- 0 คือไม่จำกัดจำนวนสิทธิ์รวม
+    used_count INT DEFAULT 0, -- จำนวนครั้งที่ถูกใช้จริง
+    start_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    end_date TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
+CREATE TABLE user_promotions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id VARCHAR(255) NOT NULL,
+    promotion_id UUID REFERENCES promotions(id) ON DELETE CASCADE,
+    is_used BOOLEAN DEFAULT FALSE,
+    collected_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    used_at TIMESTAMP WITH TIME ZONE,
+    UNIQUE(user_id, promotion_id) -- ป้องกัน User เก็บโค้ดเดิมซ้ำ
+);
 -- Mock Data เบื้องต้น
 INSERT INTO categories (name) VALUES 
 ('Electronics'), 

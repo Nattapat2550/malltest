@@ -3,53 +3,53 @@ package httpapi
 
 import (
 	"github.com/go-chi/chi/v5"
-
 	"backend/internal/handlers"
 )
 
 func setupAdminRoutes(h *handlers.Handler) func(chi.Router) {
 	return func(r chi.Router) {
-		// Middleware บังคับให้ต้อง Login และเป็น Admin (Super Admin)
 		r.Use(h.RequireAuth)
 		r.Use(h.RequireAdmin)
 
 		// --- User Management ---
 		r.Get("/users", h.AdminGetUsers)
 		r.Put("/users/{id}/role", h.AdminUpdateUserRole)
+		r.Put("/users/{id}/wallet", h.UpdateUserWallet)
 
-		// --- Product Management (Shopping Mall) ---
+		// --- Product Management ---
 		r.Get("/products", h.AdminGetProducts)
 		r.Post("/products", h.AdminCreateProduct)
 		r.Put("/products/{id}", h.AdminUpdateProduct)
 		r.Delete("/products/{id}", h.AdminDeleteProduct)
 
-		// --- Order & Sales Management ---
+		// --- Order Management ---
 		r.Get("/orders", h.AdminGetAllOrders)
 		r.Put("/orders/{id}/status", h.AdminUpdateOrderStatus)
 
-		// --- Content & Support Management ---
-		// News
+		// --- Content Management ---
 		r.Get("/news", h.AdminGetNewsList)
 		r.Post("/news", h.AdminCreateNews)
 		r.Put("/news/{id}", h.AdminUpdateNews)
 		r.Delete("/news/{id}", h.AdminDeleteNews)
 		
-		// Documents (เพิ่ม Route ใหม่ 3 เส้นนี้เพื่อแก้ปัญหา 404 Not Found)
 		r.Post("/documents", h.AdminCreateDocument)
 		r.Put("/documents/{id}", h.AdminUpdateDocument)
 		r.Delete("/documents/{id}", h.AdminDeleteDocument)
 
-		// Appeals
 		r.Get("/appeals", h.AdminGetAppeals) 
 		r.Put("/appeals/{id}", h.AdminUpdateAppealStatus)
 		r.Delete("/appeals/{id}", h.AdminDeleteAppeal)
 
-		// Carousel
 		r.Get("/carousel", h.AdminGetCarousel)
-		r.Post("/carousel", h.AdminCreateCarousel)       // สร้างใหม่
-		r.Put("/carousel/{id}", h.AdminUpdateCarousel)    // แก้ไข
-		r.Delete("/carousel/{id}", h.AdminDeleteCarousel) // ลบ
+		r.Post("/carousel", h.AdminCreateCarousel)       
+		r.Put("/carousel/{id}", h.AdminUpdateCarousel)    
+		r.Delete("/carousel/{id}", h.AdminDeleteCarousel) 
 
-		r.Put("/users/{id}/wallet", h.UpdateUserWallet)
+		// --- Promotions (ส่วนที่เพิ่มใหม่) ---
+		r.Get("/promotions", h.AdminGetPromotions)
+		r.Post("/promotions", h.AdminCreatePromotion)
+		r.Put("/promotions/{id}", h.AdminUpdatePromotion)
+		r.Delete("/promotions/{id}", h.AdminDeletePromotion)
+		r.Get("/promotions/{id}/users", h.AdminGetPromotionUsers)
 	}
 }
