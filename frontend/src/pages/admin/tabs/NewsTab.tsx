@@ -17,7 +17,9 @@ export default function NewsTab() {
   const fetchNews = async () => {
     try {
       const resN = await api.get('/api/admin/news');
-      setNews(resN.data || []);
+      // ป้องกัน Error หาก Axios หรือ Backend ซ้อนข้อมูลไว้ใน { data: [...] }
+      const data = Array.isArray(resN.data) ? resN.data : (resN.data?.data || []);
+      setNews(data);
     } catch (e) { console.error("Error fetching news"); }
   };
 
@@ -27,16 +29,14 @@ export default function NewsTab() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    // แปลง FormData เป็น JSON payload เพื่อให้ตรงกับ Backend
     const payload = {
       title: formData.get('title') as string,
       content: formData.get('content') as string,
-      image_url: "", // การอัปโหลดไฟล์จริงต้องทำ API แยกแล้วนำ URL มาใส่ (ชั่วคราวให้เป็นค่าว่าง)
+      image_url: "", 
       is_active: true
     };
 
     try {
-      // เอา headers: { 'Content-Type': 'multipart/form-data' } ออกไป ให้มันส่งเป็น JSON ปกติ
       await api.post('/api/admin/news', payload);
       alert("สร้างประกาศสำเร็จ!");
       (e.target as HTMLFormElement).reset();
@@ -49,16 +49,14 @@ export default function NewsTab() {
     if (!editingNews) return;
     const formData = new FormData(e.currentTarget);
     
-    // แปลง FormData เป็น JSON payload
     const payload = {
       title: formData.get('title') as string,
       content: formData.get('content') as string,
-      image_url: editingNews.image_url || "", // ใช้รูปเดิมไปก่อน
+      image_url: editingNews.image_url || "", 
       is_active: formData.get('is_active') === 'true'
     };
 
     try {
-      // ส่งแบบ JSON
       await api.put(`/api/admin/news/${editingNews.id}`, payload);
       alert("แก้ไขประกาศสำเร็จ!");
       setEditingNews(null);
@@ -121,7 +119,7 @@ export default function NewsTab() {
             <div className="p-6 flex-1 flex flex-col">
               <span className="text-xs font-bold text-orange-600 dark:text-orange-400 mb-2 flex items-center gap-1.5">
                 <img src={calendarImg} className="w-3 h-3 opacity-70 dark:invert" alt="Date" />
-                {new Date(n.created_at).toLocaleDateString('th-TH', { dateStyle: 'long' })}
+                {new Date(n.created_at || new Date()).toLocaleDateString('th-TH', { dateStyle: 'long' })}
               </span>
               <h4 className="font-black text-xl text-gray-900 dark:text-white mb-2 line-clamp-2">{n.title}</h4>
               <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-3 mt-auto">{n.content}</p>

@@ -17,7 +17,9 @@ export default function CarouselTab() {
   const fetchCarousel = async () => {
     try {
       const res = await api.get('/api/admin/carousel');
-      setItems(res.data || []);
+      // ป้องกัน Error หาก Axios หรือ Backend ซ้อนข้อมูลไว้ใน { data: [...] }
+      const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      setItems(data);
     } catch (e) {
       console.error("Error fetching carousel");
     }
