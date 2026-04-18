@@ -31,9 +31,11 @@ type Product struct {
 }
 
 func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
+	// ดึงเฉพาะสินค้าที่เป็น Mother ID โดยเช็คจาก parent_id IS NULL
 	rows, err := h.MallDB.Query(`
 		SELECT id, sku, name, description, price, stock, category_id, shop_id, image_url, media_urls, parent_id, variant_type, variant_value 
 		FROM products 
+		WHERE parent_id IS NULL
 		ORDER BY created_at DESC
 	`)
 	if err != nil {
