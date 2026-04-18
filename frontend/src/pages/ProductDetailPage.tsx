@@ -210,7 +210,7 @@ export default function ProductDetailPage() {
 
       {/* 3. Review Section */}
       <div className="mt-8 bg-white dark:bg-gray-800 rounded-3xl p-6 lg:p-10 shadow-sm border border-gray-200 dark:border-gray-700">
-        <ProductComments productId={Number(id)} />
+        <ProductComments productId={id || ''} />
       </div>
 
       {/* 4. Related Products Section */}

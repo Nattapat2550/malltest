@@ -4,21 +4,26 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 
 interface Comment {
-  id: number;
+  id: string; // เปลี่ยนเป็น string เพราะ Database ใช้ UUID
   user_id: string;
   rating: number;
   message: string;
   created_at: string;
 }
 
-export const ProductComments: React.FC<{ productId: number }> = ({ productId }) => {
+// เปลี่ยน productId เป็น string
+export const ProductComments: React.FC<{ productId: string }> = ({ productId }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const { userId } = useSelector((state: RootState) => state.auth);
   
-  const [editingId, setEditingId] = useState<number | null>(null);
+  // เปลี่ยน editingId เป็น string | null
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ rating: 5, message: '' });
 
   const fetchComments = async () => {
+    // ป้องกันกรณีที่ productId เป็น undefinded หรือว่างเปล่า
+    if (!productId) return; 
+    
     try {
       const res = await commentApi.getComments(productId);
       setComments(res.data || []);
@@ -29,7 +34,8 @@ export const ProductComments: React.FC<{ productId: number }> = ({ productId }) 
 
   useEffect(() => { fetchComments(); }, [productId]);
 
-  const handleDelete = async (id: number) => {
+  // เปลี่ยน id เป็น string
+  const handleDelete = async (id: string) => {
     if (window.confirm('คุณต้องการลบรีวิวนี้ใช่หรือไม่?')) {
       try {
         await commentApi.deleteComment(productId, id);
@@ -40,7 +46,8 @@ export const ProductComments: React.FC<{ productId: number }> = ({ productId }) 
     }
   };
 
-  const handleUpdate = async (id: number) => {
+  // เปลี่ยน id เป็น string
+  const handleUpdate = async (id: string) => {
     try {
       await commentApi.updateComment(productId, id, editForm);
       setEditingId(null);
