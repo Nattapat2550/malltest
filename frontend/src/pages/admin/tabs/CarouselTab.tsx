@@ -17,11 +17,10 @@ export default function CarouselTab() {
   const fetchCarousel = async () => {
     try {
       const res = await api.get('/api/admin/carousel');
-      // ป้องกัน Error หาก Axios หรือ Backend ซ้อนข้อมูลไว้ใน { data: [...] }
       const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
       setItems(data);
     } catch (e) {
-      console.error("Error fetching carousel");
+      console.error("Error fetching carousel", e);
     }
   };
 
@@ -62,6 +61,7 @@ export default function CarouselTab() {
     };
 
     try {
+      // id เป็น UUID string
       await api.put(`/api/admin/carousel/${editingItem.id}`, payload);
       alert("แก้ไขแบนเนอร์สำเร็จ!");
       setEditingItem(null);
@@ -71,10 +71,11 @@ export default function CarouselTab() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  // แก้รับค่า id เป็น string (UUID)
+  const handleDelete = async (id: string | number) => {
     if (window.confirm("ต้องการลบแบนเนอร์นี้หรือไม่?")) {
       try {
-        await api.delete(`/api/admin/carousel/${id}`);
+        await api.delete(`/api/admin/carousel/${String(id)}`);
         fetchCarousel();
       } catch (err) {
         alert("ลบไม่สำเร็จ");
@@ -126,7 +127,7 @@ export default function CarouselTab() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {items.map(item => (
-          <div key={item.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col group">
+          <div key={String(item.id)} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col group">
             <div className="aspect-video w-full bg-gray-100 dark:bg-gray-900 relative overflow-hidden">
               <img src={item.image_url} alt="Banner" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               {!item.is_active && (
@@ -147,7 +148,8 @@ export default function CarouselTab() {
               <button onClick={() => setEditingItem(item)} className="flex items-center justify-center gap-2 py-2 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-xl transition-colors font-bold text-sm">
                 <img src={settingsImg} className="w-4 h-4 dark:invert" alt="Edit" /> แก้ไข
               </button>
-              <button onClick={() => handleDelete(Number(item.id))} className="flex items-center justify-center gap-2 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 rounded-xl transition-colors font-bold text-sm">
+              {/* ส่ง UUID แบบ String ไปลบ */}
+              <button onClick={() => handleDelete(item.id)} className="flex items-center justify-center gap-2 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 rounded-xl transition-colors font-bold text-sm">
                 <img src={eraserImg} className="w-4 h-4 object-contain" alt="Del" /> ลบ
               </button>
             </div>
@@ -176,7 +178,7 @@ export default function CarouselTab() {
               </div>
               <div>
                 <label className={labelStyle}>URL ลิงก์</label>
-                <input type="text" name="link_url" defaultValue={editingItem.link_url} className={inputStyle} />
+                <input type="text" name="link_url" defaultValue={editingItem.link_url || ""} className={inputStyle} />
               </div>
               <div className="grid grid-cols-2 gap-5">
                 <div>

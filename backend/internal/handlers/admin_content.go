@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -14,11 +13,10 @@ import (
 
 // --- News ---
 func (h *Handler) AdminGetNewsList(w http.ResponseWriter, r *http.Request) {
-	// ปรับ query เพื่อดึงข้อมูลตรงๆ โดยไม่ต้องใช้ COALESCE หลบ
 	rows, err := h.MallDB.Query(`
 		SELECT id, title, content, image_url, is_active, created_at
 		FROM news 
-		ORDER BY id DESC
+		ORDER BY created_at DESC
 	`)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, err.Error())
@@ -28,15 +26,14 @@ func (h *Handler) AdminGetNewsList(w http.ResponseWriter, r *http.Request) {
 
 	var newsList []map[string]any
 	for rows.Next() {
-		var id int
-		// ใช้ sql.Null ป้องกัน Error เวลามีค่า NULL ใน Database
+		// แก้เป็น string เพื่อให้รับ UUID ได้
+		var id string
 		var title, content, img sql.NullString
 		var isActive sql.NullBool
 		var createdAt sql.NullTime
 
 		if err := rows.Scan(&id, &title, &content, &img, &isActive, &createdAt); err == nil {
 			
-			// เซ็ตเวลาเริ่มต้นหากไม่มี
 			createdAtStr := time.Now().Format(time.RFC3339)
 			if createdAt.Valid {
 				createdAtStr = createdAt.Time.Format(time.RFC3339)
@@ -89,12 +86,8 @@ func (h *Handler) AdminCreateNews(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) AdminUpdateNews(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid ID")
-		return
-	}
+	// ID เป็น UUID string อยู่แล้ว ไม่ต้องแปลงเป็น int
+	id := chi.URLParam(r, "id")
 
 	var n struct {
 		Title    string `json:"title"`
@@ -107,7 +100,7 @@ func (h *Handler) AdminUpdateNews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.MallDB.ExecContext(r.Context(),
+	_, err := h.MallDB.ExecContext(r.Context(),
 		"UPDATE news SET title = $1, content = $2, image_url = $3, is_active = $4 WHERE id = $5",
 		n.Title, n.Content, n.ImageURL, n.IsActive, id, 
 	)
@@ -119,14 +112,9 @@ func (h *Handler) AdminUpdateNews(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) AdminDeleteNews(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid ID")
-		return
-	}
+	id := chi.URLParam(r, "id")
 
-	_, err = h.MallDB.ExecContext(r.Context(), "DELETE FROM news WHERE id = $1", id)
+	_, err := h.MallDB.ExecContext(r.Context(), "DELETE FROM news WHERE id = $1", id)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to delete news")
 		return
@@ -139,7 +127,7 @@ func (h *Handler) AdminGetCarousel(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.MallDB.Query(`
 		SELECT id, image_url, link_url, is_active, sort_order
 		FROM carousels 
-		ORDER BY sort_order ASC, id DESC
+		ORDER BY sort_order ASC, created_at DESC
 	`)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, err.Error())
@@ -149,7 +137,8 @@ func (h *Handler) AdminGetCarousel(w http.ResponseWriter, r *http.Request) {
 	
 	var items []map[string]any
 	for rows.Next() {
-		var id int
+		// แก้เป็น string เพื่อรับ UUID
+		var id string
 		var img, link sql.NullString
 		var isActive sql.NullBool
 		var sortOrder sql.NullInt64
@@ -200,8 +189,7 @@ func (h *Handler) AdminCreateCarousel(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) AdminUpdateCarousel(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, _ := strconv.Atoi(idStr)
+	id := chi.URLParam(r, "id")
 
 	var c struct {
 		ImageURL  string `json:"image_url"`
@@ -226,8 +214,7 @@ func (h *Handler) AdminUpdateCarousel(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) AdminDeleteCarousel(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, _ := strconv.Atoi(idStr)
+	id := chi.URLParam(r, "id")
 	_, err := h.MallDB.ExecContext(r.Context(), "DELETE FROM carousels WHERE id = $1", id)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to delete")

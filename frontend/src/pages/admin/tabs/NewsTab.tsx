@@ -17,10 +17,9 @@ export default function NewsTab() {
   const fetchNews = async () => {
     try {
       const resN = await api.get('/api/admin/news');
-      // ป้องกัน Error หาก Axios หรือ Backend ซ้อนข้อมูลไว้ใน { data: [...] }
       const data = Array.isArray(resN.data) ? resN.data : (resN.data?.data || []);
       setNews(data);
-    } catch (e) { console.error("Error fetching news"); }
+    } catch (e) { console.error("Error fetching news", e); }
   };
 
   useEffect(() => { fetchNews(); }, []);
@@ -64,9 +63,9 @@ export default function NewsTab() {
     } catch (err) { alert("เกิดข้อผิดพลาด"); }
   };
 
-  const handleDeleteNews = async (id: number) => {
+  const handleDeleteNews = async (id: string | number) => {
     if (window.confirm("ต้องการลบประกาศนี้?")) {
-      await api.delete(`/api/admin/news/${id}`);
+      await api.delete(`/api/admin/news/${String(id)}`);
       fetchNews();
     }
   };
@@ -115,7 +114,7 @@ export default function NewsTab() {
       
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {news.map(n => (
-          <div key={n.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col relative group">
+          <div key={String(n.id)} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col relative group">
             <div className="p-6 flex-1 flex flex-col">
               <span className="text-xs font-bold text-orange-600 dark:text-orange-400 mb-2 flex items-center gap-1.5">
                 <img src={calendarImg} className="w-3 h-3 opacity-70 dark:invert" alt="Date" />
@@ -128,7 +127,8 @@ export default function NewsTab() {
               <button onClick={() => setEditingNews(n)} className="flex items-center justify-center gap-2 py-2 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-xl transition-colors font-bold text-sm">
                 <img src={settingsImg} className="w-4 h-4 dark:invert" alt="Edit" /> แก้ไข
               </button>
-              <button onClick={() => handleDeleteNews(Number(n.id))} className="flex items-center justify-center gap-2 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 rounded-xl transition-colors font-bold text-sm">
+              {/* เปลี่ยนเป็นไม่ครอบด้วย Number แล้ว */}
+              <button onClick={() => handleDeleteNews(n.id)} className="flex items-center justify-center gap-2 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 rounded-xl transition-colors font-bold text-sm">
                 <img src={eraserImg} className="w-4 h-4 object-contain" alt="Del" /> ลบ
               </button>
             </div>
