@@ -12,7 +12,7 @@ export default function ProductDetailPage() {
   
   const [product, setProduct] = useState<any>(null);
   const [related, setRelated] = useState<any[]>([]);
-  const [variants, setVariants] = useState<any[]>([]); // สำหรับสินค้าย่อย (Mother/Sub)
+  const [variants, setVariants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Carousel State
@@ -28,29 +28,52 @@ export default function ProductDetailPage() {
         const current = allProducts.find((p: any) => p.id.toString() === id);
         
         if (current) {
-          // ดึง Media มาทำ Carousel หรือตก fallback
-          let parsedMedia = [];
-          if (typeof current.media_urls === 'string') {
-             try { parsedMedia = JSON.parse(current.media_urls); } catch(e) {}
-          } else if (Array.isArray(current.media_urls)) {
-             parsedMedia = current.media_urls;
+          // ฟังก์ชันช่วยหา Root ID ที่แท้จริง ป้องกันการดึงตัวเลือกของคนอื่นมาปน
+          const getRootId = (prod: any) => {
+            if (prod.parent_id && prod.parent_id !== "null" && prod.parent_id !== "undefined" && prod.parent_id !== "") {
+                return prod.parent_id;
+            }
+            return prod.id;
+          };
+          
+          const currentRootId = getRootId(current);
+          const parentProduct = allProducts.find((p: any) => p.id === currentRootId);
+
+          // แก้ปัญหา Issue 2: ถ้าไม่มี media_urls หรือ image_url ของตัวเอง ให้ใช้ของ Mother ID
+          let targetMediaUrls = current.media_urls;
+          if ((!targetMediaUrls || targetMediaUrls === '[]' || targetMediaUrls === '') && current.parent_id) {
+              if (parentProduct && parentProduct.media_urls) {
+                  targetMediaUrls = parentProduct.media_urls;
+              }
           }
+
+          let parsedMedia = [];
+          if (typeof targetMediaUrls === 'string') {
+             try { parsedMedia = JSON.parse(targetMediaUrls); } catch(e) {}
+          } else if (Array.isArray(targetMediaUrls)) {
+             parsedMedia = targetMediaUrls;
+          }
+
+          let targetImageUrl = current.image_url;
+          if (!targetImageUrl && current.parent_id) {
+              if (parentProduct && parentProduct.image_url) {
+                  targetImageUrl = parentProduct.image_url;
+              }
+          }
+
           current.media = parsedMedia.length > 0 
             ? parsedMedia 
-            : [{ type: 'image', url: current.image_url }];
+            : [{ type: 'image', url: targetImageUrl }];
             
           setProduct(current);
           
-          // ดึงตัวเลือกสินค้า (Variants) โดยเช็คว่าสินค้านี้เป็น Mother ID หรือมี Parent ID เดียวกัน
-          const targetParentId = current.parent_id || current.id;
-          const currentVariants = allProducts.filter((p: any) => 
-            p.parent_id === targetParentId || p.id === targetParentId
-          );
+          // แก้ปัญหา Issue 3: ดึงตัวเลือกสินค้าเฉพาะที่อยู่ในกลุ่ม Root ID เดียวกันอย่างเข้มงวด
+          const currentVariants = allProducts.filter((p: any) => getRootId(p) === currentRootId);
           setVariants(currentVariants);
 
           // สุ่มสินค้าแนะนำ (ที่ไม่ใช่ตัวมันเอง และไม่ใช่ variant เดียวกัน)
           setRelated(allProducts.filter((p: any) => 
-            p.id.toString() !== id && p.parent_id !== targetParentId
+            p.id.toString() !== id && getRootId(p) !== currentRootId
           ).slice(0, 4));
         }
       } catch (err) {
@@ -145,15 +168,22 @@ export default function ProductDetailPage() {
                  ตัวเลือกสินค้า {product.variant_type && `(${product.variant_type})`}
                </span>
                <div className="flex flex-wrap gap-2">
-                 {variants.map(v => (
-                   <button 
-                     key={v.id} 
-                     onClick={() => navigate(`/products/${v.id}`)}
-                     className={`px-4 py-2 border rounded-lg font-medium transition-all ${v.id === product.id ? 'border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'border-gray-300 text-gray-600 hover:border-gray-400 dark:border-gray-600 dark:text-gray-300'}`}
-                   >
-                     {v.variant_value || v.name}
-                   </button>
-                 ))}
+                 {/* แก้ปัญหา Issue 4: หั่นตัวเลือกที่เป็น comma ให้กลายเป็นปุ่มแยกกัน */}
+                 {variants.flatMap(v => {
+                   const variantValuesList = v.variant_value 
+                     ? v.variant_value.split(',').map((s: string) => s.trim()).filter(Boolean) 
+                     : [v.name];
+                     
+                   return variantValuesList.map((val: string, idx: number) => (
+                     <button 
+                       key={`${v.id}-${idx}`} 
+                       onClick={() => navigate(`/products/${v.id}`)}
+                       className={`px-4 py-2 border rounded-lg font-medium transition-all ${v.id === product.id ? 'border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'border-gray-300 text-gray-600 hover:border-gray-400 dark:border-gray-600 dark:text-gray-300'}`}
+                     >
+                       {val}
+                     </button>
+                   ));
+                 })}
                </div>
              </div>
           )}

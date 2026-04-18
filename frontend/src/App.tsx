@@ -73,6 +73,8 @@ const App: React.FC = () => {
           <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/products" element={<ProtectedRoute><ProductCatalog /></ProtectedRoute>} />
           <Route path="/products/:id" element={<ProtectedRoute><ProductDetailPage /></ProtectedRoute>} />
+          {/* แก้ปัญหา Issue 1: เพิ่ม Route สำหรับหน้าร้านค้า */}
+          <Route path="/shop/:id" element={<ProtectedRoute><ProductCatalog /></ProtectedRoute>} />
           <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
           <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
           <Route path="/my-orders" element={<ProtectedRoute><MyOrdersPage /></ProtectedRoute>} />
