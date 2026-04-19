@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearCart } from '../store/slices/cartSlice';
@@ -17,8 +17,20 @@ export default function CheckoutPage() {
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<number | 'new'>('new');
   const [newAddressTitle, setNewAddressTitle] = useState('บ้าน');
-  const [newAddressText, setNewAddressText] = useState('');
   
+  // New Structured Address States
+  const [addrDetail, setAddrDetail] = useState(''); // เลขที่บ้าน ซอย ถนน
+  const [addrSubdistrict, setAddrSubdistrict] = useState(''); // แขวง/ตำบล
+  const [addrDistrict, setAddrDistrict] = useState(''); // เขต/อำเภอ
+  const [addrProvince, setAddrProvince] = useState(''); // จังหวัด
+  const [addrCountry, setAddrCountry] = useState('ประเทศไทย');
+  
+  // Autocomplete States
+  const [allAddresses, setAllAddresses] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   const [shippingMethod, setShippingMethod] = useState('standard');
   const [note, setNote] = useState('');
   const [promoCode, setPromoCode] = useState(initialPromo);
@@ -32,25 +44,77 @@ export default function CheckoutPage() {
   const [myPromos, setMyPromos] = useState<any[]>([]);
 
   useEffect(() => {
-    // ดึง Wallet
+    // 1. Fetch Wallet Balance
     api.get('/api/users/me/wallet')
       .then(res => setWalletBalance(res.data.balance || 0))
       .catch(console.error)
       .finally(() => setLoadingWallet(false));
 
-    // ดึงสมุดที่อยู่ (Address Book)
+    // 2. Fetch User Addresses
     getUserAddresses().then(res => {
       const data = res.data;
       setAddresses(data);
       if (data.length > 0) {
-        setSelectedAddressId(data[0].id); // เลือกที่อยู่อันแรกเป็น Default
+        setSelectedAddressId(data[0].id);
       }
     }).catch(console.error);
 
-    // ดึงโปรโมชั่นที่ใช้งานได้และโปรโมชั่นที่เก็บไว้
+    // 3. Fetch Promotions
     api.get('/api/users/promotions/active').then(res => setActivePromos(res.data)).catch(console.error);
     api.get('/api/users/promotions/my').then(res => setMyPromos(res.data)).catch(console.error);
+
+    // 4. Fetch Thai Addresses JSON (จากโฟลเดอร์ public)
+    fetch('/thai_addresses.json')
+      .then(res => res.json())
+      .then(data => {
+        // รองรับ JSON หลายรูปแบบ (tambon/amphoe หรือ district/amphoe)
+        const formatted = data.map((item: any) => ({
+          subdistrict: item.district || item.tambon || item.subdistrict || '',
+          district: item.amphoe || item.district || '',
+          province: item.province || ''
+        }));
+        setAllAddresses(formatted);
+      })
+      .catch(err => console.error("โหลดข้อมูลที่อยู่ประเทศไทยไม่สำเร็จ", err));
+
+    // 5. Click outside listener สำหรับปิด Dropdown
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // ฟังก์ชันค้นหาข้อมูลที่อยู่ (จำกัด 20 รายการเพื่อไม่ให้หน้าเว็บกระตุก)
+  const handleAddressSearch = (keyword: string, field: 'subdistrict' | 'district' | 'province') => {
+    if (field === 'subdistrict') setAddrSubdistrict(keyword);
+    if (field === 'district') setAddrDistrict(keyword);
+    if (field === 'province') setAddrProvince(keyword);
+
+    if (!keyword || allAddresses.length === 0) {
+      setSuggestions([]);
+      setShowDropdown(false);
+      return;
+    }
+
+    const filtered = allAddresses.filter(item => 
+      item.subdistrict.includes(keyword) || 
+      item.district.includes(keyword) || 
+      item.province.includes(keyword)
+    ).slice(0, 20); 
+
+    setSuggestions(filtered);
+    setShowDropdown(filtered.length > 0);
+  };
+
+  const selectAddressMatch = (item: any) => {
+    setAddrSubdistrict(item.subdistrict);
+    setAddrDistrict(item.district);
+    setAddrProvince(item.province);
+    setShowDropdown(false);
+  };
 
   if (items.length === 0) {
     return <div className="min-h-screen flex justify-center items-center text-gray-900 dark:text-white"><h1 className="text-2xl font-bold">ไม่พบข้อมูลการสั่งซื้อ</h1></div>;
@@ -59,7 +123,7 @@ export default function CheckoutPage() {
   const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
   const shippingCost = shippingMethod === 'express' ? 50 : 30;
 
-  // === คำนวณส่วนลดจากโค้ดแบบ Dynamic (เช็คจาก Database) ===
+  // === คำนวณโปรโมชั่น ===
   let discount = 0;
   let isPromoValid = false;
   let promoErrorMsg = '';
@@ -70,9 +134,7 @@ export default function CheckoutPage() {
           isPromoValid = true;
           if (selectedPromo.discount_type === 'percent') {
               discount = subtotal * (selectedPromo.discount_value / 100);
-              if (selectedPromo.max_discount && discount > selectedPromo.max_discount) {
-                  discount = selectedPromo.max_discount;
-              }
+              if (selectedPromo.max_discount && discount > selectedPromo.max_discount) discount = selectedPromo.max_discount;
           } else if (selectedPromo.discount_type === 'fixed') {
               discount = selectedPromo.discount_value;
           } else if (selectedPromo.discount_type === 'free_shipping') {
@@ -82,7 +144,6 @@ export default function CheckoutPage() {
           promoErrorMsg = `ยอดซื้อขั้นต่ำไม่ถึง ฿${selectedPromo.min_purchase.toLocaleString()}`;
       }
   } else if (promoCode && !selectedPromo) {
-      // ตรวจจับโค้ด MALL20 เป็น Fallback เดิมกรณี Backend ปิดอยู่ (หรือจะเอาออกก็ได้)
       if (promoCode === 'MALL20') {
          discount = subtotal * 0.2;
          isPromoValid = true;
@@ -98,10 +159,13 @@ export default function CheckoutPage() {
     let finalAddressString = '';
 
     if (selectedAddressId === 'new') {
-      if (!newAddressText.trim()) return alert('กรุณากรอกที่อยู่จัดส่ง');
-      finalAddressString = newAddressText;
-      // บันทึกที่อยู่ใหม่เข้า Database ทันที
-      try { await addUserAddress({ title: newAddressTitle, address: newAddressText }); } catch (e) { console.error('Save address fail', e); }
+      if (!addrDetail.trim() || !addrSubdistrict.trim() || !addrDistrict.trim() || !addrProvince.trim()) {
+        return alert('กรุณากรอกข้อมูลที่อยู่ให้ครบถ้วน');
+      }
+      // นำข้อมูลมารวมกันเป็น String เดียว
+      finalAddressString = `${addrDetail} แขวง/ตำบล${addrSubdistrict} เขต/อำเภอ${addrDistrict} จ.${addrProvince} ประเทศ${addrCountry}`;
+      
+      try { await addUserAddress({ title: newAddressTitle, address: finalAddressString }); } catch (e) { console.error('Save address fail', e); }
     } else {
       const addrObj = addresses.find(a => a.id === selectedAddressId);
       finalAddressString = addrObj ? addrObj.address : '';
@@ -144,7 +208,7 @@ export default function CheckoutPage() {
       <div className="flex flex-col lg:flex-row gap-10">
         <div className="flex-1 flex flex-col gap-6">
           
-          {/* ส่วนของการเลือกที่อยู่ (Address Selection) */}
+          {/* === ส่วนกรอกที่อยู่จัดส่ง === */}
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 lg:p-8 shadow-sm border border-gray-200 dark:border-gray-700">
             <h2 className="text-xl font-black text-gray-900 dark:text-white mb-6">ที่อยู่จัดส่ง</h2>
             
@@ -168,15 +232,53 @@ export default function CheckoutPage() {
             )}
 
             {(selectedAddressId === 'new' || addresses.length === 0) && (
-              <div className="space-y-4 animate-fade-in">
+              <div className="space-y-5 animate-fade-in relative" ref={dropdownRef}>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ป้ายกำกับ (เช่น บ้าน, ที่ทำงาน)</label>
-                  <input type="text" value={newAddressTitle} onChange={e => setNewAddressTitle(e.target.value)} className="w-full px-5 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none" placeholder="บ้าน" />
+                  <input type="text" value={newAddressTitle} onChange={e => setNewAddressTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none" placeholder="บ้าน" />
                 </div>
+                
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">รายละเอียดที่อยู่เต็ม</label>
-                  <textarea rows={3} value={newAddressText} onChange={e => setNewAddressText(e.target.value)} placeholder="บ้านเลขที่, ถนน, ซอย, จังหวัด, รหัสไปรษณีย์..." className="w-full px-5 py-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">เลขที่, หมู่, ซอย, ถนน</label>
+                  <input type="text" value={addrDetail} onChange={e => setAddrDetail(e.target.value)} placeholder="เช่น 123/45 ซอยสุขุมวิท 1" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none" />
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
+                  <div className="relative">
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">แขวง / ตำบล</label>
+                    <input type="text" value={addrSubdistrict} onChange={e => handleAddressSearch(e.target.value, 'subdistrict')} placeholder="พิมพ์แขวง/ตำบล" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  
+                  <div className="relative">
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">เขต / อำเภอ</label>
+                    <input type="text" value={addrDistrict} onChange={e => handleAddressSearch(e.target.value, 'district')} placeholder="พิมพ์เขต/อำเภอ" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+
+                  <div className="relative">
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">จังหวัด</label>
+                    <input type="text" value={addrProvince} onChange={e => handleAddressSearch(e.target.value, 'province')} placeholder="พิมพ์จังหวัด" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ประเทศ</label>
+                    <input type="text" value={addrCountry} onChange={e => setAddrCountry(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white outline-none" />
+                  </div>
+                </div>
+
+                {/* Dropdown Autocomplete */}
+                {showDropdown && suggestions.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    {suggestions.map((item, idx) => (
+                      <div 
+                        key={idx} 
+                        onClick={() => selectAddressMatch(item)}
+                        className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer text-sm text-gray-800 dark:text-gray-200 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                      >
+                        {item.subdistrict} » {item.district} » {item.province}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -247,8 +349,6 @@ export default function CheckoutPage() {
 
             <div className="mt-6">
               <h3 className="font-bold text-gray-900 dark:text-white mb-3">โค้ดส่วนลดของคุณ</h3>
-              
-              {/* โชว์ปุ่มโค้ดที่เก็บมา */}
               <div className="flex flex-wrap gap-2 mb-3">
                 {myPromos.filter(p => !p.is_used).map(p => (
                   <button 
@@ -268,7 +368,6 @@ export default function CheckoutPage() {
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none uppercase"
               />
               
-              {/* ตรวจสอบโค้ด */}
               {promoCode && isPromoValid && <p className="text-green-500 text-sm mt-2 font-bold">🎉 โค้ดใช้งานได้ ลด {discount.toLocaleString()} บาท</p>}
               {promoCode && !isPromoValid && <p className="text-red-500 text-sm mt-2 font-bold">{promoErrorMsg}</p>}
             </div>
