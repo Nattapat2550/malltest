@@ -22,11 +22,12 @@ type Promotion struct {
 	StartDate     time.Time  `json:"start_date"`
 	EndDate       *time.Time `json:"end_date"`
 	IsActive      bool       `json:"is_active"`
+	ShopID        *string    `json:"shop_id"` // เพิ่มฟิลด์
 	CreatedAt     time.Time  `json:"created_at"`
 }
 
 func (h *Handler) AdminGetPromotions(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.MallDB.Query("SELECT id, code, description, discount_type, discount_value, max_discount, min_purchase, usage_limit, used_count, start_date, end_date, is_active, created_at FROM promotions ORDER BY created_at DESC")
+	rows, err := h.MallDB.Query("SELECT id, code, description, discount_type, discount_value, max_discount, min_purchase, usage_limit, used_count, start_date, end_date, is_active, shop_id, created_at FROM promotions ORDER BY created_at DESC")
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -35,7 +36,9 @@ func (h *Handler) AdminGetPromotions(w http.ResponseWriter, r *http.Request) {
 	var promos []Promotion
 	for rows.Next() {
 		var p Promotion
-		if err := rows.Scan(&p.ID, &p.Code, &p.Description, &p.DiscountType, &p.DiscountValue, &p.MaxDiscount, &p.MinPurchase, &p.UsageLimit, &p.UsedCount, &p.StartDate, &p.EndDate, &p.IsActive, &p.CreatedAt); err == nil {
+		var shopID sql.NullString
+		if err := rows.Scan(&p.ID, &p.Code, &p.Description, &p.DiscountType, &p.DiscountValue, &p.MaxDiscount, &p.MinPurchase, &p.UsageLimit, &p.UsedCount, &p.StartDate, &p.EndDate, &p.IsActive, &shopID, &p.CreatedAt); err == nil {
+			if shopID.Valid { p.ShopID = &shopID.String }
 			promos = append(promos, p)
 		}
 	}
@@ -49,8 +52,8 @@ func (h *Handler) AdminCreatePromotion(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "Invalid request")
 		return
 	}
-	_, err := h.MallDB.Exec("INSERT INTO promotions (code, description, discount_type, discount_value, max_discount, min_purchase, usage_limit, start_date, end_date, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-		p.Code, p.Description, p.DiscountType, p.DiscountValue, p.MaxDiscount, p.MinPurchase, p.UsageLimit, p.StartDate, p.EndDate, p.IsActive)
+	_, err := h.MallDB.Exec("INSERT INTO promotions (code, description, discount_type, discount_value, max_discount, min_purchase, usage_limit, start_date, end_date, is_active, shop_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+		p.Code, p.Description, p.DiscountType, p.DiscountValue, p.MaxDiscount, p.MinPurchase, p.UsageLimit, p.StartDate, p.EndDate, p.IsActive, p.ShopID)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to create: "+err.Error())
 		return
@@ -65,8 +68,8 @@ func (h *Handler) AdminUpdatePromotion(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "Invalid request")
 		return
 	}
-	_, err := h.MallDB.Exec("UPDATE promotions SET code=$1, description=$2, discount_type=$3, discount_value=$4, max_discount=$5, min_purchase=$6, usage_limit=$7, start_date=$8, end_date=$9, is_active=$10 WHERE id=$11",
-		p.Code, p.Description, p.DiscountType, p.DiscountValue, p.MaxDiscount, p.MinPurchase, p.UsageLimit, p.StartDate, p.EndDate, p.IsActive, id)
+	_, err := h.MallDB.Exec("UPDATE promotions SET code=$1, description=$2, discount_type=$3, discount_value=$4, max_discount=$5, min_purchase=$6, usage_limit=$7, start_date=$8, end_date=$9, is_active=$10, shop_id=$11 WHERE id=$12",
+		p.Code, p.Description, p.DiscountType, p.DiscountValue, p.MaxDiscount, p.MinPurchase, p.UsageLimit, p.StartDate, p.EndDate, p.IsActive, p.ShopID, id)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Failed to update: "+err.Error())
 		return
@@ -109,7 +112,7 @@ func (h *Handler) AdminGetPromotionUsers(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *Handler) GetActivePromotions(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.MallDB.Query("SELECT id, code, description, discount_type, discount_value, max_discount, min_purchase, usage_limit, used_count FROM promotions WHERE is_active = TRUE AND start_date <= CURRENT_TIMESTAMP AND (end_date IS NULL OR end_date >= CURRENT_TIMESTAMP)")
+	rows, err := h.MallDB.Query("SELECT id, code, description, discount_type, discount_value, max_discount, min_purchase, usage_limit, used_count, shop_id, start_date, end_date FROM promotions WHERE is_active = TRUE AND start_date <= CURRENT_TIMESTAMP AND (end_date IS NULL OR end_date >= CURRENT_TIMESTAMP)")
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -118,7 +121,9 @@ func (h *Handler) GetActivePromotions(w http.ResponseWriter, r *http.Request) {
 	var promos []Promotion
 	for rows.Next() {
 		var p Promotion
-		if err := rows.Scan(&p.ID, &p.Code, &p.Description, &p.DiscountType, &p.DiscountValue, &p.MaxDiscount, &p.MinPurchase, &p.UsageLimit, &p.UsedCount); err == nil {
+		var shopID sql.NullString
+		if err := rows.Scan(&p.ID, &p.Code, &p.Description, &p.DiscountType, &p.DiscountValue, &p.MaxDiscount, &p.MinPurchase, &p.UsageLimit, &p.UsedCount, &shopID, &p.StartDate, &p.EndDate); err == nil {
+			if shopID.Valid { p.ShopID = &shopID.String }
 			promos = append(promos, p)
 		}
 	}
@@ -138,7 +143,6 @@ func (h *Handler) CollectPromotion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// Check limit
 	var usageLimit, usedCount int
 	err := h.MallDB.QueryRow("SELECT usage_limit, used_count FROM promotions WHERE id = $1 AND is_active = TRUE", req.PromotionID).Scan(&usageLimit, &usedCount)
 	if err != nil {
@@ -165,7 +169,7 @@ func (h *Handler) GetMyPromotions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, err := h.MallDB.Query(`
-		SELECT p.id, p.code, p.description, p.discount_type, p.discount_value, p.max_discount, p.min_purchase, up.is_used 
+		SELECT p.id, p.code, p.description, p.discount_type, p.discount_value, p.max_discount, p.min_purchase, up.is_used, p.shop_id 
 		FROM user_promotions up 
 		JOIN promotions p ON up.promotion_id = p.id 
 		WHERE up.user_id = $1 AND p.is_active = TRUE AND p.start_date <= CURRENT_TIMESTAMP AND (p.end_date IS NULL OR p.end_date >= CURRENT_TIMESTAMP)
@@ -181,10 +185,13 @@ func (h *Handler) GetMyPromotions(w http.ResponseWriter, r *http.Request) {
 		var dVal, minPur float64
 		var maxD sql.NullFloat64
 		var isUsed bool
-		if err := rows.Scan(&id, &code, &desc, &dType, &dVal, &maxD, &minPur, &isUsed); err == nil {
+		var shopID sql.NullString
+		if err := rows.Scan(&id, &code, &desc, &dType, &dVal, &maxD, &minPur, &isUsed, &shopID); err == nil {
+			var sID *string
+			if shopID.Valid { sID = &shopID.String }
 			promos = append(promos, map[string]any{
 				"id": id, "code": code, "description": desc, "discount_type": dType, 
-				"discount_value": dVal, "max_discount": maxD.Float64, "min_purchase": minPur, "is_used": isUsed,
+				"discount_value": dVal, "max_discount": maxD.Float64, "min_purchase": minPur, "is_used": isUsed, "shop_id": sID,
 			})
 		}
 	}

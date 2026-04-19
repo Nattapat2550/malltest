@@ -9,11 +9,9 @@ import CenterPage from './pages/center/CenterPage';
 import RiderPage from './pages/rider/RiderPage';
 import 'react-quill-new/dist/quill.snow.css';
 
-// --- Custom Hooks ---
 import { useServerWakeup } from './hooks/useServerWakeup';
 import { useOAuthCallback } from './hooks/useOAuthCallback';
 
-// --- Lazy Loaded Components ---
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const CheckCodePage = lazy(() => import('./pages/CheckCodePage'));
@@ -33,6 +31,8 @@ const ShopPage = lazy(() => import('./pages/ShopPage'));
 const CartPage = lazy(() => import('./pages/CartPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage'));
+// หน้าใหม่ โปรโมชั่นรวม
+const PromotionsPage = lazy(() => import('./pages/PromotionsPage'));
 
 const App: React.FC = () => {
   const { serverReady, wakingUp } = useServerWakeup();
@@ -72,10 +72,10 @@ const App: React.FC = () => {
           <Route path="/appeals" element={<AppealsPage />} />
 
           <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+          <Route path="/promotions" element={<ProtectedRoute><PromotionsPage /></ProtectedRoute>} />
           <Route path="/products" element={<ProtectedRoute><ProductCatalog /></ProtectedRoute>} />
           <Route path="/products/:id" element={<ProtectedRoute><ProductDetailPage /></ProtectedRoute>} />
           
-          {/* หน้าร้านค้าแยกเฉพาะโชว์แบนเนอร์ */}
           <Route path="/shop/:id" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
           
           <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />

@@ -6,15 +6,18 @@ export default function OwnerPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('shop');
   
-  // เพิ่มการรองรับ Description และ Banner URL
   const [shopInfo, setShopInfo] = useState({ id: '', name: '', description: '', banner_url: '' });
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
+  const [promotions, setPromotions] = useState<any[]>([]);
 
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [showProductModal, setShowProductModal] = useState(false);
   const [showShipmentModal, setShowShipmentModal] = useState(false);
   const [selectedShipment, setSelectedShipment] = useState<any>(null);
+  
+  const [editingPromo, setEditingPromo] = useState<any>(null);
+  const [showPromoModal, setShowPromoModal] = useState(false);
 
   const [centerId, setCenterId] = useState('');
   const [trackingDetail, setTrackingDetail] = useState('');
@@ -41,6 +44,9 @@ export default function OwnerPage() {
 
       const orderRes = await ownerApi.getOrders();
       setOrders(orderRes.data || []);
+
+      const promoRes = await api.get('/api/owner/promotions');
+      setPromotions(promoRes.data || []);
     } catch (e) {
       console.error(e);
     }
@@ -62,9 +68,7 @@ export default function OwnerPage() {
   const handleSaveProduct = async (e: any) => {
     e.preventDefault();
     try {
-      // แปลง media_urls จาก Textarea (บรรทัดละ URL) ให้เป็น JSON Array
       const mediaList = e.target.media_urls.value.split('\n').filter((m: string) => m.trim() !== '');
-      // แปลง URL ให้เป็น format ของระบบ media (ระบุภาพหรือวิดีโอ)
       const mediaJson = JSON.stringify(mediaList.map((url: string) => ({
         type: url.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image',
         url: url.trim()
@@ -121,6 +125,42 @@ export default function OwnerPage() {
     } catch (err) { alert('เกิดข้อผิดพลาด กรุณาลองใหม่'); }
   };
 
+  const handleSavePromo = async (e: any) => {
+    e.preventDefault();
+    const payload = {
+      code: e.target.code.value,
+      description: e.target.description.value,
+      discount_type: e.target.discount_type.value,
+      discount_value: parseFloat(e.target.discount_value.value),
+      max_discount: parseFloat(e.target.max_discount.value) || null,
+      min_purchase: parseFloat(e.target.min_purchase.value) || 0,
+      usage_limit: parseInt(e.target.usage_limit.value) || 0,
+      start_date: new Date(e.target.start_date.value).toISOString(),
+      end_date: e.target.end_date.value ? new Date(e.target.end_date.value).toISOString() : null,
+      is_active: e.target.is_active.value === "true"
+    };
+
+    try {
+      if (editingPromo) {
+        await api.put(`/api/owner/promotions/${editingPromo.id}`, payload);
+      } else {
+        await api.post('/api/owner/promotions', payload);
+      }
+      setShowPromoModal(false);
+      fetchData();
+      alert("บันทึกโปรโมชั่นสำเร็จ");
+    } catch (err) { alert("เกิดข้อผิดพลาด อาจจะใช้ Code ซ้ำ"); }
+  };
+
+  const handleDeletePromo = async (id: string) => {
+    if (window.confirm("คุณต้องการลบโปรโมชั่นนี้ใช่หรือไม่?")) {
+      try {
+        await api.delete(`/api/owner/promotions/${id}`);
+        fetchData();
+      } catch (err) { alert("ลบไม่สำเร็จ"); }
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch(status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
@@ -140,13 +180,13 @@ export default function OwnerPage() {
         <p className="text-gray-500 dark:text-gray-400">ร้าน: <span className="font-bold text-orange-500">{shopInfo.name || 'ยังไม่ตั้งชื่อร้าน'}</span></p>
         
         <div className="flex gap-4 mt-8 overflow-x-auto">
-          {['shop', 'products', 'orders'].map(tab => (
+          {['shop', 'products', 'orders', 'promotions'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`pb-3 px-2 font-bold text-sm whitespace-nowrap transition-all border-b-2 ${
                 activeTab === tab ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              {tab === 'shop' ? 'จัดการร้านค้า' : tab === 'products' ? 'คลังสินค้า' : 'ออเดอร์จากลูกค้า'}
+              {tab === 'shop' ? 'จัดการร้านค้า' : tab === 'products' ? 'คลังสินค้า' : tab === 'orders' ? 'ออเดอร์จากลูกค้า' : 'โปรโมชั่นของร้าน'}
             </button>
           ))}
         </div>
@@ -222,6 +262,45 @@ export default function OwnerPage() {
           </div>
         )}
 
+        {activeTab === 'promotions' && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 shadow-sm">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">โค้ดส่วนลดของร้าน</h2>
+              <button onClick={() => { setEditingPromo(null); setShowPromoModal(true); }} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg">+ สร้างโค้ดใหม่</button>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-gray-900 text-gray-500">
+                    <th className="p-3">Code</th>
+                    <th className="p-3">ส่วนลด</th>
+                    <th className="p-3">วันที่เริ่ม/สิ้นสุด</th>
+                    <th className="p-3">สถานะ</th>
+                    <th className="p-3 text-right">จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {promotions.length === 0 ? <tr><td colSpan={5} className="p-6 text-center text-gray-500">ยังไม่มีโปรโมชั่น</td></tr> :
+                    promotions.map(p => (
+                      <tr key={p.id}>
+                        <td className="p-3 font-bold text-green-600">{p.code}</td>
+                        <td className="p-3 text-sm dark:text-gray-300">{p.discount_type === 'percent' ? `${p.discount_value}% (Max ฿${p.max_discount || '-'})` : `฿${p.discount_value}`} <br/><span className="text-xs text-gray-500">ขั้นต่ำ ฿{p.min_purchase}</span></td>
+                        <td className="p-3 text-sm text-gray-500">{new Date(p.start_date).toLocaleDateString()} - <br/>{p.end_date ? new Date(p.end_date).toLocaleDateString() : 'ไม่มีกำหนด'}</td>
+                        <td className="p-3">{p.is_active ? <span className="text-green-500 font-bold text-xs">Active</span> : <span className="text-red-500 font-bold text-xs">Inactive</span>}</td>
+                        <td className="p-3 text-right">
+                          <button onClick={() => { setEditingPromo(p); setShowPromoModal(true); }} className="mr-3 text-blue-500 hover:underline font-bold">แก้ไข</button>
+                          <button onClick={() => handleDeletePromo(p.id)} className="text-red-500 hover:underline font-bold">ลบ</button>
+                        </td>
+                      </tr>
+                    ))
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'orders' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 shadow-sm">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">ออเดอร์ของลูกค้าที่สั่งสินค้าร้านคุณ</h2>
@@ -265,8 +344,6 @@ export default function OwnerPage() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold dark:text-white mb-4">{editingProduct ? 'แก้ไขสินค้า' : 'เพิ่มสินค้า'}</h3>
             <form onSubmit={handleSaveProduct} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
-              {/* ข้อมูลหลัก */}
               <div className="space-y-4">
                 <h4 className="font-bold text-blue-600 border-b pb-2">ข้อมูลหลัก</h4>
                 <div><label className="block text-sm font-bold dark:text-gray-300 mb-1">SKU</label><input type="text" name="sku" required className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white" defaultValue={editingProduct?.sku} /></div>
@@ -278,7 +355,6 @@ export default function OwnerPage() {
                 </div>
               </div>
 
-              {/* การผูกตัวเลือก และ รูปภาพ */}
               <div className="space-y-4">
                 <h4 className="font-bold text-orange-500 border-b pb-2">ตัวเลือกย่อยและรูปภาพ</h4>
                 <div>
@@ -326,7 +402,48 @@ export default function OwnerPage() {
         </div>
       )}
 
-      {/* Modal สถานะพัสดุ (เหมือนเดิม) */}
+      {showPromoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold dark:text-white mb-4">{editingPromo ? 'แก้ไขโค้ดส่วนลด' : 'สร้างโค้ดส่วนลดใหม่'}</h3>
+            <form onSubmit={handleSavePromo} className="space-y-4">
+              <div className="flex gap-4">
+                <div className="flex-1"><label className="block text-sm font-bold dark:text-gray-300 mb-1">รหัสโค้ด (Code)</label><input type="text" name="code" required className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white" defaultValue={editingPromo?.code} placeholder="เช่น SUMMER50" /></div>
+                <div className="flex-1"><label className="block text-sm font-bold dark:text-gray-300 mb-1">ประเภท</label>
+                  <select name="discount_type" className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:text-white dark:border-gray-700" defaultValue={editingPromo?.discount_type || 'fixed'}>
+                    <option value="fixed">ลดเป็นบาท</option>
+                    <option value="percent">ลดเป็น %</option>
+                  </select>
+                </div>
+              </div>
+              <div><label className="block text-sm font-bold dark:text-gray-300 mb-1">คำอธิบาย</label><input type="text" name="description" required className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white" defaultValue={editingPromo?.description} /></div>
+              <div className="flex gap-4">
+                <div className="flex-1"><label className="block text-sm font-bold dark:text-gray-300 mb-1">มูลค่าส่วนลด</label><input type="number" step="0.01" name="discount_value" required className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:text-white" defaultValue={editingPromo?.discount_value} /></div>
+                <div className="flex-1"><label className="block text-sm font-bold dark:text-gray-300 mb-1">ลดสูงสุด (ถ้าเป็น %)</label><input type="number" step="0.01" name="max_discount" className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:text-white" defaultValue={editingPromo?.max_discount} /></div>
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1"><label className="block text-sm font-bold dark:text-gray-300 mb-1">ซื้อขั้นต่ำ</label><input type="number" step="0.01" name="min_purchase" className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:text-white" defaultValue={editingPromo?.min_purchase || 0} /></div>
+                <div className="flex-1"><label className="block text-sm font-bold dark:text-gray-300 mb-1">จำนวนสิทธิ์ (0=ไม่จำกัด)</label><input type="number" name="usage_limit" className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:text-white" defaultValue={editingPromo?.usage_limit || 0} /></div>
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1"><label className="block text-sm font-bold dark:text-gray-300 mb-1">วันเริ่ม</label><input type="datetime-local" name="start_date" required className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:text-white" defaultValue={editingPromo?.start_date ? editingPromo.start_date.substring(0, 16) : ''} /></div>
+                <div className="flex-1"><label className="block text-sm font-bold dark:text-gray-300 mb-1">วันหมดอายุ (เว้นว่างได้)</label><input type="datetime-local" name="end_date" className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:text-white" defaultValue={editingPromo?.end_date ? editingPromo.end_date.substring(0, 16) : ''} /></div>
+              </div>
+              <div><label className="block text-sm font-bold dark:text-gray-300 mb-1">สถานะเปิดใช้งาน</label>
+                <select name="is_active" className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:text-white" defaultValue={editingPromo ? (editingPromo.is_active ? "true" : "false") : "true"}>
+                  <option value="true">เปิดใช้งาน</option>
+                  <option value="false">ปิดใช้งาน</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-3 mt-4 pt-4 border-t">
+                <button type="button" onClick={() => setShowPromoModal(false)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 dark:text-white rounded-lg font-bold">ยกเลิก</button>
+                <button type="submit" className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold shadow-md">บันทึกโค้ด</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showShipmentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-6">

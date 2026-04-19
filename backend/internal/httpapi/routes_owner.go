@@ -15,5 +15,11 @@ func setupOwnerRoutes(h *handlers.Handler) func(chi.Router) {
 		r.Put("/products/{id}", h.OwnerUpdateProduct)
 		r.Delete("/products/{id}", h.OwnerDeleteProduct)
 		r.Get("/orders", h.OwnerGetOrders)
+
+		// Routes สำหรับโปรโมชั่นร้านค้า
+		r.Get("/promotions", h.OwnerGetPromotions)
+		r.Post("/promotions", h.OwnerCreatePromotion)
+		r.Put("/promotions/{id}", h.OwnerUpdatePromotion)
+		r.Delete("/promotions/{id}", h.OwnerDeletePromotion)
 	}
 }

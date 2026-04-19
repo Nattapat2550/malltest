@@ -70,10 +70,10 @@ CREATE TABLE products (
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     shop_id UUID REFERENCES shops(id) ON DELETE CASCADE, 
     image_url TEXT,
-    media_urls TEXT DEFAULT '[]', -- เก็บ Array ของรูปภาพ/วิดีโอ (Carousel)
-    parent_id UUID REFERENCES products(id) ON DELETE CASCADE, -- Mother ID (ดึงจากตัวเอง)
-    variant_type VARCHAR(100), -- ชนิดของตัวเลือก เช่น สี, ขนาด (กำหนดเอง)
-    variant_value VARCHAR(100), -- ค่าของตัวเลือก เช่น แดง, XL
+    media_urls TEXT DEFAULT '[]',
+    parent_id UUID REFERENCES products(id) ON DELETE CASCADE,
+    variant_type VARCHAR(100),
+    variant_value VARCHAR(100),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -169,6 +169,7 @@ CREATE TABLE product_comments (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, product_id, order_id) 
 );
+
 -- ==========================================
 -- 4. ระบบโปรโมชั่น (Promotions)
 -- ==========================================
@@ -176,15 +177,16 @@ CREATE TABLE promotions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code VARCHAR(50) UNIQUE NOT NULL,
     description TEXT,
-    discount_type VARCHAR(50) DEFAULT 'fixed', -- fixed, percent, free_shipping
+    discount_type VARCHAR(50) DEFAULT 'fixed',
     discount_value DECIMAL(10, 2) NOT NULL,
-    max_discount DECIMAL(10, 2), -- สำหรับลดเป็น %
+    max_discount DECIMAL(10, 2),
     min_purchase DECIMAL(10, 2) DEFAULT 0,
-    usage_limit INT DEFAULT 0, -- 0 คือไม่จำกัดจำนวนสิทธิ์รวม
-    used_count INT DEFAULT 0, -- จำนวนครั้งที่ถูกใช้จริง
+    usage_limit INT DEFAULT 0,
+    used_count INT DEFAULT 0,
     start_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     end_date TIMESTAMP WITH TIME ZONE,
     is_active BOOLEAN DEFAULT TRUE,
+    shop_id UUID REFERENCES shops(id) ON DELETE CASCADE, -- (เพิ่มใหม่) ล็อกร้านที่ใช้
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -195,9 +197,9 @@ CREATE TABLE user_promotions (
     is_used BOOLEAN DEFAULT FALSE,
     collected_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     used_at TIMESTAMP WITH TIME ZONE,
-    UNIQUE(user_id, promotion_id) -- ป้องกัน User เก็บโค้ดเดิมซ้ำ
+    UNIQUE(user_id, promotion_id) 
 );
--- Mock Data เบื้องต้น
+
 INSERT INTO categories (name) VALUES 
 ('Electronics'), 
 ('Clothing'), 

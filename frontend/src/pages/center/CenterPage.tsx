@@ -6,15 +6,19 @@ export default function CenterPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('shipments');
   
-  // เปลี่ยน id เป็น string
   const [centerInfo, setCenterInfo] = useState({ id: '', name: '' });
   const [shipments, setShipments] = useState<any[]>([]);
+  const [riders, setRiders] = useState<any[]>([]);
+
+  // ระบบ Batch Assign
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [batchRiderId, setBatchRiderId] = useState('');
 
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedShipment, setSelectedShipment] = useState<any>(null);
 
   const [updateAction, setUpdateAction] = useState('at_center'); 
-  const [targetId, setTargetId] = useState(''); // Rider ID or Center ID (String)
+  const [targetId, setTargetId] = useState('');
   const [trackingDetail, setTrackingDetail] = useState('');
   const [locationStr, setLocationStr] = useState('');
 
@@ -36,6 +40,9 @@ export default function CenterPage() {
         setCenterInfo(res.data.center);
         setShipments(res.data.shipments || []);
       }
+      const riderRes = await api.get('/api/center/riders');
+      setRiders(riderRes.data || []);
+      setSelectedIds([]); // เคลียร์ที่เลือกไว้หลังโหลดใหม่
     } catch (e) {
       console.error(e);
     }
@@ -71,7 +78,6 @@ export default function CenterPage() {
       await shipmentApi.updateStatus({
         shipment_id: selectedShipment.shipment_id,
         status: updateAction,
-        // ไม่ครอบด้วย Number() แล้ว
         center_id: updateAction === 'shipped_to_center' ? targetId : undefined,
         rider_id: updateAction === 'delivering' ? targetId : undefined,
         tracking_detail: trackingDetail,
@@ -81,6 +87,40 @@ export default function CenterPage() {
       fetchData();
       alert('อัปเดตสถานะพัสดุสำเร็จ!');
     } catch (err) { alert('เกิดข้อผิดพลาดในการอัปเดต'); }
+  };
+
+  const handleAddRider = async (e: any) => {
+    e.preventDefault();
+    try {
+      await api.post('/api/center/riders', { rider_user_id: e.target.rider_id.value });
+      e.target.reset();
+      fetchData();
+      alert("เพิ่ม Rider สำเร็จ");
+    } catch (err) { alert("เพิ่มไม่สำเร็จ อาจไม่มีรหัสนี้"); }
+  };
+
+  const handleRemoveRider = async (id: string) => {
+    if(window.confirm("ต้องการลบ Rider ออกจากศูนย์ใช่หรือไม่?")) {
+      await api.delete(`/api/center/riders/${id}`);
+      fetchData();
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleBatchAssign = async () => {
+    if (!batchRiderId) return alert("กรุณาเลือก Rider ก่อน");
+    try {
+      await api.post('/api/center/shipments/batch-assign', {
+        shipment_ids: selectedIds,
+        rider_id: batchRiderId
+      });
+      alert(`จ่ายงานให้พัสดุจำนวน ${selectedIds.length} ชิ้นสำเร็จ!`);
+      setBatchRiderId('');
+      fetchData();
+    } catch (err) { alert("เกิดข้อผิดพลาดในการจ่ายงานกลุ่ม"); }
   };
 
   const getStatusColor = (status: string) => {
@@ -110,13 +150,13 @@ export default function CenterPage() {
         <p className="text-gray-500 dark:text-gray-400">ศูนย์: <span className="font-bold text-purple-600">{centerInfo.name || 'ยังไม่ได้ตั้งชื่อศูนย์'} <br className="md:hidden" /><span className="text-xs break-all">(ID: {centerInfo.id})</span></span></p>
         
         <div className="flex gap-4 mt-8 overflow-x-auto">
-          {['shipments', 'profile'].map(tab => (
+          {['shipments', 'riders', 'profile'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`pb-3 px-2 font-bold text-sm whitespace-nowrap transition-all border-b-2 ${
                 activeTab === tab ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              {tab === 'shipments' ? 'พัสดุรับเข้า/กระจายออก' : 'ตั้งค่าข้อมูลศูนย์'}
+              {tab === 'shipments' ? 'พัสดุรับเข้า/กระจายออก' : tab === 'riders' ? 'จัดการ Rider' : 'ตั้งค่าข้อมูลศูนย์'}
             </button>
           ))}
         </div>
@@ -126,12 +166,25 @@ export default function CenterPage() {
         
         {activeTab === 'shipments' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 shadow-sm">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">จัดการพัสดุในระบบ</h2>
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">จัดการพัสดุในระบบ</h2>
+              {selectedIds.length > 0 && (
+                <div className="flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-200">
+                  <span className="text-sm font-bold text-orange-700 dark:text-orange-400 ml-2">เลือกแล้ว {selectedIds.length} ชิ้น</span>
+                  <select value={batchRiderId} onChange={e => setBatchRiderId(e.target.value)} className="p-2 text-sm rounded-lg border dark:bg-gray-800 dark:text-white">
+                    <option value="">-- เลือก Rider ที่จะจ่ายงาน --</option>
+                    {riders.map(r => <option key={r.id} value={r.id}>{r.rider_user_id}</option>)}
+                  </select>
+                  <button onClick={handleBatchAssign} className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm rounded-lg shadow-sm">จ่ายงาน</button>
+                </div>
+              )}
+            </div>
             
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border-b dark:border-gray-700">
+                    <th className="p-4 w-10">#</th>
                     <th className="p-4">Shipment ID</th>
                     <th className="p-4">Order ID หลัก</th>
                     <th className="p-4">ปลายทาง (ลูกค้า)</th>
@@ -140,9 +193,14 @@ export default function CenterPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {shipments.length === 0 ? <tr><td colSpan={5} className="p-6 text-center text-gray-500">ไม่มีพัสดุที่เกี่ยวข้องกับศูนย์นี้</td></tr> :
+                  {shipments.length === 0 ? <tr><td colSpan={6} className="p-6 text-center text-gray-500">ไม่มีพัสดุที่เกี่ยวข้องกับศูนย์นี้</td></tr> :
                     shipments.map((s, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                      <tr key={idx} className={`hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors ${selectedIds.includes(s.shipment_id) ? 'bg-orange-50/50 dark:bg-orange-900/10' : ''}`}>
+                        <td className="p-4">
+                          {s.status === 'at_center' && (
+                            <input type="checkbox" className="w-5 h-5 cursor-pointer accent-orange-500" checked={selectedIds.includes(s.shipment_id)} onChange={() => toggleSelect(s.shipment_id)} />
+                          )}
+                        </td>
                         <td className="p-4 font-mono text-xs text-gray-900 dark:text-white">#{s.shipment_id}</td>
                         <td className="p-4 text-xs font-mono text-gray-500">#{s.order_id}</td>
                         <td className="p-4 text-sm dark:text-gray-300 max-w-62.5 truncate" title={s.address}>{s.address}</td>
@@ -154,7 +212,7 @@ export default function CenterPage() {
                         <td className="p-4 text-right">
                           {(s.status === 'shipped_to_center' || s.status === 'at_center') && (
                             <button onClick={() => openUpdateModal(s)} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-lg shadow-sm transition">
-                              จัดการพัสดุ
+                              จัดการเดี่ยว
                             </button>
                           )}
                         </td>
@@ -164,6 +222,37 @@ export default function CenterPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'riders' && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">จัดการ Rider ประจำศูนย์</h2>
+            <form onSubmit={handleAddRider} className="flex gap-4 max-w-md mb-8">
+              <input type="text" name="rider_id" required placeholder="User ID ของ Rider (ตัวอักษรหรือตัวเลข)" className="flex-1 px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+              <button type="submit" className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md whitespace-nowrap">เพิ่มเข้าศูนย์</button>
+            </form>
+
+            <table className="w-full max-w-2xl text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-900 text-gray-500">
+                  <th className="p-4">Rider DB ID</th>
+                  <th className="p-4">User Account ID</th>
+                  <th className="p-4 text-right">ลบ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {riders.length === 0 ? <tr><td colSpan={3} className="p-6 text-center text-gray-500">ยังไม่มี Rider ในศูนย์</td></tr> : 
+                  riders.map(r => (
+                    <tr key={r.id}>
+                      <td className="p-4 font-mono text-xs dark:text-gray-300">{r.id}</td>
+                      <td className="p-4 font-bold text-blue-600">{r.rider_user_id}</td>
+                      <td className="p-4 text-right"><button onClick={() => handleRemoveRider(r.id)} className="text-red-500 hover:underline font-bold text-sm">นำออก</button></td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
           </div>
         )}
 
@@ -205,16 +294,17 @@ export default function CenterPage() {
 
               {updateAction === 'delivering' && selectedShipment.status !== 'shipped_to_center' && (
                 <div>
-                  <label className="block text-sm font-bold dark:text-gray-300 mb-1">รหัสพนักงานขนส่ง (Rider ID)</label>
-                  {/* เปลี่ยน type="number" เป็น type="text" */}
-                  <input type="text" required value={targetId} onChange={e=>setTargetId(e.target.value)} className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white" />
+                  <label className="block text-sm font-bold dark:text-gray-300 mb-1">เลือก Rider จากศูนย์</label>
+                  <select value={targetId} onChange={e=>setTargetId(e.target.value)} required className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white">
+                    <option value="">-- เลือก Rider --</option>
+                    {riders.map(r => <option key={r.id} value={r.id}>{r.rider_user_id}</option>)}
+                  </select>
                 </div>
               )}
 
               {updateAction === 'shipped_to_center' && selectedShipment.status !== 'shipped_to_center' && (
                 <div>
                   <label className="block text-sm font-bold dark:text-gray-300 mb-1">รหัสศูนย์ปลายทาง (Center ID)</label>
-                  {/* เปลี่ยน type="number" เป็น type="text" */}
                   <input type="text" required value={targetId} onChange={e=>setTargetId(e.target.value)} className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white" />
                 </div>
               )}
