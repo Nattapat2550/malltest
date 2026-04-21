@@ -14,6 +14,25 @@ import (
 	"backend/internal/pureapi"
 )
 
+// securityHeaders middleware ช่วยเพิ่ม HTTP Security Headers เพื่อปิดช่องโหว่ตาม ZAP Report
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// ป้องกัน Clickjacking (Missing Anti-clickjacking Header)
+		w.Header().Set("X-Frame-Options", "DENY")
+		
+		// ป้องกัน XSS และ Data Injection (Content Security Policy Header Not Set)
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none';")
+		
+		// บังคับใช้ HTTPS เสมอ (Strict-Transport-Security Header Not Set)
+		w.Header().Set("Strict-Transport-Security", "max-age=315360000; includeSubDomains; preload")
+		
+		// ป้องกัน MIME-type sniffing (แถมให้เป็น Best Practice)
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		
+		next.ServeHTTP(w, r)
+	})
+}
+
 func NewRouter(cfg config.Config, mallDB *sql.DB) http.Handler {
 	r := chi.NewRouter()
 
@@ -23,6 +42,9 @@ func NewRouter(cfg config.Config, mallDB *sql.DB) http.Handler {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
+
+	// เพิ่ม Security Headers Middleware ที่นี่เพื่อให้มีผลกับทุก Routes
+	r.Use(securityHeaders)
 
 	// 2. CORS
 	allowedOrigins := []string{"http://localhost:3000", "http://127.0.0.1:3000"}
