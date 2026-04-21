@@ -20,8 +20,8 @@ func securityHeaders(next http.Handler) http.Handler {
 		// ป้องกัน Clickjacking (Missing Anti-clickjacking Header)
 		w.Header().Set("X-Frame-Options", "DENY")
 		
-		// ป้องกัน XSS และ Data Injection (Content Security Policy Header Not Set)
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none';")
+		// ป้องกัน XSS และ Data Injection และแก้ CSP: Failure to Define Directive with No Fallback (เพิ่ม form-action 'self')
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'; form-action 'self';")
 		
 		// บังคับใช้ HTTPS เสมอ (Strict-Transport-Security Header Not Set)
 		w.Header().Set("Strict-Transport-Security", "max-age=315360000; includeSubDomains; preload")
