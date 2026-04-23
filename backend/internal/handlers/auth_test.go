@@ -6,43 +6,118 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"backend/internal/config"
+	"backend/internal/pureapi"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
-// จำลอง Config และระบบสำหรับเทส
-func setupTestHandler() *Handler {
-	return &Handler{}
+// จำลอง Config และระบบสำหรับเทส โดยจำลองเซิร์ฟเวอร์ Pure API เข้ามาด้วยเพื่อกัน Panic
+func setupTestHandler() (*Handler, *httptest.Server) {
+	// จำลอง Password Hash ที่ถูกต้องเพื่อใช้ตอนทดสอบ Login
+	hash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
+	hashStr := string(hash)
+
+	// สร้าง Mock Server จำลอง Pure API ให้ฉลาดขึ้น
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		// อ่าน Body เพื่อดูว่าหา Email อะไร
+		var reqBody map[string]any
+		json.NewDecoder(r.Body).Decode(&reqBody)
+		email, _ := reqBody["email"].(string)
+
+		// ถ้าเป็นการทดสอบสมัครสมาชิกด้วย newuser@example.com ให้จำลองว่ายังไม่เคยมีในระบบ (404 Not Found)
+		if email == "newuser@example.com" {
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(`{"error": "User not found"}`))
+			return
+		}
+
+		// กรณีอื่นๆ (เช่น Login, Get Profile) ให้จำลองว่ามีข้อมูลแล้วและรหัสผ่านถูกต้อง
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]any{
+			"ok":            true,
+			"id":            1,
+			"email":         "test@example.com",
+			"password_hash": hashStr,
+			"role":          "user",
+		})
+	}))
+
+	client := pureapi.NewClient(mockServer.URL, "dummy-key")
+
+	h := &Handler{
+		Pure: client,
+		Cfg: config.Config{
+			JWTSecret: "testsecretkey123", // ป้องกัน Token Error
+			EmailDisable: true,
+		},
+	}
+	return h, mockServer
 }
 
 func TestAuthRegister(t *testing.T) {
-	h := setupTestHandler()
+	h, mockServer := setupTestHandler()
+	defer mockServer.Close()
 
-	payload := map[string]any{
-		"email":     "newuser@example.com",
-		"password":  "securepass123",
-		"firstName": "John",
-		"lastName":  "Doe",
-		"tel":       "0811111111",
+	tests := []struct {
+		name           string
+		payload        any
+		expectedStatus int
+	}{
+		{
+			name: "Success Registration",
+			// Register ใหม่ส่งแค่ email สำหรับทำ OTP Flow
+			payload: map[string]any{
+				"email": "newuser@example.com",
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name: "Missing Email",
+			payload: map[string]any{
+				"wrong_field": "something",
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "Invalid JSON",
+			payload:        "invalid json string",
+			expectedStatus: http.StatusBadRequest,
+		},
 	}
 
-	body, _ := json.Marshal(payload)
-	req, _ := http.NewRequest("POST", "/api/auth/register", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var body []byte
+			if str, ok := tt.payload.(string); ok {
+				body = []byte(str)
+			} else {
+				body, _ = json.Marshal(tt.payload)
+			}
 
-	rr := httptest.NewRecorder()
-	h.AuthRegister(rr, req)
+			req, _ := http.NewRequest("POST", "/api/auth/register", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
 
-	// กรณีไม่มี Mock DB จะได้ Internal Error หรืออาจจะ Bad Request ต้องตรวจจับตามสภาวะ
-	if rr.Code != http.StatusCreated && rr.Code != http.StatusInternalServerError {
-		t.Errorf("expected status 201 or 500 (if no DB), got %d. Body: %s", rr.Code, rr.Body.String())
+			rr := httptest.NewRecorder()
+			h.AuthRegister(rr, req)
+
+			if rr.Code != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d. Body: %s", tt.expectedStatus, rr.Code, rr.Body.String())
+			}
+		})
 	}
 }
 
 func TestAuthLogin(t *testing.T) {
-	h := setupTestHandler()
+	h, mockServer := setupTestHandler()
+	defer mockServer.Close()
 
 	tests := []struct {
 		name           string
-		payload        map[string]any
+		payload        any
 		expectedStatus int
 	}{
 		{
@@ -52,12 +127,83 @@ func TestAuthLogin(t *testing.T) {
 				"password": "password123",
 				"remember": true,
 			},
-			expectedStatus: http.StatusOK, // Mock ควรจำลองให้รหัสผ่านถูก
+			expectedStatus: http.StatusOK,
 		},
 		{
-			name: "Missing Fields",
+			name: "Missing Password",
 			payload: map[string]any{
 				"email": "test@example.com",
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "Invalid JSON format",
+			payload:        `{"email": "test@example.com", "password": }`,
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var body []byte
+			if str, ok := tt.payload.(string); ok {
+				body = []byte(str)
+			} else {
+				body, _ = json.Marshal(tt.payload)
+			}
+
+			req, _ := http.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+
+			rr := httptest.NewRecorder()
+			h.AuthLogin(rr, req)
+
+			if rr.Code != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d", tt.expectedStatus, rr.Code)
+			}
+		})
+	}
+}
+
+func TestAuthStatus(t *testing.T) {
+	h, mockServer := setupTestHandler()
+	defer mockServer.Close()
+
+	req, _ := http.NewRequest("GET", "/api/auth/status", nil)
+	rr := httptest.NewRecorder()
+
+	h.AuthStatus(rr, req)
+
+	if rr.Code != http.StatusUnauthorized && rr.Code != http.StatusOK {
+		t.Errorf("Unexpected status for AuthStatus: %d", rr.Code)
+	}
+}
+
+func TestAuthCompleteProfile(t *testing.T) {
+	h, mockServer := setupTestHandler()
+	defer mockServer.Close()
+
+	tests := []struct {
+		name           string
+		payload        any
+		expectedStatus int
+	}{
+		{
+			name: "Complete Profile Success",
+			payload: completeProfileReq{
+				Email:     "googleuser@example.com",
+				Username:  "newuser123",
+				Password:  "securepass88",
+				FirstName: "Somchai",
+				LastName:  "Jaidee",
+				Tel:       "0812345678",
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name: "Missing Required Fields",
+			payload: map[string]any{
+				"email": "incomplete@example.com",
 			},
 			expectedStatus: http.StatusBadRequest,
 		},
@@ -66,55 +212,15 @@ func TestAuthLogin(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			body, _ := json.Marshal(tt.payload)
-			req, _ := http.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(body))
+			req, _ := http.NewRequest("POST", "/api/auth/complete-profile", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
 
 			rr := httptest.NewRecorder()
-			h.AuthLogin(rr, req)
+			h.AuthCompleteProfile(rr, req)
 
-			if rr.Code != tt.expectedStatus && rr.Code != http.StatusInternalServerError {
+			if rr.Code != tt.expectedStatus {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, rr.Code)
 			}
 		})
-	}
-}
-
-func TestAuthStatus(t *testing.T) {
-	h := setupTestHandler()
-
-	req, _ := http.NewRequest("GET", "/api/auth/status", nil)
-	rr := httptest.NewRecorder()
-	
-	// ไม่ได้ส่ง Token ไปควรจะเป็น Unauthorized
-	h.AuthStatus(rr, req)
-	
-	// หมายเหตุ: AuthStatus ใน handler มักจะดึงจาก Context ที่ Middleware ยัดมาให้
-	// หากไม่ได้เรียกผ่าน Middleware ค่าใน Context จะว่างเปล่า
-	if rr.Code != http.StatusUnauthorized && rr.Code != http.StatusOK {
-		t.Errorf("Unexpected status for AuthStatus: %d", rr.Code)
-	}
-}
-
-func TestAuthCompleteProfile(t *testing.T) {
-	h := setupTestHandler()
-
-	payload := completeProfileReq{
-		Email:      "googleuser@example.com",
-		Username:   "newuser123",
-		Password:   "securepass88",
-		FirstName:  "Somchai",
-		LastName:   "Jaidee",
-		Tel:        "0812345678",
-	}
-
-	body, _ := json.Marshal(payload)
-	req, _ := http.NewRequest("POST", "/api/auth/complete-profile", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-
-	rr := httptest.NewRecorder()
-	h.AuthCompleteProfile(rr, req)
-
-	if rr.Code != http.StatusOK && rr.Code != http.StatusInternalServerError { 
-		t.Errorf("expected status 200 or 500, got %d", rr.Code)
 	}
 }
