@@ -11,6 +11,7 @@ import (
 	"backend/internal/config"
 	"backend/internal/httpapi"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -21,8 +22,8 @@ import (
 
 func generateTestToken(userID int64, role string, secret string) string {
 	claims := jwt.MapClaims{
-		"id":      userID,         // แก้ไขชื่อให้ตรงกับโครงสร้างใหม่
-		"user_id": "test-user-id", // mock ค่า random user_id 
+		"id":      userID,         
+		"user_id": "test-user-id", 
 		"role":    role,
 		"exp":     time.Now().Add(1 * time.Hour).Unix(),
 	}
@@ -54,7 +55,6 @@ func TestComprehensiveSystem(t *testing.T) {
 			var body map[string]any
 			json.NewDecoder(r.Body).Decode(&body)
 			
-			// จำลองเคสที่ไม่พบ User
 			if email, ok := body["email"].(string); ok && (email == "notfound@example.com" || email == "new@example.com") {
 				w.WriteHeader(http.StatusNotFound)
 				w.Write([]byte(`{"error": {"message": "User not found"}}`))
@@ -88,17 +88,30 @@ func TestComprehensiveSystem(t *testing.T) {
 	}))
 	defer pureMock.Close()
 
-	// 🛑 2. Config & Router
-	cfg := config.Config{
-		PureAPIBaseURL: pureMock.URL,
-		EmailDisable:   true,
-		JWTSecret:      jwtSecret,
-		FrontendURL:    "http://localhost:3000",
-		GoogleClientID: "mock-client-id",
-		GoogleClientSecret: "mock-secret",
-		GoogleCallbackURI: "http://localhost:3000/callback",
+	// 🛑 2. Mock Database (แก้ปัญหา Panic)
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+	if err != nil {
+		t.Fatalf("Failed to open mock db: %v", err)
 	}
-	router := httpapi.NewRouter(cfg, nil) 
+	defer db.Close()
+
+	// จำลองให้ฐานข้อมูลคืนค่า 1 row กลับไปเสมอเมื่อมีการ Query ป้องกัน error แจ้งเตือนจาก SQLMock
+	mock.ExpectQuery(".*").WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("admin"))
+	mock.ExpectQuery(".*").WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("admin"))
+
+	// 🛑 3. Config & Router
+	cfg := config.Config{
+		PureAPIBaseURL:     pureMock.URL,
+		EmailDisable:       true,
+		JWTSecret:          jwtSecret,
+		FrontendURL:        "http://localhost:3000",
+		GoogleClientID:     "mock-client-id",
+		GoogleClientSecret: "mock-secret",
+		GoogleCallbackURI:  "http://localhost:3000/callback",
+	}
+	
+	// เปลี่ยนจาก nil เป็นตัวแปร db ที่เรา mock เอาไว้
+	router := httpapi.NewRouter(cfg, db) 
 
 	execute := func(req *http.Request) *httptest.ResponseRecorder {
 		rr := httptest.NewRecorder()
@@ -117,8 +130,6 @@ func TestComprehensiveSystem(t *testing.T) {
 		rr := execute(req)
 		if rr.Code != http.StatusOK { t.Errorf("Expected 200, got %d", rr.Code) }
 	})
-
-	// ข้าม Test "AUTH: Verify Code" ไปเพราะตอนนี้ระบบ OTP เปลี่ยนไปเก็บลง Memory (Random) จึงไม่สามารถ Mock Code "123456" ได้ตรงๆ
 
 	t.Run("AUTH: Complete Profile", func(t *testing.T) {
 		payload := `{"email": "test@example.com", "username": "TestUser", "password": "Password123!", "first_name": "Test", "last_name": "User", "tel": "0899999999"}`
@@ -164,7 +175,7 @@ func TestComprehensiveSystem(t *testing.T) {
 	})
 
 	// ==========================================
-	// 2. USER PROFILE TESTS (ตัดทอนมาเฉพาะส่วนที่เทสทำงาน)
+	// 2. USER PROFILE TESTS
 	// ==========================================
 	t.Run("USER: Get Me", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/users/me", nil)
