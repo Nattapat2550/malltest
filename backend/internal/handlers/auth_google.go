@@ -1,3 +1,4 @@
+// backend/internal/handlers/auth_google.go
 package handlers
 
 import (
@@ -35,18 +36,18 @@ func (h *Handler) AuthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ✅ เช็คก่อนว่ามี User ในระบบอยู่แล้วหรือไม่
+	// User
 	var user userDTO
 	err = h.Pure.Post(ctx, "/api/internal/find-user", map[string]any{"email": info.Email}, &user)
-	
 	userExists := err == nil && user.ID != 0
+
 	isProfileIncomplete := true
 	if userExists {
-		// ถ้ามี User อยู่แล้ว ให้เช็คว่าข้อมูลครบไหม (เช็คจากเบอร์โทรศัพท์)
+		// User
 		isProfileIncomplete = user.Tel == nil || strings.TrimSpace(*user.Tel) == ""
 	}
 
-	// ✅ ถ้ายังไม่มี User หรือโปรไฟล์ยังไม่ครบ -> ห้ามลงฐานข้อมูล ให้พาไปหน้า Complete Profile ทันที
+	// User -> Complete Profile
 	if !userExists || isProfileIncomplete {
 		redirectURL := fmt.Sprintf("%s/complete-profile?email=%s&name=%s&oauthId=%s&pictureUrl=%s",
 			front,
@@ -59,7 +60,7 @@ func (h *Handler) AuthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ดึงค่า Random UserID จาก Object ส่งให้ Token
+	// Random UserID Object Token
 	var randomUserID string
 	if user.UserID != nil {
 		randomUserID = *user.UserID
@@ -67,7 +68,9 @@ func (h *Handler) AuthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		randomUserID = fmt.Sprintf("%v", user.ID)
 	}
 
-	// ✅ ถ้ามีข้อมูลและกรอกครบแล้ว (ไอดีเก่า) ให้เข้าสู่ระบบได้เลย
+	// ซิงค์สิทธิ์ Role ลงตาราง user_roles
+	h.syncUserRole(ctx, randomUserID, user.Role)
+
 	token, err := h.signToken(user.ID, randomUserID, user.Role)
 	if err != nil {
 		http.Redirect(w, r, front+"/login?error=oauth_failed", http.StatusFound)
@@ -75,10 +78,9 @@ func (h *Handler) AuthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.setAuthCookie(w, token, true)
-
 	role := user.Role
 	if role == "" {
-		role = "user"
+		role = "customer" // Default Role
 	}
 
 	frag := "token=" + url.QueryEscape(token) + "&role=" + url.QueryEscape(role)
@@ -86,7 +88,6 @@ func (h *Handler) AuthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, front+"/admin#"+frag, http.StatusFound)
 		return
 	}
-
 	http.Redirect(w, r, front+"/home#"+frag, http.StatusFound)
 }
 
@@ -104,16 +105,14 @@ type googleMobileReq struct {
 	AuthCode string `json:"authCode"`
 }
 
-// POST /api/auth/google-mobile 
+// POST /api/auth/google-mobile
 func (h *Handler) AuthGoogleMobileCallback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
 	var req googleMobileReq
 	if err := ReadJSON(r, &req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
-
 	if req.AuthCode == "" {
 		h.writeError(w, http.StatusBadRequest, "Missing authCode")
 		return
@@ -127,15 +126,15 @@ func (h *Handler) AuthGoogleMobileCallback(w http.ResponseWriter, r *http.Reques
 
 	var user userDTO
 	err = h.Pure.Post(ctx, "/api/internal/find-user", map[string]any{"email": info.Email}, &user)
-	
 	userExists := err == nil && user.ID != 0
+
 	isProfileIncomplete := true
 	if userExists {
 		isProfileIncomplete = user.Tel == nil || strings.TrimSpace(*user.Tel) == ""
 	}
 
 	if !userExists || isProfileIncomplete {
-		// ส่งกลับไปให้ Mobile App ทราบว่าต้องพาผู้ใช้ไปหน้า Complete Profile (ไม่สร้าง JWT token ให้)
+		// Mobile App Complete Profile (JWT token)
 		WriteJSON(w, http.StatusOK, map[string]any{
 			"isProfileIncomplete": true,
 			"needCompleteProfile": true,
@@ -149,13 +148,16 @@ func (h *Handler) AuthGoogleMobileCallback(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// ดึงค่า Random UserID จาก Object ส่งให้ Token
+	// Random UserID Object Token
 	var randomUserID string
 	if user.UserID != nil {
 		randomUserID = *user.UserID
 	} else {
 		randomUserID = fmt.Sprintf("%v", user.ID)
 	}
+
+	// ซิงค์สิทธิ์ Role ลงตาราง user_roles
+	h.syncUserRole(ctx, randomUserID, user.Role)
 
 	token, err := h.signToken(user.ID, randomUserID, user.Role)
 	if err != nil {
@@ -164,11 +166,10 @@ func (h *Handler) AuthGoogleMobileCallback(w http.ResponseWriter, r *http.Reques
 	}
 
 	h.setAuthCookie(w, token, true)
-	
 	WriteJSON(w, http.StatusOK, map[string]any{
 		"token": token,
 		"role":  user.Role,
-		"isProfileIncomplete": false, 
+		"isProfileIncomplete": false,
 		"user": map[string]any{
 			"id":                  user.ID,
 			"email":               user.Email,

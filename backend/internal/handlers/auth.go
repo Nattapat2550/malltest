@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -17,7 +18,7 @@ import (
 
 var emailRe = regexp.MustCompile(`^\S+@\S+\.\S+$`)
 
-// ----- ระบบเก็บ OTP ใน Memory (เพื่อป้องกันการบันทึกลง DB ก่อนกรอกข้อมูลเสร็จ) -----
+// -----   OTP   Memory (  DB  ) -----
 var (
 	otpStoreMutex sync.RWMutex
 	otpStore      = make(map[string]otpEntry)
@@ -27,6 +28,7 @@ type otpEntry struct {
 	Code      string
 	ExpiresAt time.Time
 }
+
 // --------------------------------------------------------------------------
 
 type userDTO struct {
@@ -37,7 +39,7 @@ type userDTO struct {
 	FirstName         *string `json:"first_name"`
 	LastName          *string `json:"last_name"`
 	Tel               *string `json:"tel"`
-	Status            *string `json:"status"` 
+	Status            *string `json:"status"`
 	Role              string  `json:"role"`
 	PasswordHash      *string `json:"password_hash"`
 	IsEmailVerified   bool    `json:"is_email_verified"`
@@ -54,7 +56,6 @@ type verifyReq struct {
 	Email string `json:"email"`
 	Code  string `json:"code"`
 }
-
 type completeProfileReq struct {
 	Email      string `json:"email"`
 	Username   string `json:"username"`
@@ -66,7 +67,6 @@ type completeProfileReq struct {
 	OAuthId    string `json:"oauthId"`
 	PictureUrl string `json:"pictureUrl"`
 }
-
 type loginReq struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -79,7 +79,6 @@ type resetReq struct {
 	Token       string `json:"token"`
 	NewPassword string `json:"newPassword"`
 }
-
 type verifyResp struct {
 	OK     bool    `json:"ok"`
 	UserID *int64  `json:"userId"`
@@ -89,35 +88,33 @@ type verifyResp struct {
 // ------ REGISTER ------
 func (h *Handler) AuthRegister(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
 	var req registerReq
 	if err := ReadJSON(r, &req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
-	
+
 	email := strings.TrimSpace(strings.ToLower(req.Email))
 	if email == "" || !emailRe.MatchString(email) {
 		h.writeError(w, http.StatusBadRequest, "Invalid email")
 		return
 	}
 
-	// ✅ เช็คก่อนว่าอีเมลนี้ลงทะเบียนและกรอกโปรไฟล์ไปเรียบร้อยหรือยัง
 	var existingUser userDTO
 	err := h.Pure.Post(ctx, "/api/internal/find-user", map[string]any{"email": email}, &existingUser)
 	if err == nil && existingUser.ID != 0 {
-		// ถ้ามี Username หรือ Password แสดงว่าสมัครสมบูรณ์แล้ว
+		// Username   Password 
 		if existingUser.Username != nil || existingUser.PasswordHash != nil {
-			h.writeError(w, http.StatusConflict, "อีเมลนี้ถูกลงทะเบียนไปแล้ว")
+			h.writeError(w, http.StatusConflict, " return ")
 			return
 		}
 	}
 
-	// สร้าง Code ยืนยัน
+	// Code 
 	code := generateSixDigitCode()
 	expiresAt := time.Now().Add(10 * time.Minute)
-	
-	// เก็บลง Memory แทนการเซฟลง Database
+
+	// Memory   Database
 	otpStoreMutex.Lock()
 	otpStore[email] = otpEntry{
 		Code:      code,
@@ -149,6 +146,7 @@ func (h *Handler) AuthVerifyCode(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
+
 	email := strings.TrimSpace(strings.ToLower(req.Email))
 	code := strings.TrimSpace(req.Code)
 	if email == "" || code == "" {
@@ -156,7 +154,7 @@ func (h *Handler) AuthVerifyCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ตรวจสอบ Code จาก Memory แทน Database
+	// Code   Memory   Database
 	otpStoreMutex.RLock()
 	entry, exists := otpStore[email]
 	otpStoreMutex.RUnlock()
@@ -165,19 +163,18 @@ func (h *Handler) AuthVerifyCode(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "Invalid or expired code")
 		return
 	}
-	
-	// ลบ Code ออกจาก Memory หลังจากใช้สำเร็จ เพื่อความปลอดภัย
+
+	// Code   Memory 
 	otpStoreMutex.Lock()
 	delete(otpStore, email)
 	otpStoreMutex.Unlock()
-	
+
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
 // ------ COMPLETE PROFILE ------
 func (h *Handler) AuthCompleteProfile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
 	var req completeProfileReq
 	if err := ReadJSON(r, &req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid JSON")
@@ -198,10 +195,9 @@ func (h *Handler) AuthCompleteProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user userDTO
-	
 	err := h.Pure.Post(ctx, "/api/internal/find-user", map[string]any{"email": email}, &user)
-	
-	// ถ้ายังไม่มี User ค่อยบันทึกลง Database
+
+	// User   Database
 	if err != nil || user.ID == 0 {
 		if req.OAuthId != "" {
 			payloadOAuth := map[string]any{
@@ -241,19 +237,22 @@ func (h *Handler) AuthCompleteProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ดึงค่า Random UserID จาก Object
+	// Random UserID   Object
 	var randomUserID string
 	if user.UserID != nil {
 		randomUserID = *user.UserID
 	} else {
-		randomUserID = fmt.Sprintf("%v", user.ID) // Fallback กรณียังไม่มี
+		randomUserID = fmt.Sprintf("%v", user.ID)
 	}
+
+	h.syncUserRole(ctx, randomUserID, user.Role)
 
 	token, err := h.signToken(user.ID, randomUserID, user.Role)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Token error")
 		return
 	}
+
 	h.setAuthCookie(w, token, req.Remember)
 
 	WriteJSON(w, http.StatusOK, map[string]any{
@@ -278,13 +277,12 @@ func (h *Handler) AuthCompleteProfile(w http.ResponseWriter, r *http.Request) {
 // ------ LOGIN ------
 func (h *Handler) AuthLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
 	var req loginReq
 	if err := ReadJSON(r, &req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
-	
+
 	email := strings.TrimSpace(strings.ToLower(req.Email))
 	if email == "" || req.Password == "" {
 		h.writeError(w, http.StatusBadRequest, "Missing fields")
@@ -297,10 +295,12 @@ func (h *Handler) AuthLogin(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusUnauthorized, "Invalid credentials")
 		return
 	}
+
 	if user.PasswordHash == nil || *user.PasswordHash == "" {
 		h.writeError(w, http.StatusUnauthorized, "Invalid credentials")
 		return
 	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(req.Password)); err != nil {
 		h.writeError(w, http.StatusUnauthorized, "Invalid credentials")
 		return
@@ -328,7 +328,7 @@ func (h *Handler) AuthLogin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// ดึงค่า Random UserID จาก Object
+	// Random UserID   Object
 	var randomUserID string
 	if user.UserID != nil {
 		randomUserID = *user.UserID
@@ -336,12 +336,14 @@ func (h *Handler) AuthLogin(w http.ResponseWriter, r *http.Request) {
 		randomUserID = fmt.Sprintf("%v", user.ID)
 	}
 
+	h.syncUserRole(ctx, randomUserID, user.Role)
+
 	token, err := h.signToken(user.ID, randomUserID, user.Role)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "Token error")
 		return
 	}
-	
+
 	h.setAuthCookie(w, token, req.Remember)
 
 	WriteJSON(w, http.StatusOK, map[string]any{
@@ -380,7 +382,7 @@ func (h *Handler) AuthStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user userDTO
-	// เรียกใช้ API ด้วย claims.ID ที่เป็น int64 ตามเดิมเพื่อไม่ให้เกิด 422
+	// API   claims.ID   int64   422
 	if err := h.Pure.Post(ctx, "/api/internal/find-user", map[string]any{"id": claims.ID}, &user); err != nil {
 		WriteJSON(w, http.StatusOK, map[string]any{"authenticated": false})
 		return
@@ -391,7 +393,7 @@ func (h *Handler) AuthStatus(w http.ResponseWriter, r *http.Request) {
 		WriteJSON(w, http.StatusOK, map[string]any{"authenticated": false, "reason": "banned"})
 		return
 	}
-	
+
 	WriteJSON(w, http.StatusOK, map[string]any{
 		"authenticated": true,
 		"id":            user.ID,
@@ -420,13 +422,12 @@ func (h *Handler) AuthLogout(w http.ResponseWriter, _ *http.Request) {
 // ------ FORGOT / RESET PASSWORD ------
 func (h *Handler) AuthForgotPassword(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
 	var req forgotReq
 	if err := ReadJSON(r, &req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
-	
+
 	email := strings.TrimSpace(strings.ToLower(req.Email))
 	if email == "" {
 		h.writeError(w, http.StatusBadRequest, "Missing email")
@@ -453,7 +454,6 @@ func (h *Handler) AuthForgotPassword(w http.ResponseWriter, r *http.Request) {
 		resetLink := strings.TrimRight(h.Cfg.FrontendURL, "/") + "/reset?token=" + token
 		subject := "Reset your password"
 		text := "Click this link to reset your password:\n" + resetLink + "\n\nThis link expires in 30 minutes."
-
 		if err := h.Mail.Send(ctx, MailMessage{
 			To:      user.Email,
 			Subject: subject,
@@ -469,14 +469,15 @@ func (h *Handler) AuthForgotPassword(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) AuthResetPassword(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
 	var req resetReq
 	if err := ReadJSON(r, &req); err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
+
 	token := strings.TrimSpace(req.Token)
 	newPass := req.NewPassword
+
 	if token == "" || newPass == "" {
 		h.writeError(w, http.StatusBadRequest, "Missing fields")
 		return
@@ -512,4 +513,20 @@ func randomTokenHex(nBytes int) string {
 	b := make([]byte, nBytes)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+func (h *Handler) syncUserRole(ctx context.Context, userID string, role string) {
+	if h.MallDB == nil {
+		return
+	}
+
+	if role == "" {
+		role = "customer"
+	}
+
+	_, _ = h.MallDB.ExecContext(ctx, `
+		INSERT INTO user_roles (user_id, role)
+		VALUES ($1, $2)
+		ON CONFLICT (user_id) DO NOTHING
+	`, userID, role)
 }
