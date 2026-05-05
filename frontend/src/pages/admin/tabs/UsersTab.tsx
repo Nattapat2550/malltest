@@ -165,7 +165,7 @@ export default function UsersTab() {
       {/* Modal แก้ไขกระเป๋าเงิน (Wallet) */}
       {/* ========================================== */}
       {walletModal && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl p-6">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">ปรับปรุงยอดเงิน</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">บัญชี: {selectedUser.email || selectedUser.username}</p>
@@ -202,7 +202,7 @@ export default function UsersTab() {
       {/* Modal แก้ไขสิทธิ์ผู้ใช้ (Role) */}
       {/* ========================================== */}
       {roleModal && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl p-6">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">แก้ไขสิทธิ์ผู้ใช้งาน</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">บัญชี: {selectedUser.email || selectedUser.username}</p>

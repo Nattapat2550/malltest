@@ -148,7 +148,7 @@ export default function RiderPage() {
 
       {/* Update Modal */}
       {showUpdateModal && selectedShipment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl">
             <h3 className="text-xl font-bold dark:text-white mb-2">อัปเดตการจัดส่งพัสดุ</h3>
             <p className="text-sm text-gray-500 mb-6">รหัสพัสดุ #{selectedShipment.shipment_id}</p>

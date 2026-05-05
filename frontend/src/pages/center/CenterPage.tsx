@@ -272,7 +272,7 @@ export default function CenterPage() {
       </div>
 
       {showUpdateModal && selectedShipment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md p-6">
             <h3 className="text-lg font-bold dark:text-white mb-2 break-all">อัปเดตพัสดุ #{selectedShipment.shipment_id}</h3>
             

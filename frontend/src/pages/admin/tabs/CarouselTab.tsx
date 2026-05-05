@@ -131,11 +131,11 @@ export default function CarouselTab() {
             <div className="aspect-video w-full bg-gray-100 dark:bg-gray-900 relative overflow-hidden">
               <img src={item.image_url} alt="Banner" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               {!item.is_active && (
-                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center">
                   <span className="bg-red-500 text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Hidden</span>
                 </div>
               )}
-              <div className="absolute top-3 left-3 bg-black/60 text-white px-3 py-1 rounded-lg text-xs font-bold">
+              <div className="absolute top-3 left-3 bg-slate-900/60 text-white px-3 py-1 rounded-lg text-xs font-bold">
                 Order: {item.sort_order}
               </div>
             </div>

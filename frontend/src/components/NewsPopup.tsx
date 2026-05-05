@@ -53,7 +53,7 @@ export default function NewsPopup() {
   if (!showNewsModal || newsList.length === 0) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in">
+    <div className="fixed inset-0 bg-slate-900 bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in">
       <div className="bg-white p-6 rounded-lg max-w-2xl w-full relative max-h-[90vh] flex flex-col">
         <button 
           onClick={closeNewsModal} 

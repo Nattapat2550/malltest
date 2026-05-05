@@ -68,8 +68,8 @@ func (h *Handler) AuthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		randomUserID = fmt.Sprintf("%v", user.ID)
 	}
 
-	// ซิงค์สิทธิ์ Role ลงตาราง user_roles
-	h.syncUserRole(ctx, randomUserID, user.Role)
+	// แปลงสิทธิ์และอัปเดตลงฐานข้อมูล
+	user.Role = h.syncUserRole(ctx, randomUserID, user.Role)
 
 	token, err := h.signToken(user.ID, randomUserID, user.Role)
 	if err != nil {
@@ -78,13 +78,9 @@ func (h *Handler) AuthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.setAuthCookie(w, token, true)
-	role := user.Role
-	if role == "" {
-		role = "customer" // Default Role
-	}
 
-	frag := "token=" + url.QueryEscape(token) + "&role=" + url.QueryEscape(role)
-	if role == "admin" {
+	frag := "token=" + url.QueryEscape(token) + "&role=" + url.QueryEscape(user.Role)
+	if user.Role == "admin" {
 		http.Redirect(w, r, front+"/admin#"+frag, http.StatusFound)
 		return
 	}
@@ -156,8 +152,8 @@ func (h *Handler) AuthGoogleMobileCallback(w http.ResponseWriter, r *http.Reques
 		randomUserID = fmt.Sprintf("%v", user.ID)
 	}
 
-	// ซิงค์สิทธิ์ Role ลงตาราง user_roles
-	h.syncUserRole(ctx, randomUserID, user.Role)
+	// แปลงสิทธิ์และอัปเดตลงฐานข้อมูล
+	user.Role = h.syncUserRole(ctx, randomUserID, user.Role)
 
 	token, err := h.signToken(user.ID, randomUserID, user.Role)
 	if err != nil {

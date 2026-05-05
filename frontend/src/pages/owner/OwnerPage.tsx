@@ -340,7 +340,7 @@ export default function OwnerPage() {
       </div>
 
       {showProductModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold dark:text-white mb-4">{editingProduct ? 'แก้ไขสินค้า' : 'เพิ่มสินค้า'}</h3>
             <form onSubmit={handleSaveProduct} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -403,7 +403,7 @@ export default function OwnerPage() {
       )}
 
       {showPromoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold dark:text-white mb-4">{editingPromo ? 'แก้ไขโค้ดส่วนลด' : 'สร้างโค้ดส่วนลดใหม่'}</h3>
             <form onSubmit={handleSavePromo} className="space-y-4">
@@ -445,7 +445,7 @@ export default function OwnerPage() {
       )}
 
       {showShipmentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-6">
             <h3 className="text-xl font-bold dark:text-white mb-2">อัปเดตสถานะพัสดุ</h3>
             <p className="text-sm text-gray-500 mb-4 break-all">ส่งพัสดุรหัส #{selectedShipment?.shipment_id} ไปยังศูนย์จัดส่ง</p>

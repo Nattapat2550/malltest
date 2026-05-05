@@ -103,18 +103,15 @@ func (h *Handler) AuthRegister(w http.ResponseWriter, r *http.Request) {
 	var existingUser userDTO
 	err := h.Pure.Post(ctx, "/api/internal/find-user", map[string]any{"email": email}, &existingUser)
 	if err == nil && existingUser.ID != 0 {
-		// Username   Password 
 		if existingUser.Username != nil || existingUser.PasswordHash != nil {
-			h.writeError(w, http.StatusConflict, " return ")
+			h.writeError(w, http.StatusConflict, "Email already registered")
 			return
 		}
 	}
 
-	// Code 
 	code := generateSixDigitCode()
 	expiresAt := time.Now().Add(10 * time.Minute)
 
-	// Memory   Database
 	otpStoreMutex.Lock()
 	otpStore[email] = otpEntry{
 		Code:      code,
@@ -154,7 +151,6 @@ func (h *Handler) AuthVerifyCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Code   Memory   Database
 	otpStoreMutex.RLock()
 	entry, exists := otpStore[email]
 	otpStoreMutex.RUnlock()
@@ -164,7 +160,6 @@ func (h *Handler) AuthVerifyCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Code   Memory 
 	otpStoreMutex.Lock()
 	delete(otpStore, email)
 	otpStoreMutex.Unlock()
@@ -197,7 +192,6 @@ func (h *Handler) AuthCompleteProfile(w http.ResponseWriter, r *http.Request) {
 	var user userDTO
 	err := h.Pure.Post(ctx, "/api/internal/find-user", map[string]any{"email": email}, &user)
 
-	// User   Database
 	if err != nil || user.ID == 0 {
 		if req.OAuthId != "" {
 			payloadOAuth := map[string]any{
@@ -237,7 +231,6 @@ func (h *Handler) AuthCompleteProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Random UserID   Object
 	var randomUserID string
 	if user.UserID != nil {
 		randomUserID = *user.UserID
@@ -245,7 +238,8 @@ func (h *Handler) AuthCompleteProfile(w http.ResponseWriter, r *http.Request) {
 		randomUserID = fmt.Sprintf("%v", user.ID)
 	}
 
-	h.syncUserRole(ctx, randomUserID, user.Role)
+	// แปลงสิทธิ์และอัปเดตลงฐานข้อมูล
+	user.Role = h.syncUserRole(ctx, randomUserID, user.Role)
 
 	token, err := h.signToken(user.ID, randomUserID, user.Role)
 	if err != nil {
@@ -328,7 +322,6 @@ func (h *Handler) AuthLogin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Random UserID   Object
 	var randomUserID string
 	if user.UserID != nil {
 		randomUserID = *user.UserID
@@ -336,7 +329,8 @@ func (h *Handler) AuthLogin(w http.ResponseWriter, r *http.Request) {
 		randomUserID = fmt.Sprintf("%v", user.ID)
 	}
 
-	h.syncUserRole(ctx, randomUserID, user.Role)
+	// แปลงสิทธิ์และอัปเดตลงฐานข้อมูล
+	user.Role = h.syncUserRole(ctx, randomUserID, user.Role)
 
 	token, err := h.signToken(user.ID, randomUserID, user.Role)
 	if err != nil {
@@ -382,7 +376,6 @@ func (h *Handler) AuthStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user userDTO
-	// API   claims.ID   int64   422
 	if err := h.Pure.Post(ctx, "/api/internal/find-user", map[string]any{"id": claims.ID}, &user); err != nil {
 		WriteJSON(w, http.StatusOK, map[string]any{"authenticated": false})
 		return
@@ -392,6 +385,11 @@ func (h *Handler) AuthStatus(w http.ResponseWriter, r *http.Request) {
 		h.clearAuthCookie(w)
 		WriteJSON(w, http.StatusOK, map[string]any{"authenticated": false, "reason": "banned"})
 		return
+	}
+	
+	// เปลี่ยนค่า role ให้เป็น customer เสมอถ้าเป็น user หรือค่าว่าง
+	if user.Role == "" || user.Role == "user" {
+		user.Role = "customer"
 	}
 
 	WriteJSON(w, http.StatusOK, map[string]any{
@@ -515,18 +513,19 @@ func randomTokenHex(nBytes int) string {
 	return hex.EncodeToString(b)
 }
 
-func (h *Handler) syncUserRole(ctx context.Context, userID string, role string) {
-	if h.MallDB == nil {
-		return
-	}
-
-	if role == "" {
+func (h *Handler) syncUserRole(ctx context.Context, userID string, role string) string {
+	// แปลง role 'user' หรือค่าว่าง ให้เป็น 'customer' อัตโนมัติ
+	if role == "" || role == "user" {
 		role = "customer"
 	}
 
-	_, _ = h.MallDB.ExecContext(ctx, `
-		INSERT INTO user_roles (user_id, role)
-		VALUES ($1, $2)
-		ON CONFLICT (user_id) DO NOTHING
-	`, userID, role)
+	if h.MallDB != nil {
+		_, _ = h.MallDB.ExecContext(ctx, `
+			INSERT INTO user_roles (user_id, role)
+			VALUES ($1, $2)
+			ON CONFLICT (user_id) DO NOTHING
+		`, userID, role)
+	}
+
+	return role
 }
