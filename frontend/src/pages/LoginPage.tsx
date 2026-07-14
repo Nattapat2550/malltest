@@ -32,7 +32,7 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = 'https://gtymall.onrender.com/api/auth/google';
+    window.location.href = `${api.defaults.baseURL}/api/auth/google`;
   };
 
   return (
