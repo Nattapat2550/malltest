@@ -14,6 +14,7 @@ import (
 	"backend/internal/config"
 	"backend/internal/database"
 	"backend/internal/httpapi"
+	"backend/internal/pureapi"
 )
 
 func main() {
@@ -27,6 +28,19 @@ func main() {
 	if mallDB != nil {
 		defer mallDB.Close()
 	}
+
+	// 1.5 🛠 เพิ่ม Goroutine สะกิดให้ pureapi ตื่นตั้งแต่เริ่มรันเซิร์ฟเวอร์
+	go func() {
+		slog.Info("Waking up Pure API...")
+		p := pureapi.NewClient(cfg.PureAPIBaseURL, cfg.PureAPIKey, cfg.PureAPIInternalURL)
+		
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		
+		// ยิงไปเพื่อเปิดระบบ
+		_ = p.Get(ctx, "/", nil)
+		slog.Info("Pure API wakeup signal sent")
+	}()
 
 	// 2. Setup HTTP Server
 	srv := &http.Server{
