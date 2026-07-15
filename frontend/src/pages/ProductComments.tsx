@@ -60,32 +60,32 @@ export const ProductComments: React.FC<{ productId: string }> = ({ productId }) 
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-8">
-        <h3 className="text-2xl font-black text-gray-900 dark:text-white">รีวิวจากผู้ใช้งาน ({comments.length})</h3>
+        <h3 className="text-2xl font-black text-gray-900 ">รีวิวจากผู้ใช้งาน ({comments.length})</h3>
       </div>
 
       <div className="space-y-6">
         {comments.length === 0 ? (
-          <p className="text-center py-10 text-gray-500 dark:text-gray-400 italic">ยังไม่มีรีวิวสำหรับสินค้านี้</p>
+          <p className="text-center py-10 text-gray-500  italic">ยังไม่มีรีวิวสำหรับสินค้านี้</p>
         ) : (
           comments.map((comment) => (
-            <div key={comment.id} className="border-b border-gray-100 dark:border-gray-700 pb-6 last:border-0">
+            <div key={comment.id} className="border-b border-gray-100  pb-6 last:border-0">
               {editingId === comment.id ? (
                 // --- โหมดแก้ไข ---
-                <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl space-y-3">
+                <div className="bg-canvas  p-4 rounded-md space-y-3">
                   <select 
                     value={editForm.rating} 
                     onChange={(e) => setEditForm({...editForm, rating: Number(e.target.value)})}
-                    className="border rounded-lg p-1 text-sm dark:bg-gray-800 dark:text-white"
+                    className="border rounded-sm p-1 text-sm  "
                   >
                     {[5,4,3,2,1].map(n => <option key={n} value={n}>{n} ดาว</option>)}
                   </select>
                   <textarea 
-                    className="w-full border rounded-xl p-3 text-sm dark:bg-gray-800 dark:text-white"
+                    className="w-full border rounded-md p-3 text-sm  "
                     value={editForm.message}
                     onChange={(e) => setEditForm({...editForm, message: e.target.value})}
                   />
                   <div className="flex gap-2">
-                    <button onClick={() => handleUpdate(comment.id)} className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold">บันทึก</button>
+                    <button onClick={() => handleUpdate(comment.id)} className="bg-primary text-white px-4 py-1.5 rounded-sm text-sm font-bold">บันทึก</button>
                     <button onClick={() => setEditingId(null)} className="text-gray-500 px-4 py-1.5 text-sm">ยกเลิก</button>
                   </div>
                 </div>
@@ -97,7 +97,7 @@ export const ProductComments: React.FC<{ productId: string }> = ({ productId }) 
                       <div className="flex items-center gap-2 mb-1 text-yellow-400">
                         {'★'.repeat(comment.rating)}{'☆'.repeat(5-comment.rating)}
                       </div>
-                      <p className="text-gray-900 dark:text-white font-bold">{comment.message}</p>
+                      <p className="text-gray-900  font-bold">{comment.message}</p>
                     </div>
                     
                     {/* ปุ่มจัดการคอมเมนต์ตัวเอง */}
@@ -108,7 +108,7 @@ export const ProductComments: React.FC<{ productId: string }> = ({ productId }) 
                             setEditingId(comment.id);
                             setEditForm({ rating: comment.rating, message: comment.message });
                           }}
-                          className="text-blue-500 font-bold hover:underline"
+                          className="text-primary font-bold hover:underline"
                         >
                           แก้ไข
                         </button>
@@ -121,7 +121,7 @@ export const ProductComments: React.FC<{ productId: string }> = ({ productId }) 
                       </div>
                     )}
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                  <div className="text-xs text-gray-500 ">
                     โดย {comment.user_id} • {new Date(comment.created_at).toLocaleDateString('th-TH')}
                   </div>
                 </>

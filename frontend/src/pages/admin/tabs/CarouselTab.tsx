@@ -7,8 +7,8 @@ import settingsImg from '../../../assets/settings.png';
 import eraserImg from '../../../assets/eraser.png';
 import paintImg from '../../../assets/paint.png';
 
-const inputStyle = "w-full p-3.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200";
-const labelStyle = "block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2";
+const inputStyle = "w-full p-3.5 bg-canvas /50 border border-gray-200  text-gray-900  text-sm rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200";
+const labelStyle = "block text-xs font-bold text-gray-500  uppercase tracking-wider mb-2";
 
 export default function CarouselTab() {
   const [items, setItems] = useState<CarouselItem[]>([]);
@@ -86,11 +86,11 @@ export default function CarouselTab() {
   return (
     <div className="space-y-10 w-full">
       {/* ---------------- ฟอร์มเพิ่มแบนเนอร์ ---------------- */}
-      <form onSubmit={handleCreate} className="bg-white dark:bg-gray-800 p-8 lg:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-gray-100 dark:border-gray-700 relative overflow-hidden w-full">
+      <form onSubmit={handleCreate} className="bg-white  p-8 lg:p-10 rounded-md shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-gray-100  relative overflow-hidden w-full">
         <div className="absolute top-0 left-0 w-full h-2 bg-linear-to-r from-blue-400 to-indigo-500"></div>
         
-        <h3 className="text-2xl font-black mb-6 dark:text-white flex items-center gap-3">
-          <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+        <h3 className="text-2xl font-black mb-6  flex items-center gap-3">
+          <div className="p-2 bg-blue-50 /30 rounded-md">
             <img src={paintImg} alt="Carousel" className="w-6 h-6 object-contain" />
           </div>
           เพิ่มแบนเนอร์ใหม่ (Carousel)
@@ -112,7 +112,7 @@ export default function CarouselTab() {
         </div>
         
         <div className="flex justify-end">
-          <button type="submit" className="flex items-center gap-2 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5">
+          <button type="submit" className="flex items-center gap-2 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3.5 px-8 rounded-md shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5">
             <img src={ideaImg} className="w-5 h-5 brightness-0 invert" alt="Add" />
             เพิ่มแบนเนอร์
           </button>
@@ -120,22 +120,22 @@ export default function CarouselTab() {
       </form>
 
       {/* ---------------- รายการแบนเนอร์ ---------------- */}
-      <h3 className="text-2xl font-black dark:text-white flex items-center gap-3">
+      <h3 className="text-2xl font-black  flex items-center gap-3">
         <img src={paintImg} alt="List" className="w-6 h-6 dark:invert opacity-80" />
         รายการแบนเนอร์ปัจจุบัน
       </h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {items.map(item => (
-          <div key={String(item.id)} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col group">
-            <div className="aspect-video w-full bg-gray-100 dark:bg-gray-900 relative overflow-hidden">
+          <div key={String(item.id)} className="bg-white  rounded-md border border-gray-200  shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col group">
+            <div className="aspect-video w-full bg-surface-soft  relative overflow-hidden">
               <img src={item.image_url} alt="Banner" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               {!item.is_active && (
-                <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center">
+                <div className="absolute inset-0 bg-canvas/50 backdrop-blur-sm flex items-center justify-center">
                   <span className="bg-red-500 text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Hidden</span>
                 </div>
               )}
-              <div className="absolute top-3 left-3 bg-slate-900/60 text-white px-3 py-1 rounded-lg text-xs font-bold">
+              <div className="absolute top-3 left-3 bg-canvas/60 text-white px-3 py-1 rounded-sm text-xs font-bold">
                 Order: {item.sort_order}
               </div>
             </div>
@@ -144,12 +144,12 @@ export default function CarouselTab() {
               <p className="text-xs text-gray-400 truncate mb-1">Link: {item.link_url || 'None'}</p>
             </div>
 
-            <div className="p-4 bg-gray-50/80 dark:bg-gray-800/80 border-t border-gray-100 dark:border-gray-700 grid grid-cols-2 gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onClick={() => setEditingItem(item)} className="flex items-center justify-center gap-2 py-2 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-xl transition-colors font-bold text-sm">
+            <div className="p-4 bg-canvas/80 /80 border-t border-gray-100  grid grid-cols-2 gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+              <button onClick={() => setEditingItem(item)} className="flex items-center justify-center gap-2 py-2 bg-blue-100 hover:bg-blue-200 /40 dark:hover:bg-blue-900/60 text-blue-700  rounded-md transition-colors font-bold text-sm">
                 <img src={settingsImg} className="w-4 h-4 dark:invert" alt="Edit" /> แก้ไข
               </button>
               {/* ส่ง UUID แบบ String ไปลบ */}
-              <button onClick={() => handleDelete(item.id)} className="flex items-center justify-center gap-2 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 rounded-xl transition-colors font-bold text-sm">
+              <button onClick={() => handleDelete(item.id)} className="flex items-center justify-center gap-2 py-2 bg-red-100 hover:bg-red-200 /40 dark:hover:bg-red-900/60 text-red-700  rounded-md transition-colors font-bold text-sm">
                 <img src={eraserImg} className="w-4 h-4 object-contain" alt="Del" /> ลบ
               </button>
             </div>
@@ -159,11 +159,11 @@ export default function CarouselTab() {
 
       {/* ---------------- Modal แก้ไขแบนเนอร์ ---------------- */}
       {editingItem && (
-        <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <form onSubmit={handleUpdate} className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col">
-            <div className="px-8 py-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-              <h3 className="text-xl font-black dark:text-white flex items-center gap-3">
-                <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+        <div className="fixed inset-0 bg-canvas/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <form onSubmit={handleUpdate} className="bg-white  rounded-md w-full max-w-2xl shadow-2xl flex flex-col">
+            <div className="px-8 py-5 border-b border-gray-100  flex justify-between items-center">
+              <h3 className="text-xl font-black  flex items-center gap-3">
+                <div className="p-2 bg-blue-50 /30 rounded-md">
                   <img src={settingsImg} alt="Edit" className="w-5 h-5 object-contain dark:invert opacity-80" />
                 </div>
                 แก้ไขแบนเนอร์
@@ -195,11 +195,11 @@ export default function CarouselTab() {
               </div>
             </div>
 
-            <div className="p-6 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-end gap-3 rounded-b-3xl">
-              <button type="button" onClick={() => setEditingItem(null)} className="px-6 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl font-bold hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+            <div className="p-6 border-t border-gray-100  bg-canvas /50 flex justify-end gap-3 rounded-b-3xl">
+              <button type="button" onClick={() => setEditingItem(null)} className="px-6 py-3 bg-white  border border-gray-300  text-gray-700  rounded-md font-bold hover:bg-surface-soft dark:hover:bg-gray-600 transition-colors">
                 ยกเลิก
               </button>
-              <button type="submit" className="px-8 py-3 bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5">
+              <button type="submit" className="px-8 py-3 bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-md font-bold shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5">
                 บันทึกการแก้ไข
               </button>
             </div>

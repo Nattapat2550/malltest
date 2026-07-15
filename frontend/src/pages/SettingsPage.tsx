@@ -189,7 +189,7 @@ export default function SettingsPage() {
   return (
     <div className="max-w-4xl mx-auto p-6 mt-10 space-y-8 animate-fade-in pb-20">
       
-      <div className="bg-linear-to-r from-blue-600 to-blue-800 rounded-2xl p-6 lg:p-8 shadow-lg text-white flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="bg-linear-to-r from-blue-600 to-blue-800 rounded-md p-6 lg:p-8 shadow-lg text-white flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h2 className="text-lg font-medium text-blue-100">ยอดเงินคงเหลือ (Wallet Balance)</h2>
           <p className="text-sm text-blue-200 mt-1">ใช้ชำระค่าสินค้าภายใน Mall</p>
@@ -199,137 +199,137 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 lg:p-8">
-        <h2 className="text-2xl font-bold border-b border-slate-200 dark:border-slate-700 pb-4 mb-6 text-slate-900 dark:text-white">โปรไฟล์ส่วนตัว</h2>
-        {successMsg && <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 rounded-xl font-medium">{successMsg}</div>}
+      <div className="bg-white  rounded-md shadow-sm border border-slate-200  p-6 lg:p-8">
+        <h2 className="text-2xl font-bold border-b border-slate-200  pb-4 mb-6 text-slate-900 ">โปรไฟล์ส่วนตัว</h2>
+        {successMsg && <div className="mb-6 p-4 bg-green-50 /30 border border-green-200  text-green-700  rounded-md font-medium">{successMsg}</div>}
         <div className="flex flex-col md:flex-row gap-8">
           <div className="flex flex-col items-center space-y-4 shrink-0">
-            <div className="w-32 h-32 rounded-full border-4 border-blue-100 dark:border-slate-600 overflow-hidden bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+            <div className="w-32 h-32 rounded-full border-4 border-blue-100  overflow-hidden bg-surface-soft  flex items-center justify-center">
               {profile.profile_picture_url ? (
                 <img src={profile.profile_picture_url} alt="Profile" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-slate-400 dark:text-slate-500 text-sm">ไม่มีรูปภาพ</span>
+                <span className="text-slate-400  text-sm">ไม่มีรูปภาพ</span>
               )}
             </div>
-            <label className="cursor-pointer bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 py-2 px-5 rounded-xl shadow-sm hover:bg-slate-100 dark:hover:bg-slate-600 transition text-sm font-medium">
+            <label className="cursor-pointer bg-canvas  border border-slate-200  text-slate-700  py-2 px-5 rounded-md shadow-sm hover:bg-surface-soft dark:hover:bg-slate-600 transition text-sm font-medium">
               เปลี่ยนรูปโปรไฟล์
               <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
             </label>
           </div>
           <form onSubmit={handleUpdateProfile} className="flex-1 space-y-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Username</label>
-              <input type="text" value={profile.username} onChange={(e) => setProfile({...profile, username: e.target.value})} className="block w-full border border-slate-300 dark:border-slate-600 rounded-xl p-3 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" required />
+              <label className="block text-sm font-medium text-slate-700  mb-1">Username</label>
+              <input type="text" value={profile.username} onChange={(e) => setProfile({...profile, username: e.target.value})} className="block w-full border border-slate-300  rounded-md p-3 bg-canvas  text-slate-900  outline-none focus:ring-2 focus:ring-blue-500" required />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ชื่อ</label>
-                <input type="text" value={profile.first_name} onChange={(e) => setProfile({...profile, first_name: e.target.value})} className="block w-full border border-slate-300 dark:border-slate-600 rounded-xl p-3 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="block text-sm font-medium text-slate-700  mb-1">ชื่อ</label>
+                <input type="text" value={profile.first_name} onChange={(e) => setProfile({...profile, first_name: e.target.value})} className="block w-full border border-slate-300  rounded-md p-3 bg-canvas  text-slate-900  outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">นามสกุล</label>
-                <input type="text" value={profile.last_name} onChange={(e) => setProfile({...profile, last_name: e.target.value})} className="block w-full border border-slate-300 dark:border-slate-600 rounded-xl p-3 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="block text-sm font-medium text-slate-700  mb-1">นามสกุล</label>
+                <input type="text" value={profile.last_name} onChange={(e) => setProfile({...profile, last_name: e.target.value})} className="block w-full border border-slate-300  rounded-md p-3 bg-canvas  text-slate-900  outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">เบอร์โทรศัพท์</label>
-              <input type="tel" value={profile.tel} onChange={(e) => setProfile({...profile, tel: e.target.value})} className="block w-full border border-slate-300 dark:border-slate-600 rounded-xl p-3 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+              <label className="block text-sm font-medium text-slate-700  mb-1">เบอร์โทรศัพท์</label>
+              <input type="tel" value={profile.tel} onChange={(e) => setProfile({...profile, tel: e.target.value})} className="block w-full border border-slate-300  rounded-md p-3 bg-canvas  text-slate-900  outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
-            <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-blue-700 transition shadow-md shadow-blue-500/20 mt-2">
+            <button type="submit" disabled={loading} className="w-full bg-primary text-white font-bold py-3 px-4 rounded-md hover:bg-primary-active transition shadow-md shadow-blue-500/20 mt-2">
               {loading ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง'}
             </button>
           </form>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="bg-white  rounded-md shadow-sm border border-slate-200  p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white">ศูนย์จัดการร้านค้า (Seller Center)</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">จัดการสินค้าและออเดอร์ในร้านของคุณ</p>
+          <h3 className="text-xl font-bold text-slate-900 ">ศูนย์จัดการร้านค้า (Seller Center)</h3>
+          <p className="text-sm text-slate-500  mt-1">จัดการสินค้าและออเดอร์ในร้านของคุณ</p>
         </div>
         {role === 'owner' || role === 'admin' ? (
-          <button onClick={() => navigate('/owner')} className="px-6 py-2.5 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition shadow-md shadow-orange-500/20 whitespace-nowrap">
+          <button onClick={() => navigate('/owner')} className="px-6 py-2.5 bg-orange-500 text-white font-bold rounded-md hover:bg-orange-600 transition shadow-md shadow-orange-500/20 whitespace-nowrap">
             ไปยังศูนย์จัดการร้านค้า
           </button>
         ) : (
-          <button onClick={handleRequestOpenShop} disabled={isRequestingShop} className="px-6 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-xl hover:bg-slate-200 transition shadow-sm whitespace-nowrap">
+          <button onClick={handleRequestOpenShop} disabled={isRequestingShop} className="px-6 py-2.5 bg-surface-soft  text-slate-900  font-bold rounded-md hover:bg-slate-200 transition shadow-sm whitespace-nowrap">
             {isRequestingShop ? 'ส่งคำขอแล้ว...' : 'สมัครเปิดร้านค้า'}
           </button>
         )}
       </div>
 
       {(role === 'center' || role === 'admin') && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-teal-200 dark:border-teal-900/50 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="bg-white  rounded-md shadow-sm border border-teal-200 /50 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
-            <h3 className="text-xl font-bold text-teal-900 dark:text-teal-400">ศูนย์กระจายสินค้า (Delivery Center)</h3>
-            <p className="text-sm text-teal-600 dark:text-teal-300 mt-1">จัดการพัสดุและมอบหมายงานให้ Rider</p>
+            <h3 className="text-xl font-bold text-teal-900 ">ศูนย์กระจายสินค้า (Delivery Center)</h3>
+            <p className="text-sm text-teal-600  mt-1">จัดการพัสดุและมอบหมายงานให้ Rider</p>
           </div>
-          <button onClick={() => navigate('/center')} className="px-6 py-2.5 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition shadow-md shadow-teal-500/20 whitespace-nowrap">
+          <button onClick={() => navigate('/center')} className="px-6 py-2.5 bg-teal-600 text-white font-bold rounded-md hover:bg-teal-700 transition shadow-md shadow-teal-500/20 whitespace-nowrap">
             ไปยังศูนย์กระจายสินค้า
           </button>
         </div>
       )}
       
       {(role === 'rider' || role === 'admin') && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-pink-200 dark:border-pink-900/50 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="bg-white  rounded-md shadow-sm border border-pink-200 /50 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
-            <h3 className="text-xl font-bold text-pink-600 dark:text-pink-400">ระบบคนขับ (Rider Dashboard)</h3>
-            <p className="text-sm text-pink-600/80 dark:text-pink-300 mt-1">จัดการสถานะการจัดส่งพัสดุถึงมือลูกค้า</p>
+            <h3 className="text-xl font-bold text-pink-600 ">ระบบคนขับ (Rider Dashboard)</h3>
+            <p className="text-sm text-pink-600/80  mt-1">จัดการสถานะการจัดส่งพัสดุถึงมือลูกค้า</p>
           </div>
-          <button onClick={() => navigate('/rider')} className="px-6 py-2.5 bg-pink-600 text-white font-bold rounded-xl hover:bg-pink-700 transition shadow-md shadow-pink-500/20 whitespace-nowrap">
+          <button onClick={() => navigate('/rider')} className="px-6 py-2.5 bg-pink-600 text-white font-bold rounded-md hover:bg-pink-700 transition shadow-md shadow-pink-500/20 whitespace-nowrap">
             ไปยังหน้าคนขับ
           </button>
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 lg:p-8">
+      <div className="bg-white  rounded-md shadow-sm border border-slate-200  p-6 lg:p-8">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white">สมุดที่อยู่ (Address Book)</h3>
-          <button onClick={() => setShowAddressForm(!showAddressForm)} className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg font-bold text-sm">
+          <h3 className="text-xl font-bold text-slate-900 ">สมุดที่อยู่ (Address Book)</h3>
+          <button onClick={() => setShowAddressForm(!showAddressForm)} className="px-4 py-2 bg-surface-soft  text-slate-900  rounded-sm font-bold text-sm">
             {showAddressForm ? 'ยกเลิก' : '+ เพิ่มที่อยู่'}
           </button>
         </div>
         
         {showAddressForm && (
-          <form onSubmit={handleAddNewAddress} className="mb-6 p-6 border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl space-y-4 relative" ref={dropdownRef}>
+          <form onSubmit={handleAddNewAddress} className="mb-6 p-6 border border-blue-200  bg-blue-50/50 /10 rounded-md space-y-4 relative" ref={dropdownRef}>
             <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">ชื่อเรียก (เช่น บ้าน, ที่ทำงาน)</label>
-              <input type="text" value={newTitle} onChange={e=>setNewTitle(e.target.value)} required className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none" placeholder="บ้าน" />
+              <label className="block text-sm font-bold text-slate-700  mb-1">ชื่อเรียก (เช่น บ้าน, ที่ทำงาน)</label>
+              <input type="text" value={newTitle} onChange={e=>setNewTitle(e.target.value)} required className="w-full px-4 py-3 rounded-md border border-slate-200  bg-white  text-slate-900  outline-none" placeholder="บ้าน" />
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">บ้านเลขที่, ถนน, ซอย</label>
-              <input type="text" value={addrDetail} onChange={e => setAddrDetail(e.target.value)} required placeholder="เลขที่ 123/45 หมู่ 1" className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none" />
+              <label className="block text-sm font-bold text-slate-700  mb-1">บ้านเลขที่, ถนน, ซอย</label>
+              <input type="text" value={addrDetail} onChange={e => setAddrDetail(e.target.value)} required placeholder="เลขที่ 123/45 หมู่ 1" className="w-full px-4 py-3 rounded-md border border-slate-200  bg-white  text-slate-900  outline-none" />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="relative">
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">ตำบล/แขวง</label>
-                <input type="text" value={addrSubdistrict} required onChange={e => handleAddressSearch(e.target.value, 'subdistrict')} placeholder="ค้นหาตำบล..." className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="block text-sm font-bold text-slate-700  mb-1">ตำบล/แขวง</label>
+                <input type="text" value={addrSubdistrict} required onChange={e => handleAddressSearch(e.target.value, 'subdistrict')} placeholder="ค้นหาตำบล..." className="w-full px-4 py-3 rounded-md border border-slate-200  bg-white  text-slate-900  outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               
               <div className="relative">
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">อำเภอ/เขต</label>
-                <input type="text" value={addrDistrict} required onChange={e => handleAddressSearch(e.target.value, 'district')} placeholder="ค้นหาอำเภอ..." className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="block text-sm font-bold text-slate-700  mb-1">อำเภอ/เขต</label>
+                <input type="text" value={addrDistrict} required onChange={e => handleAddressSearch(e.target.value, 'district')} placeholder="ค้นหาอำเภอ..." className="w-full px-4 py-3 rounded-md border border-slate-200  bg-white  text-slate-900  outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
 
               <div className="relative">
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">จังหวัด</label>
-                <input type="text" value={addrProvince} required onChange={e => handleAddressSearch(e.target.value, 'province')} placeholder="ค้นหาจังหวัด..." className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="block text-sm font-bold text-slate-700  mb-1">จังหวัด</label>
+                <input type="text" value={addrProvince} required onChange={e => handleAddressSearch(e.target.value, 'province')} placeholder="ค้นหาจังหวัด..." className="w-full px-4 py-3 rounded-md border border-slate-200  bg-white  text-slate-900  outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">ประเทศ</label>
-                <input type="text" value={addrCountry} required onChange={e => setAddrCountry(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white outline-none" />
+                <label className="block text-sm font-bold text-slate-700  mb-1">ประเทศ</label>
+                <input type="text" value={addrCountry} required onChange={e => setAddrCountry(e.target.value)} className="w-full px-4 py-3 rounded-md border border-slate-200  bg-surface-soft  text-slate-900  outline-none" />
               </div>
             </div>
 
             {showDropdown && suggestions.length > 0 && (
-              <div className="absolute z-10 w-[calc(100%-3rem)] mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+              <div className="absolute z-10 w-[calc(100%-3rem)] mt-1 bg-white  border border-slate-200  rounded-md shadow-lg max-h-48 overflow-y-auto">
                 {suggestions.map((item, idx) => (
                   <div 
                     key={idx} 
                     onClick={() => selectAddressMatch(item)}
-                    className="px-4 py-3 hover:bg-blue-50 hover:text-blue-900 dark:hover:bg-slate-700 dark:hover:text-blue-100 cursor-pointer text-sm text-blue-900 dark:text-blue-100 border-b border-slate-100 dark:border-slate-700 last:border-0"
+                    className="px-4 py-3 hover:bg-blue-50 hover:text-blue-900 dark:hover:bg-slate-700 dark:hover:text-blue-100 cursor-pointer text-sm text-blue-900  border-b border-slate-100  last:border-0"
                   >
                     {item.subdistrict} » {item.district} » {item.province}
                   </div>
@@ -337,34 +337,34 @@ export default function SettingsPage() {
               </div>
             )}
             
-            <button type="submit" className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md w-full md:w-auto mt-4 transition">บันทึกที่อยู่</button>
+            <button type="submit" className="px-6 py-3 bg-primary hover:bg-primary-active text-white font-bold rounded-md shadow-md w-full md:w-auto mt-4 transition">บันทึกที่อยู่</button>
           </form>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {addresses.length === 0 ? <p className="text-slate-500">ไม่มีข้อมูลที่อยู่</p> : addresses.map(a => (
-            <div key={a.id} className="p-4 border dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900">
-              <p className="font-bold dark:text-white">{a.title}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{a.address}</p>
+            <div key={a.id} className="p-4 border  rounded-md bg-canvas ">
+              <p className="font-bold ">{a.title}</p>
+              <p className="text-sm text-slate-600  mt-1">{a.address}</p>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="bg-white  rounded-md shadow-sm border border-slate-200  p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white">ประวัติคำสั่งซื้อ</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">ดูประวัติการสั่งซื้อและสถานะพัสดุของคุณ</p>
+          <h3 className="text-xl font-bold text-slate-900 ">ประวัติคำสั่งซื้อ</h3>
+          <p className="text-sm text-slate-500  mt-1">ดูประวัติการสั่งซื้อและสถานะพัสดุของคุณ</p>
         </div>
-        <Link to="/my-orders" className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-md shadow-blue-500/20 whitespace-nowrap">ดูคำสั่งซื้อทั้งหมด</Link>
+        <Link to="/my-orders" className="px-6 py-2.5 bg-primary text-white font-bold rounded-md hover:bg-primary-active transition shadow-md shadow-blue-500/20 whitespace-nowrap">ดูคำสั่งซื้อทั้งหมด</Link>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-red-200 dark:border-red-900/50 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="bg-white  rounded-md shadow-sm border border-red-200 /50 p-6 lg:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
-          <h3 className="text-xl font-bold text-red-600 dark:text-red-500">Danger Zone</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">การลบบัญชีจะเป็นการลบข้อมูล (สามารถเปิดใช้งานใหม่ได้ภายใน 30 วัน)</p>
+          <h3 className="text-xl font-bold text-red-600 ">Danger Zone</h3>
+          <p className="text-sm text-slate-500  mt-1">การลบบัญชีจะเป็นการลบข้อมูล (สามารถเปิดใช้งานใหม่ได้ภายใน 30 วัน)</p>
         </div>
-        <button onClick={handleDeleteAccount} className="bg-red-600 text-white py-2.5 px-6 rounded-xl hover:bg-red-700 font-bold whitespace-nowrap">ลบบัญชี</button>
+        <button onClick={handleDeleteAccount} className="bg-red-600 text-white py-2.5 px-6 rounded-md hover:bg-red-700 font-bold whitespace-nowrap">ลบบัญชี</button>
       </div>
 
     </div>

@@ -57,7 +57,7 @@ export default function ShopPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-32 min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="flex justify-center items-center py-32 min-h-screen bg-canvas ">
         <svg className="animate-spin h-16 w-16 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -68,27 +68,27 @@ export default function ShopPage() {
 
   if (!shop) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white">
+      <div className="min-h-screen flex items-center justify-center bg-canvas  text-slate-900 ">
         <div className="text-center">
           <div className="text-6xl mb-4">🏪</div>
           <h2 className="text-2xl font-black mb-4">ไม่พบข้อมูลร้านค้า</h2>
-          <button onClick={() => navigate('/products')} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold transition-all">กลับหน้ารวมสินค้า</button>
+          <button onClick={() => navigate('/products')} className="bg-primary hover:bg-primary-active text-white px-6 py-2 rounded-md font-bold transition-all">กลับหน้ารวมสินค้า</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 pb-20 animate-fade-in">
+    <div className="w-full min-h-screen bg-canvas  transition-colors duration-300 pb-20 animate-fade-in">
       
       {/* Shop Banner Header */}
-      <div className="relative w-full h-64 md:h-80 bg-slate-300 dark:bg-slate-800">
+      <div className="relative w-full h-64 md:h-80 bg-slate-300 ">
         {shop.banner_url ? (
           <img src={shop.banner_url} alt={shop.name} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-linear-to-r from-orange-400 to-pink-500 flex items-center justify-center text-white/30 text-2xl font-bold">ไม่มีรูปภาพแบนเนอร์</div>
         )}
-        <div className="absolute inset-0 bg-slate-900/60 flex flex-col items-center justify-center text-center p-6 backdrop-blur-xs">
+        <div className="absolute inset-0 bg-canvas/60 flex flex-col items-center justify-center text-center p-6 backdrop-blur-xs">
           <h1 className="text-4xl md:text-5xl font-black text-white drop-shadow-lg mb-4">{shop.name}</h1>
           <p className="text-slate-200 text-lg md:text-xl max-w-2xl font-medium drop-shadow-md">
             {shop.description || 'ยินดีต้อนรับสู่ร้านค้าของเรา'}
@@ -111,7 +111,7 @@ export default function ShopPage() {
                 placeholder="ค้นหาสินค้า, SKU..." 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 outline-none shadow-sm transition-all"
+                className="w-full pl-11 pr-4 py-3.5 rounded-md border border-slate-200  bg-white  text-slate-900  focus:ring-2 focus:ring-orange-500 outline-none shadow-sm transition-all"
               />
               <svg className="w-5 h-5 absolute left-4 top-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -119,7 +119,7 @@ export default function ShopPage() {
             </div>
             <button 
               onClick={() => navigate('/cart')}
-              className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3.5 rounded-2xl shadow-md transition-all font-bold flex items-center gap-2"
+              className="shrink-0 bg-primary hover:bg-primary-active text-white px-5 py-3.5 rounded-md shadow-md transition-all font-bold flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
               ตะกร้าสินค้า
@@ -129,17 +129,17 @@ export default function ShopPage() {
 
         {/* Product Grid */}
         {filteredProducts.length === 0 ? (
-           <div className="text-center py-24 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+           <div className="text-center py-24 bg-white  rounded-md border border-slate-200  shadow-sm">
              <div className="text-7xl mb-6">🔍</div>
-             <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">ไม่พบสินค้าที่ค้นหา</h2>
-             <p className="text-slate-500 dark:text-slate-400 font-medium">ลองใช้คำค้นหาอื่น หรือดูสินค้าหมวดอื่น</p>
+             <h2 className="text-2xl font-black text-slate-900  mb-2">ไม่พบสินค้าที่ค้นหา</h2>
+             <p className="text-slate-500  font-medium">ลองใช้คำค้นหาอื่น หรือดูสินค้าหมวดอื่น</p>
            </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {filteredProducts.map(p => (
-              <Link to={`/products/${p.id}`} key={p.id} className="group bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-2xl hover:shadow-orange-500/10 hover:-translate-y-1.5 transition-all duration-300 flex flex-col h-full">
+              <Link to={`/products/${p.id}`} key={p.id} className="group bg-white  rounded-md shadow-sm border border-slate-200  overflow-hidden hover:shadow-2xl hover:shadow-orange-500/10 hover:-translate-y-1.5 transition-all duration-300 flex flex-col h-full">
                 
-                <div className="relative w-full h-64 bg-slate-100 dark:bg-slate-900 overflow-hidden">
+                <div className="relative w-full h-64 bg-surface-soft  overflow-hidden">
                   {p.image_url ? (
                     <img src={p.image_url} alt={p.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                   ) : (
@@ -147,31 +147,31 @@ export default function ShopPage() {
                   )}
                   
                   {p.stock <= 0 ? (
-                    <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-md border border-red-400/50">สินค้าหมด</div>
+                    <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur text-white text-xs font-bold px-3 py-1.5 rounded-sm shadow-md border border-red-400/50">สินค้าหมด</div>
                   ) : p.stock < 10 ? (
-                    <div className="absolute top-4 left-4 bg-orange-500/90 backdrop-blur text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-md border border-orange-400/50">ใกล้หมด ({p.stock} ชิ้น)</div>
+                    <div className="absolute top-4 left-4 bg-orange-500/90 backdrop-blur text-white text-xs font-bold px-3 py-1.5 rounded-sm shadow-md border border-orange-400/50">ใกล้หมด ({p.stock} ชิ้น)</div>
                   ) : null}
                 </div>
 
                 <div className="p-6 flex flex-col flex-1">
-                  <div className="text-xs text-orange-600 dark:text-orange-400 font-bold mb-2 tracking-widest uppercase">{p.sku}</div>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2 line-clamp-2 leading-snug">{p.name}</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 line-clamp-2 leading-relaxed">
+                  <div className="text-xs text-orange-600  font-bold mb-2 tracking-widest uppercase">{p.sku}</div>
+                  <h3 className="text-xl font-black text-slate-900  mb-2 line-clamp-2 leading-snug">{p.name}</h3>
+                  <p className="text-sm text-slate-500  mb-8 line-clamp-2 leading-relaxed">
                     {p.description || 'ไม่มีคำอธิบายสินค้า'}
                   </p>
                   
-                  <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
-                    <div className="text-2xl font-black text-green-600 dark:text-green-400">
+                  <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-100 ">
+                    <div className="text-2xl font-black text-green-600 ">
                       ฿ {p.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </div>
                     
                     <button 
                       onClick={(e) => handleAddToCart(e, p)}
                       disabled={p.stock <= 0}
-                      className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-md ${
+                      className={`w-12 h-12 rounded-md flex items-center justify-center transition-all shadow-md ${
                         p.stock > 0 
                           ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 active:scale-95' 
-                          : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
+                          : 'bg-slate-200  text-slate-400 cursor-not-allowed'
                       }`}
                     >
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

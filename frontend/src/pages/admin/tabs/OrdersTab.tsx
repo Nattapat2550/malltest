@@ -99,27 +99,27 @@ export default function OrdersTab() {
 
   const getStatusColor = (status: string) => {
     switch(status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
-      case 'paid': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'shipped': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
-      case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-      case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 /30 ';
+      case 'paid': return 'bg-blue-100 text-blue-800 /30 ';
+      case 'shipped': return 'bg-purple-100 text-purple-800 /30 ';
+      case 'completed': return 'bg-green-100 text-green-800 /30 ';
+      case 'cancelled': return 'bg-red-100 text-red-800 /30 ';
+      default: return 'bg-surface-soft text-gray-800  ';
     }
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-gray-500 dark:text-gray-400">กำลังโหลดข้อมูลคำสั่งซื้อ...</div>;
+    return <div className="p-8 text-center text-gray-500 ">กำลังโหลดข้อมูลคำสั่งซื้อ...</div>;
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">จัดการคำสั่งซื้อและการจัดส่ง</h2>
+    <div className="bg-white  rounded-md shadow-sm border border-gray-200  p-6">
+      <h2 className="text-xl font-bold text-gray-900  mb-6">จัดการคำสั่งซื้อและการจัดส่ง</h2>
 
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm border-b border-gray-200 dark:border-gray-700">
+            <tr className="bg-canvas /50 text-gray-500  text-sm border-b border-gray-200 ">
               <th className="p-4">Order ID</th>
               <th className="p-4">User ID</th>
               <th className="p-4">ยอดรวม</th>
@@ -130,16 +130,16 @@ export default function OrdersTab() {
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {orders.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-gray-500 dark:text-gray-400">
+                <td colSpan={5} className="p-8 text-center text-gray-500 ">
                   ไม่มีข้อมูลคำสั่งซื้อ
                 </td>
               </tr>
             ) : (
               orders.map(o => (
-                <tr key={o.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                  <td className="p-4 font-mono text-gray-900 dark:text-white text-xs">{o.id}</td>
-                  <td className="p-4 font-mono text-gray-500 dark:text-gray-400 text-xs">{o.user_id}</td>
-                  <td className="p-4 font-medium text-blue-600 dark:text-blue-400">
+                <tr key={o.id} className="hover:bg-canvas dark:hover:bg-gray-750 transition-colors">
+                  <td className="p-4 font-mono text-gray-900  text-xs">{o.id}</td>
+                  <td className="p-4 font-mono text-gray-500  text-xs">{o.user_id}</td>
+                  <td className="p-4 font-medium text-primary ">
                     ฿{o.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </td>
                   <td className="p-4">
@@ -150,7 +150,7 @@ export default function OrdersTab() {
                   <td className="p-4 flex justify-end">
                     <button 
                       onClick={() => openUpdateModal(o)} 
-                      className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 rounded-lg text-sm font-bold transition-colors"
+                      className="px-4 py-2 bg-blue-50 text-primary hover:bg-blue-100 /30 dark:hover:bg-blue-900/50  rounded-sm text-sm font-bold transition-colors"
                     >
                       อัปเดตการจัดส่ง
                     </button>
@@ -163,15 +163,15 @@ export default function OrdersTab() {
       </div>
 
       {updateModal && selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 break-all">อัปเดตคำสั่งซื้อ #{selectedOrder.id}</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/50 backdrop-blur-sm p-4">
+          <div className="bg-white  rounded-md w-full max-w-lg shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold text-gray-900  mb-2 break-all">อัปเดตคำสั่งซื้อ #{selectedOrder.id}</h3>
             
-            <div className="flex gap-2 mb-6 bg-gray-100 dark:bg-gray-900 p-1 rounded-xl">
-              <button type="button" onClick={()=>setUpdateType('order')} className={`flex-1 py-2 text-sm font-bold rounded-lg ${updateType === 'order' ? 'bg-white dark:bg-gray-700 shadow-sm' : 'text-gray-500'}`}>
+            <div className="flex gap-2 mb-6 bg-surface-soft  p-1 rounded-md">
+              <button type="button" onClick={()=>setUpdateType('order')} className={`flex-1 py-2 text-sm font-bold rounded-sm ${updateType === 'order' ? 'bg-white  shadow-sm' : 'text-gray-500'}`}>
                 ออเดอร์หลัก
               </button>
-              <button type="button" onClick={()=>setUpdateType('shipment')} className={`flex-1 py-2 text-sm font-bold rounded-lg ${updateType === 'shipment' ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600' : 'text-gray-500'}`}>
+              <button type="button" onClick={()=>setUpdateType('shipment')} className={`flex-1 py-2 text-sm font-bold rounded-sm ${updateType === 'shipment' ? 'bg-white  shadow-sm text-primary' : 'text-gray-500'}`}>
                 พัสดุ (Owner/Center/Rider)
               </button>
             </div>
@@ -180,11 +180,11 @@ export default function OrdersTab() {
               
               {updateType === 'order' ? (
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">สถานะหลักของ Order</label>
+                  <label className="block text-sm font-bold text-gray-700  mb-1">สถานะหลักของ Order</label>
                   <select 
                     value={newStatus} 
                     onChange={e => setNewStatus(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
+                    className="w-full px-4 py-3 border border-gray-200  rounded-md bg-canvas  text-gray-900 "
                   >
                     <option value="pending">Pending (รอชำระเงิน/รอดำเนินการ)</option>
                     <option value="paid">Paid (ชำระเงินแล้ว)</option>
@@ -194,15 +194,15 @@ export default function OrdersTab() {
                   </select>
                 </div>
               ) : (
-                <div className="space-y-4 bg-blue-50/50 dark:bg-blue-900/10 p-4 border border-blue-100 dark:border-blue-800 rounded-xl">
+                <div className="space-y-4 bg-blue-50/50 /10 p-4 border border-blue-100  rounded-md">
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">รหัสพัสดุร้านค้า (Shipment ID)</label>
+                    <label className="block text-sm font-bold text-gray-700  mb-1">รหัสพัสดุร้านค้า (Shipment ID)</label>
                     {/* เปลี่ยน type="number" เป็น type="text" */}
-                    <input type="text" value={shipmentId} onChange={e=>setShipmentId(e.target.value)} required className="w-full px-4 py-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white" />
+                    <input type="text" value={shipmentId} onChange={e=>setShipmentId(e.target.value)} required className="w-full px-4 py-2 border rounded-md   text-gray-900 " />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ปรับสถานะพัสดุนี้เป็น</label>
-                    <select value={shipmentStatus} onChange={e=>setShipmentStatus(e.target.value)} className="w-full px-4 py-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white">
+                    <label className="block text-sm font-bold text-gray-700  mb-1">ปรับสถานะพัสดุนี้เป็น</label>
+                    <select value={shipmentStatus} onChange={e=>setShipmentStatus(e.target.value)} className="w-full px-4 py-2 border rounded-md   text-gray-900 ">
                       <option value="shipped_to_center">ส่งต่อให้ศูนย์จัดส่ง (Owner/Center)</option>
                       <option value="at_center">รับเข้าศูนย์แล้ว (Center)</option>
                       <option value="delivering">จ่ายงานให้ Rider (Center)</option>
@@ -213,49 +213,49 @@ export default function OrdersTab() {
                   
                   {shipmentStatus === 'shipped_to_center' && (
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">รหัสศูนย์เป้าหมาย (Center ID)</label>
+                      <label className="block text-sm font-bold text-gray-700  mb-1">รหัสศูนย์เป้าหมาย (Center ID)</label>
                       {/* เปลี่ยน type="number" เป็น type="text" */}
-                      <input type="text" value={centerId} onChange={e=>setCenterId(e.target.value)} required className="w-full px-4 py-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white" />
+                      <input type="text" value={centerId} onChange={e=>setCenterId(e.target.value)} required className="w-full px-4 py-2 border rounded-md   text-gray-900 " />
                     </div>
                   )}
 
                   {shipmentStatus === 'delivering' && (
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">รหัสผู้ส่ง/ไรเดอร์ (Rider ID)</label>
+                      <label className="block text-sm font-bold text-gray-700  mb-1">รหัสผู้ส่ง/ไรเดอร์ (Rider ID)</label>
                       {/* เปลี่ยน type="number" เป็น type="text" */}
-                      <input type="text" value={riderId} onChange={e=>setRiderId(e.target.value)} required className="w-full px-4 py-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white" />
+                      <input type="text" value={riderId} onChange={e=>setRiderId(e.target.value)} required className="w-full px-4 py-2 border rounded-md   text-gray-900 " />
                     </div>
                   )}
                 </div>
               )}
 
-              <hr className="border-gray-200 dark:border-gray-700 my-4" />
+              <hr className="border-gray-200  my-4" />
               
-              <h4 className="font-bold text-gray-900 dark:text-white text-sm">การแจ้งเตือนผู้ซื้อ (Tracking Text)</h4>
+              <h4 className="font-bold text-gray-900  text-sm">การแจ้งเตือนผู้ซื้อ (Tracking Text)</h4>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">รายละเอียด</label>
+                <label className="block text-sm font-medium text-gray-700  mb-1">รายละเอียด</label>
                 <input 
                   type="text" value={trackingDetail} onChange={e => setTrackingDetail(e.target.value)} 
                   placeholder="เช่น สินค้าถึงศูนย์คัดแยกแล้ว" required
-                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
+                  className="w-full px-4 py-3 border border-gray-200  rounded-md bg-canvas  text-gray-900 "
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">สถานที่อัปเดต (ถ้ามี)</label>
+                <label className="block text-sm font-medium text-gray-700  mb-1">สถานที่อัปเดต (ถ้ามี)</label>
                 <input 
                   type="text" value={locationStr} onChange={e => setLocationStr(e.target.value)} 
                   placeholder="เช่น ศูนย์คัดแยกสินค้า จ.สมุทรปราการ" required
-                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
+                  className="w-full px-4 py-3 border border-gray-200  rounded-md bg-canvas  text-gray-900 "
                 />
               </div>
               
-              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button type="button" onClick={() => setUpdateModal(false)} className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 font-bold">
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 ">
+                <button type="button" onClick={() => setUpdateModal(false)} className="px-4 py-2 rounded-md bg-surface-soft  hover:bg-gray-200 font-bold">
                   ยกเลิก
                 </button>
-                <button type="submit" className="px-6 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md">
+                <button type="submit" className="px-6 py-2 rounded-md bg-primary hover:bg-primary-active text-white font-bold shadow-md">
                   บันทึกข้อมูล
                 </button>
               </div>

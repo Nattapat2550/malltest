@@ -129,7 +129,7 @@ export default function CenterPage() {
       case 'at_center': return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'delivering': return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'completed': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-surface-soft text-gray-800 border-gray-200';
     }
   };
 
@@ -144,10 +144,10 @@ export default function CenterPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 pt-8 pb-4 px-6 lg:px-12">
-        <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2">Delivery Center</h1>
-        <p className="text-gray-500 dark:text-gray-400">ศูนย์: <span className="font-bold text-purple-600">{centerInfo.name || 'ยังไม่ได้ตั้งชื่อศูนย์'} <br className="md:hidden" /><span className="text-xs break-all">(ID: {centerInfo.id})</span></span></p>
+    <div className="w-full min-h-screen bg-canvas  transition-colors duration-300">
+      <div className="bg-white  border-b border-gray-200  pt-8 pb-4 px-6 lg:px-12">
+        <h1 className="text-3xl font-black text-gray-900  mb-2">Delivery Center</h1>
+        <p className="text-gray-500 ">ศูนย์: <span className="font-bold text-purple-600">{centerInfo.name || 'ยังไม่ได้ตั้งชื่อศูนย์'} <br className="md:hidden" /><span className="text-xs break-all">(ID: {centerInfo.id})</span></span></p>
         
         <div className="flex gap-4 mt-8 overflow-x-auto">
           {['shipments', 'riders', 'profile'].map(tab => (
@@ -165,17 +165,17 @@ export default function CenterPage() {
       <div className="p-6 lg:p-12">
         
         {activeTab === 'shipments' && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 shadow-sm">
+          <div className="bg-white  rounded-md p-6 lg:p-8 shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">จัดการพัสดุในระบบ</h2>
+              <h2 className="text-xl font-bold text-gray-900 ">จัดการพัสดุในระบบ</h2>
               {selectedIds.length > 0 && (
-                <div className="flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-200">
-                  <span className="text-sm font-bold text-orange-700 dark:text-orange-400 ml-2">เลือกแล้ว {selectedIds.length} ชิ้น</span>
-                  <select value={batchRiderId} onChange={e => setBatchRiderId(e.target.value)} className="p-2 text-sm rounded-lg border dark:bg-gray-800 dark:text-white">
+                <div className="flex items-center gap-2 p-2 bg-orange-50 /20 rounded-md border border-orange-200">
+                  <span className="text-sm font-bold text-orange-700  ml-2">เลือกแล้ว {selectedIds.length} ชิ้น</span>
+                  <select value={batchRiderId} onChange={e => setBatchRiderId(e.target.value)} className="p-2 text-sm rounded-sm border  ">
                     <option value="">-- เลือก Rider ที่จะจ่ายงาน --</option>
                     {riders.map(r => <option key={r.id} value={r.id}>{r.rider_user_id}</option>)}
                   </select>
-                  <button onClick={handleBatchAssign} className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm rounded-lg shadow-sm">จ่ายงาน</button>
+                  <button onClick={handleBatchAssign} className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm rounded-sm shadow-sm">จ่ายงาน</button>
                 </div>
               )}
             </div>
@@ -183,7 +183,7 @@ export default function CenterPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border-b dark:border-gray-700">
+                  <tr className="bg-canvas  text-gray-500  border-b ">
                     <th className="p-4 w-10">#</th>
                     <th className="p-4">Shipment ID</th>
                     <th className="p-4">Order ID หลัก</th>
@@ -195,15 +195,15 @@ export default function CenterPage() {
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {shipments.length === 0 ? <tr><td colSpan={6} className="p-6 text-center text-gray-500">ไม่มีพัสดุที่เกี่ยวข้องกับศูนย์นี้</td></tr> :
                     shipments.map((s, idx) => (
-                      <tr key={idx} className={`hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors ${selectedIds.includes(s.shipment_id) ? 'bg-orange-50/50 dark:bg-orange-900/10' : ''}`}>
+                      <tr key={idx} className={`hover:bg-canvas dark:hover:bg-gray-750 transition-colors ${selectedIds.includes(s.shipment_id) ? 'bg-orange-50/50 /10' : ''}`}>
                         <td className="p-4">
                           {s.status === 'at_center' && (
                             <input type="checkbox" className="w-5 h-5 cursor-pointer accent-orange-500" checked={selectedIds.includes(s.shipment_id)} onChange={() => toggleSelect(s.shipment_id)} />
                           )}
                         </td>
-                        <td className="p-4 font-mono text-xs text-gray-900 dark:text-white">#{s.shipment_id}</td>
+                        <td className="p-4 font-mono text-xs text-gray-900 ">#{s.shipment_id}</td>
                         <td className="p-4 text-xs font-mono text-gray-500">#{s.order_id}</td>
-                        <td className="p-4 text-sm dark:text-gray-300 max-w-62.5 truncate" title={s.address}>{s.address}</td>
+                        <td className="p-4 text-sm  max-w-62.5 truncate" title={s.address}>{s.address}</td>
                         <td className="p-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(s.status)}`}>
                             {getStatusText(s.status)}
@@ -211,7 +211,7 @@ export default function CenterPage() {
                         </td>
                         <td className="p-4 text-right">
                           {(s.status === 'shipped_to_center' || s.status === 'at_center') && (
-                            <button onClick={() => openUpdateModal(s)} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-lg shadow-sm transition">
+                            <button onClick={() => openUpdateModal(s)} className="px-4 py-2 bg-primary hover:bg-purple-700 text-white text-sm font-bold rounded-sm shadow-sm transition">
                               จัดการเดี่ยว
                             </button>
                           )}
@@ -226,16 +226,16 @@ export default function CenterPage() {
         )}
 
         {activeTab === 'riders' && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 shadow-sm">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">จัดการ Rider ประจำศูนย์</h2>
+          <div className="bg-white  rounded-md p-6 lg:p-8 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-900  mb-6">จัดการ Rider ประจำศูนย์</h2>
             <form onSubmit={handleAddRider} className="flex gap-4 max-w-md mb-8">
-              <input type="text" name="rider_id" required placeholder="User ID ของ Rider (ตัวอักษรหรือตัวเลข)" className="flex-1 px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
-              <button type="submit" className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md whitespace-nowrap">เพิ่มเข้าศูนย์</button>
+              <input type="text" name="rider_id" required placeholder="User ID ของ Rider (ตัวอักษรหรือตัวเลข)" className="flex-1 px-4 py-2 rounded-md border   " />
+              <button type="submit" className="px-6 py-2 bg-primary hover:bg-primary-active text-white font-bold rounded-md shadow-md whitespace-nowrap">เพิ่มเข้าศูนย์</button>
             </form>
 
             <table className="w-full max-w-2xl text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 dark:bg-gray-900 text-gray-500">
+                <tr className="bg-canvas  text-gray-500">
                   <th className="p-4">Rider DB ID</th>
                   <th className="p-4">User Account ID</th>
                   <th className="p-4 text-right">ลบ</th>
@@ -245,8 +245,8 @@ export default function CenterPage() {
                 {riders.length === 0 ? <tr><td colSpan={3} className="p-6 text-center text-gray-500">ยังไม่มี Rider ในศูนย์</td></tr> : 
                   riders.map(r => (
                     <tr key={r.id}>
-                      <td className="p-4 font-mono text-xs dark:text-gray-300">{r.id}</td>
-                      <td className="p-4 font-bold text-blue-600">{r.rider_user_id}</td>
+                      <td className="p-4 font-mono text-xs ">{r.id}</td>
+                      <td className="p-4 font-bold text-primary">{r.rider_user_id}</td>
                       <td className="p-4 text-right"><button onClick={() => handleRemoveRider(r.id)} className="text-red-500 hover:underline font-bold text-sm">นำออก</button></td>
                     </tr>
                   ))
@@ -257,14 +257,14 @@ export default function CenterPage() {
         )}
 
         {activeTab === 'profile' && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 lg:p-8 shadow-sm max-w-md">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">แก้ไขข้อมูลศูนย์กระจายสินค้า</h2>
+          <div className="bg-white  rounded-md p-6 lg:p-8 shadow-sm max-w-md">
+            <h2 className="text-xl font-bold text-gray-900  mb-6">แก้ไขข้อมูลศูนย์กระจายสินค้า</h2>
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">ชื่อศูนย์</label>
-                <input type="text" name="center_name" required className="w-full px-4 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-900 dark:text-white" defaultValue={centerInfo.name} />
+                <label className="block text-sm font-bold text-gray-700  mb-1">ชื่อศูนย์</label>
+                <input type="text" name="center_name" required className="w-full px-4 py-2 rounded-md border   " defaultValue={centerInfo.name} />
               </div>
-              <button type="submit" className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-md">บันทึกข้อมูลศูนย์</button>
+              <button type="submit" className="w-full py-2 bg-primary hover:bg-purple-700 text-white font-bold rounded-md shadow-md">บันทึกข้อมูลศูนย์</button>
             </form>
           </div>
         )}
@@ -272,20 +272,20 @@ export default function CenterPage() {
       </div>
 
       {showUpdateModal && selectedShipment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold dark:text-white mb-2 break-all">อัปเดตพัสดุ #{selectedShipment.shipment_id}</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/50 p-4">
+          <div className="bg-white  rounded-md w-full max-w-md p-6">
+            <h3 className="text-lg font-bold  mb-2 break-all">อัปเดตพัสดุ #{selectedShipment.shipment_id}</h3>
             
             <form onSubmit={submitUpdate} className="space-y-4 mt-6">
               
               {selectedShipment.status === 'shipped_to_center' ? (
-                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl text-purple-800 dark:text-purple-300 text-sm font-medium">
+                <div className="p-4 bg-purple-50 /20 border border-purple-200  rounded-md text-purple-800  text-sm font-medium">
                   สถานะ: พัสดุเดินทางมาถึงศูนย์แล้ว ให้ทำการ "กดรับพัสดุเข้าศูนย์" เพื่อเตรียมจ่ายงานในขั้นตอนต่อไป
                 </div>
               ) : (
                 <div>
-                  <label className="block text-sm font-bold dark:text-gray-300 mb-1">รูปแบบการจ่ายงาน</label>
-                  <select value={updateAction} onChange={e=>setUpdateAction(e.target.value)} className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white">
+                  <label className="block text-sm font-bold  mb-1">รูปแบบการจ่ายงาน</label>
+                  <select value={updateAction} onChange={e=>setUpdateAction(e.target.value)} className="w-full p-2 border rounded-md   ">
                     <option value="delivering">📦 จ่ายงานให้ Rider นำไปส่งให้ลูกค้า</option>
                     <option value="shipped_to_center">🏢 ส่งพัสดุต่อไปยัง Center อื่น</option>
                   </select>
@@ -294,8 +294,8 @@ export default function CenterPage() {
 
               {updateAction === 'delivering' && selectedShipment.status !== 'shipped_to_center' && (
                 <div>
-                  <label className="block text-sm font-bold dark:text-gray-300 mb-1">เลือก Rider จากศูนย์</label>
-                  <select value={targetId} onChange={e=>setTargetId(e.target.value)} required className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white">
+                  <label className="block text-sm font-bold  mb-1">เลือก Rider จากศูนย์</label>
+                  <select value={targetId} onChange={e=>setTargetId(e.target.value)} required className="w-full p-2 border rounded-md   ">
                     <option value="">-- เลือก Rider --</option>
                     {riders.map(r => <option key={r.id} value={r.id}>{r.rider_user_id}</option>)}
                   </select>
@@ -304,24 +304,24 @@ export default function CenterPage() {
 
               {updateAction === 'shipped_to_center' && selectedShipment.status !== 'shipped_to_center' && (
                 <div>
-                  <label className="block text-sm font-bold dark:text-gray-300 mb-1">รหัสศูนย์ปลายทาง (Center ID)</label>
-                  <input type="text" required value={targetId} onChange={e=>setTargetId(e.target.value)} className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white" />
+                  <label className="block text-sm font-bold  mb-1">รหัสศูนย์ปลายทาง (Center ID)</label>
+                  <input type="text" required value={targetId} onChange={e=>setTargetId(e.target.value)} className="w-full p-2 border rounded-md   " />
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-bold dark:text-gray-300 mb-1">ข้อความ Tracking ที่แจ้งลูกค้า</label>
-                <input type="text" required value={trackingDetail} onChange={e=>setTrackingDetail(e.target.value)} className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white" />
+                <label className="block text-sm font-bold  mb-1">ข้อความ Tracking ที่แจ้งลูกค้า</label>
+                <input type="text" required value={trackingDetail} onChange={e=>setTrackingDetail(e.target.value)} className="w-full p-2 border rounded-md   " />
               </div>
               
               <div>
-                <label className="block text-sm font-bold dark:text-gray-300 mb-1">สถานที่อัปเดต</label>
-                <input type="text" required value={locationStr} onChange={e=>setLocationStr(e.target.value)} className="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white" />
+                <label className="block text-sm font-bold  mb-1">สถานที่อัปเดต</label>
+                <input type="text" required value={locationStr} onChange={e=>setLocationStr(e.target.value)} className="w-full p-2 border rounded-md   " />
               </div>
 
-              <div className="flex justify-end gap-3 mt-6 pt-4 border-t dark:border-gray-700">
-                <button type="button" onClick={() => setShowUpdateModal(false)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 dark:text-white rounded-lg font-bold">ยกเลิก</button>
-                <button type="submit" className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold shadow-md">
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t ">
+                <button type="button" onClick={() => setShowUpdateModal(false)} className="px-4 py-2 bg-gray-200   rounded-sm font-bold">ยกเลิก</button>
+                <button type="submit" className="px-4 py-2 bg-primary hover:bg-purple-700 text-white rounded-sm font-bold shadow-md">
                   {selectedShipment.status === 'shipped_to_center' ? 'รับพัสดุเข้าศูนย์' : 'ยืนยันการจ่ายงาน'}
                 </button>
               </div>

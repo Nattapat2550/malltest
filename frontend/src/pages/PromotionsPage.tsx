@@ -40,16 +40,16 @@ export default function PromotionsPage() {
   });
 
   return (
-    <div className="w-full min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 py-10 px-6 lg:px-12 2xl:px-20">
+    <div className="w-full min-h-screen bg-canvas  transition-colors duration-300 py-10 px-6 lg:px-12 2xl:px-20">
       <div className="mb-10 text-center">
-        <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-4">โปรโมชันทั้งหมด</h1>
-        <p className="text-slate-500 dark:text-slate-400">เก็บโค้ดส่วนลดสุดคุ้มก่อนใคร</p>
+        <h1 className="text-4xl md:text-5xl font-black text-slate-900  mb-4">โปรโมชันทั้งหมด</h1>
+        <p className="text-slate-500 ">เก็บโค้ดส่วนลดสุดคุ้มก่อนใคร</p>
       </div>
 
       <div className="flex justify-center gap-4 mb-10 overflow-x-auto">
-        <button onClick={() => setFilter('all')} className={filter === 'all' ? "px-6 py-2 rounded-full font-bold transition-all bg-blue-600 text-white shadow-md" : "px-6 py-2 rounded-full font-bold transition-all bg-white text-blue-600 border border-blue-200 dark:bg-slate-800 dark:border-slate-700"}>ทั้งหมด</button>
-        <button onClick={() => setFilter('platform')} className={filter === 'platform' ? "px-6 py-2 rounded-full font-bold transition-all bg-blue-600 text-white shadow-md" : "px-6 py-2 rounded-full font-bold transition-all bg-white text-blue-600 border border-blue-200 dark:bg-slate-800 dark:border-slate-700"}>โปรจากระบบ</button>
-        <button onClick={() => setFilter('shop')} className={filter === 'shop' ? "px-6 py-2 rounded-full font-bold transition-all bg-blue-600 text-white shadow-md" : "px-6 py-2 rounded-full font-bold transition-all bg-white text-blue-600 border border-blue-200 dark:bg-slate-800 dark:border-slate-700"}>โค้ดร้านค้า</button>
+        <button onClick={() => setFilter('all')} className={filter === 'all' ? "px-6 py-2 rounded-full font-bold transition-all bg-primary text-white shadow-md" : "px-6 py-2 rounded-full font-bold transition-all bg-white text-primary border border-blue-200  "}>ทั้งหมด</button>
+        <button onClick={() => setFilter('platform')} className={filter === 'platform' ? "px-6 py-2 rounded-full font-bold transition-all bg-primary text-white shadow-md" : "px-6 py-2 rounded-full font-bold transition-all bg-white text-primary border border-blue-200  "}>โปรจากระบบ</button>
+        <button onClick={() => setFilter('shop')} className={filter === 'shop' ? "px-6 py-2 rounded-full font-bold transition-all bg-primary text-white shadow-md" : "px-6 py-2 rounded-full font-bold transition-all bg-white text-primary border border-blue-200  "}>โค้ดร้านค้า</button>
       </div>
 
       {filteredPromos.length === 0 ? (
@@ -63,14 +63,14 @@ export default function PromotionsPage() {
             const isShop = !!promo.shop_id;
 
             return (
-              <div key={promo.id} className={`rounded-2xl p-6 text-white shadow-lg relative overflow-hidden bg-linear-to-br ${isShop ? 'from-green-500 to-teal-600' : 'from-orange-500 to-pink-500'}`}>
+              <div key={promo.id} className={`rounded-md p-6 text-white shadow-lg relative overflow-hidden bg-linear-to-br ${isShop ? 'from-green-500 to-teal-600' : 'from-orange-500 to-pink-500'}`}>
                 <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/20 rounded-full blur-2xl"></div>
                 {isShop && <span className="absolute top-4 right-4 bg-white/20 px-2 py-1 rounded text-xs font-bold">โค้ดร้านค้า</span>}
                 
                 <h3 className="text-3xl font-black mb-2 drop-shadow-md">{promo.code}</h3>
                 <p className="text-sm font-medium mb-4 text-white/90">{promo.description}</p>
                 
-                <div className="mb-6 space-y-1 text-sm bg-slate-900/10 p-3 rounded-lg">
+                <div className="mb-6 space-y-1 text-sm bg-canvas/10 p-3 rounded-sm">
                   <p>ส่วนลด: <span className="font-bold">{promo.discount_type === 'percent' ? `${promo.discount_value}%` : `฿${promo.discount_value}`}</span></p>
                   <p>ขั้นต่ำ {promo.min_purchase.toLocaleString()}฿</p>
                   {promo.end_date && <p className="text-xs text-white/70 mt-1">หมดอายุ: {new Date(promo.end_date).toLocaleDateString('th-TH')}</p>}
@@ -79,7 +79,7 @@ export default function PromotionsPage() {
                 <button 
                   onClick={() => handleCollectPromo(promo.id)}
                   disabled={isCollected}
-                  className={`w-full py-3 rounded-xl font-bold text-sm transition-all shadow-md ${isCollected ? 'bg-white/30 cursor-not-allowed text-white' : 'bg-white text-slate-900 hover:scale-105'}`}
+                  className={`w-full py-3 rounded-md font-bold text-sm transition-all shadow-md ${isCollected ? 'bg-white/30 cursor-not-allowed text-white' : 'bg-white text-slate-900 hover:scale-105'}`}
                 >
                   {isCollected ? 'เก็บแล้ว' : 'เก็บโค้ด'}
                 </button>

@@ -106,7 +106,7 @@ export default function CheckoutPage() {
   };
 
   if (items.length === 0) {
-    return <div className="min-h-screen flex justify-center items-center text-slate-900 dark:text-white"><h1 className="text-2xl font-bold">ไม่มีสินค้าในตะกร้า</h1></div>;
+    return <div className="min-h-screen flex justify-center items-center text-slate-900 "><h1 className="text-2xl font-bold">ไม่มีสินค้าในตะกร้า</h1></div>;
   }
 
   const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
@@ -190,30 +190,30 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 pt-8 pb-20 px-6 lg:px-12 2xl:px-20 animate-fade-in">
-      <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white mb-10">ยืนยันคำสั่งซื้อ</h1>
+    <div className="w-full min-h-screen bg-canvas  transition-colors duration-300 pt-8 pb-20 px-6 lg:px-12 2xl:px-20 animate-fade-in">
+      <h1 className="text-3xl md:text-4xl font-black text-slate-900  mb-10">ยืนยันคำสั่งซื้อ</h1>
       
       <div className="flex flex-col lg:flex-row gap-10">
         <div className="flex-1 flex flex-col gap-6">
           
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 lg:p-8 shadow-sm border border-slate-200 dark:border-slate-700">
-            <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6">ที่อยู่จัดส่ง</h2>
+          <div className="bg-white  rounded-md p-6 lg:p-8 shadow-sm border border-slate-200 ">
+            <h2 className="text-xl font-black text-slate-900  mb-6">ที่อยู่จัดส่ง</h2>
             
             {addresses.length > 0 && (
               <div className="flex flex-col gap-3 mb-6">
                 {addresses.map(addr => (
-                  <label key={addr.id} className={`flex items-start gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all ${selectedAddressId === addr.id ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 dark:border-slate-700'}`}>
+                  <label key={addr.id} className={`flex items-start gap-4 p-4 border-2 rounded-md cursor-pointer transition-all ${selectedAddressId === addr.id ? 'border-blue-600 bg-blue-50 /20' : 'border-slate-200 '}`}>
                     <input type="radio" name="address" checked={selectedAddressId === addr.id} onChange={() => setSelectedAddressId(addr.id)} className="mt-1" />
                     <div>
-                      <p className="font-bold text-slate-900 dark:text-white">{addr.title}</p>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{addr.address}</p>
+                      <p className="font-bold text-slate-900 ">{addr.title}</p>
+                      <p className="text-sm text-slate-600  mt-1">{addr.address}</p>
                     </div>
                   </label>
                 ))}
                 
-                <label className={`flex items-start gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all ${selectedAddressId === 'new' ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 dark:border-slate-700'}`}>
+                <label className={`flex items-start gap-4 p-4 border-2 rounded-md cursor-pointer transition-all ${selectedAddressId === 'new' ? 'border-blue-600 bg-blue-50 /20' : 'border-slate-200 '}`}>
                   <input type="radio" name="address" checked={selectedAddressId === 'new'} onChange={() => setSelectedAddressId('new')} className="mt-1" />
-                  <div className="font-bold text-slate-900 dark:text-white">เพิ่มที่อยู่ใหม่...</div>
+                  <div className="font-bold text-slate-900 ">เพิ่มที่อยู่ใหม่...</div>
                 </label>
               </div>
             )}
@@ -221,44 +221,44 @@ export default function CheckoutPage() {
             {(selectedAddressId === 'new' || addresses.length === 0) && (
               <div className="space-y-5 animate-fade-in relative" ref={dropdownRef}>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">ชื่อเรียก (เช่น บ้าน, ที่ทำงาน)</label>
-                  <input type="text" value={newAddressTitle} onChange={e => setNewAddressTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none" placeholder="บ้าน" />
+                  <label className="block text-sm font-bold text-slate-700  mb-1">ชื่อเรียก (เช่น บ้าน, ที่ทำงาน)</label>
+                  <input type="text" value={newAddressTitle} onChange={e => setNewAddressTitle(e.target.value)} className="w-full px-4 py-3 rounded-md border border-slate-200  bg-canvas  text-slate-900  outline-none" placeholder="บ้าน" />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">บ้านเลขที่, ถนน, ซอย</label>
-                  <input type="text" value={addrDetail} onChange={e => setAddrDetail(e.target.value)} placeholder="เลขที่ 123/45 หมู่ 1" className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none" />
+                  <label className="block text-sm font-bold text-slate-700  mb-1">บ้านเลขที่, ถนน, ซอย</label>
+                  <input type="text" value={addrDetail} onChange={e => setAddrDetail(e.target.value)} placeholder="เลขที่ 123/45 หมู่ 1" className="w-full px-4 py-3 rounded-md border border-slate-200  bg-canvas  text-slate-900  outline-none" />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
                   <div className="relative">
-                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">ตำบล/แขวง</label>
-                    <input type="text" value={addrSubdistrict} onChange={e => handleAddressSearch(e.target.value, 'subdistrict')} placeholder="ค้นหาตำบล..." className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label className="block text-sm font-bold text-slate-700  mb-1">ตำบล/แขวง</label>
+                    <input type="text" value={addrSubdistrict} onChange={e => handleAddressSearch(e.target.value, 'subdistrict')} placeholder="ค้นหาตำบล..." className="w-full px-4 py-3 rounded-md border border-slate-200  bg-canvas  text-slate-900  outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   
                   <div className="relative">
-                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">อำเภอ/เขต</label>
-                    <input type="text" value={addrDistrict} onChange={e => handleAddressSearch(e.target.value, 'district')} placeholder="ค้นหาอำเภอ..." className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label className="block text-sm font-bold text-slate-700  mb-1">อำเภอ/เขต</label>
+                    <input type="text" value={addrDistrict} onChange={e => handleAddressSearch(e.target.value, 'district')} placeholder="ค้นหาอำเภอ..." className="w-full px-4 py-3 rounded-md border border-slate-200  bg-canvas  text-slate-900  outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
 
                   <div className="relative">
-                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">จังหวัด</label>
-                    <input type="text" value={addrProvince} onChange={e => handleAddressSearch(e.target.value, 'province')} placeholder="ค้นหาจังหวัด..." className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label className="block text-sm font-bold text-slate-700  mb-1">จังหวัด</label>
+                    <input type="text" value={addrProvince} onChange={e => handleAddressSearch(e.target.value, 'province')} placeholder="ค้นหาจังหวัด..." className="w-full px-4 py-3 rounded-md border border-slate-200  bg-canvas  text-slate-900  outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">ประเทศ</label>
-                    <input type="text" value={addrCountry} onChange={e => setAddrCountry(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white outline-none" />
+                    <label className="block text-sm font-bold text-slate-700  mb-1">ประเทศ</label>
+                    <input type="text" value={addrCountry} onChange={e => setAddrCountry(e.target.value)} className="w-full px-4 py-3 rounded-md border border-slate-200  bg-surface-soft  text-slate-900  outline-none" />
                   </div>
                 </div>
 
                 {showDropdown && suggestions.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-white  border border-slate-200  rounded-md shadow-lg max-h-48 overflow-y-auto">
                     {suggestions.map((item, idx) => (
                       <div 
                         key={idx} 
                         onClick={() => selectAddressMatch(item)}
-                        className="px-4 py-3 hover:bg-slate-100 hover:text-blue-600 dark:hover:bg-slate-700 dark:hover:text-blue-400 cursor-pointer text-sm text-slate-700 dark:text-slate-300 border-b border-slate-100 dark:border-slate-700 last:border-0"
+                        className="px-4 py-3 hover:bg-surface-soft hover:text-primary dark:hover:bg-slate-700 dark:hover:text-blue-400 cursor-pointer text-sm text-slate-700  border-b border-slate-100  last:border-0"
                       >
                         {item.subdistrict} » {item.district} » {item.province}
                       </div>
@@ -269,47 +269,47 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 lg:p-8 shadow-sm border border-slate-200 dark:border-slate-700">
-            <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6">วิธีการจัดส่ง</h2>
+          <div className="bg-white  rounded-md p-6 lg:p-8 shadow-sm border border-slate-200 ">
+            <h2 className="text-xl font-black text-slate-900  mb-6">วิธีการจัดส่ง</h2>
             <div className="flex gap-4">
-              <label className={`flex-1 border-2 p-4 rounded-2xl cursor-pointer transition-all ${shippingMethod === 'standard' ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 dark:border-slate-700'}`}>
+              <label className={`flex-1 border-2 p-4 rounded-md cursor-pointer transition-all ${shippingMethod === 'standard' ? 'border-blue-600 bg-blue-50 /20' : 'border-slate-200 '}`}>
                 <input type="radio" name="shipping" value="standard" className="hidden" checked={shippingMethod === 'standard'} onChange={() => setShippingMethod('standard')} />
-                <div className="font-bold text-slate-900 dark:text-white">ส่งธรรมดา (30฿)</div>
+                <div className="font-bold text-slate-900 ">ส่งธรรมดา (30฿)</div>
                 <div className="text-sm text-slate-500 mt-1">ได้รับภายใน 3-5 วัน</div>
               </label>
-              <label className={`flex-1 border-2 p-4 rounded-2xl cursor-pointer transition-all ${shippingMethod === 'express' ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 dark:border-slate-700'}`}>
+              <label className={`flex-1 border-2 p-4 rounded-md cursor-pointer transition-all ${shippingMethod === 'express' ? 'border-blue-600 bg-blue-50 /20' : 'border-slate-200 '}`}>
                 <input type="radio" name="shipping" value="express" className="hidden" checked={shippingMethod === 'express'} onChange={() => setShippingMethod('express')} />
-                <div className="font-bold text-slate-900 dark:text-white">ส่งด่วน (50฿)</div>
+                <div className="font-bold text-slate-900 ">ส่งด่วน (50฿)</div>
                 <div className="text-sm text-slate-500 mt-1">ได้รับภายใน 1-2 วัน</div>
               </label>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 lg:p-8 shadow-sm border border-slate-200 dark:border-slate-700">
-            <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6">หมายเหตุ (ถ้ามี)</h2>
+          <div className="bg-white  rounded-md p-6 lg:p-8 shadow-sm border border-slate-200 ">
+            <h2 className="text-xl font-black text-slate-900  mb-6">หมายเหตุ (ถ้ามี)</h2>
             <textarea 
               rows={2} value={note} onChange={e => setNote(e.target.value)}
               placeholder="ข้อความถึงผู้จัดส่ง..."
-              className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+              className="w-full px-5 py-4 rounded-md border border-slate-200  bg-canvas  text-slate-900  focus:ring-2 focus:ring-blue-500 outline-none resize-none"
             ></textarea>
           </div>
 
         </div>
 
         <div className="lg:w-112.5 flex flex-col gap-6">
-          <div className={`rounded-3xl p-6 shadow-sm border-2 ${isInsufficientBalance ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'}`}>
-            <h2 className={`text-lg font-bold mb-2 ${isInsufficientBalance ? 'text-red-800 dark:text-red-400' : 'text-blue-900 dark:text-blue-300'}`}>
+          <div className={`rounded-md p-6 shadow-sm border-2 ${isInsufficientBalance ? 'bg-red-50 /20 border-red-200 ' : 'bg-blue-50 /20 border-blue-200 '}`}>
+            <h2 className={`text-lg font-bold mb-2 ${isInsufficientBalance ? 'text-red-800 ' : 'text-blue-900 '}`}>
               ยอดเงินใน Wallet
             </h2>
             {loadingWallet ? (
               <p className="text-slate-500">กำลังโหลด...</p>
             ) : (
               <div>
-                <p className={`text-3xl font-black ${isInsufficientBalance ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                <p className={`text-3xl font-black ${isInsufficientBalance ? 'text-red-600 ' : 'text-primary '}`}>
                   ฿ {walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </p>
                 {isInsufficientBalance && (
-                  <p className="text-sm text-red-600 dark:text-red-400 mt-2 font-bold">
+                  <p className="text-sm text-red-600  mt-2 font-bold">
                     * ขาดอีก ฿{(total - walletBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </p>
                 )}
@@ -317,32 +317,32 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
-            <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6">สรุปคำสั่งซื้อ</h2>
+          <div className="bg-white  rounded-md p-6 shadow-sm border border-slate-200 ">
+            <h2 className="text-xl font-black text-slate-900  mb-6">สรุปคำสั่งซื้อ</h2>
             
             <div className="flex flex-col gap-4 max-h-75 overflow-y-auto pr-2">
               {items.map((item: any, idx: number) => (
-                <div key={idx} className="flex items-center gap-4 pb-4 border-b border-slate-100 dark:border-slate-700 last:border-0">
-                  <div className="w-16 h-16 bg-slate-100 dark:bg-slate-900 rounded-lg overflow-hidden shrink-0">
+                <div key={idx} className="flex items-center gap-4 pb-4 border-b border-slate-100  last:border-0">
+                  <div className="w-16 h-16 bg-surface-soft  rounded-sm overflow-hidden shrink-0">
                     {item.image_url && <img src={item.image_url} className="w-full h-full object-cover" />}
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-bold text-slate-900 dark:text-white text-sm line-clamp-1">{item.name}</h3>
+                    <h3 className="font-bold text-slate-900  text-sm line-clamp-1">{item.name}</h3>
                     <div className="text-xs text-slate-500 mt-1">จำนวน: {item.quantity}</div>
                   </div>
-                  <div className="font-bold text-slate-900 dark:text-white">฿{(item.price * item.quantity).toLocaleString()}</div>
+                  <div className="font-bold text-slate-900 ">฿{(item.price * item.quantity).toLocaleString()}</div>
                 </div>
               ))}
             </div>
 
             <div className="mt-6">
-              <h3 className="font-bold text-slate-900 dark:text-white mb-3">โค้ดส่วนลด</h3>
+              <h3 className="font-bold text-slate-900  mb-3">โค้ดส่วนลด</h3>
               <div className="flex flex-wrap gap-2 mb-3">
                 {myPromos.filter(p => !p.is_used).map(p => (
                   <button 
                     key={p.id} 
                     onClick={() => setPromoCode(p.code)} 
-                    className={promoCode === p.code ? "px-3 py-1.5 text-xs font-bold rounded-xl border transition-all bg-blue-600 text-white border-blue-600 shadow-md" : "px-3 py-1.5 text-xs font-bold rounded-xl border transition-all bg-white text-blue-600 border-blue-200 dark:bg-slate-800 dark:border-slate-700 hover:bg-slate-50"}
+                    className={promoCode === p.code ? "px-3 py-1.5 text-xs font-bold rounded-md border transition-all bg-primary text-white border-blue-600 shadow-md" : "px-3 py-1.5 text-xs font-bold rounded-md border transition-all bg-white text-primary border-blue-200   hover:bg-canvas"}
                   >
                     {p.code}
                   </button>
@@ -352,17 +352,17 @@ export default function CheckoutPage() {
               <input 
                 type="text" placeholder="พิมพ์โค้ด เช่น NEWYEAR2024" 
                 value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none uppercase"
+                className="w-full px-4 py-3 rounded-md border border-slate-200  bg-canvas  text-slate-900  outline-none uppercase"
               />
               {promoCode && isPromoValid && <p className="text-green-500 text-sm mt-2 font-bold">ลดไป ฿{discount.toLocaleString()} บาท</p>}
               {promoCode && !isPromoValid && <p className="text-red-500 text-sm mt-2 font-bold">{promoErrorMsg}</p>}
             </div>
 
-            <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700 flex flex-col gap-3">
-              <div className="flex justify-between text-slate-600 dark:text-slate-400 font-medium">
+            <div className="mt-6 pt-6 border-t border-slate-100  flex flex-col gap-3">
+              <div className="flex justify-between text-slate-600  font-medium">
                 <span>ยอดรวมสินค้า</span><span>฿{subtotal.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-slate-600 dark:text-slate-400 font-medium">
+              <div className="flex justify-between text-slate-600  font-medium">
                 <span>ค่าจัดส่ง</span><span>฿{shippingCost}</span>
               </div>
               {discount > 0 && (
@@ -371,19 +371,19 @@ export default function CheckoutPage() {
                 </div>
               )}
               
-              <div className="flex justify-between items-end mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
-                <span className="text-slate-900 dark:text-white font-bold">ยอดสุทธิ</span>
-                <span className="text-3xl font-black text-blue-600 dark:text-blue-400">฿{total.toLocaleString()}</span>
+              <div className="flex justify-between items-end mt-4 pt-4 border-t border-slate-100 ">
+                <span className="text-slate-900  font-bold">ยอดสุทธิ</span>
+                <span className="text-3xl font-black text-primary ">฿{total.toLocaleString()}</span>
               </div>
             </div>
 
             <button 
               onClick={handlePlaceOrder}
               disabled={isInsufficientBalance || isSubmitting || loadingWallet}
-              className={`w-full mt-8 py-4 rounded-xl font-bold text-lg transition-all shadow-lg 
+              className={`w-full mt-8 py-4 rounded-md font-bold text-lg transition-all shadow-lg 
                 ${isInsufficientBalance || isSubmitting || loadingWallet 
-                  ? 'bg-slate-400 dark:bg-slate-600 text-slate-200 cursor-not-allowed shadow-none' 
-                  : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/30'
+                  ? 'bg-slate-400  text-slate-200 cursor-not-allowed shadow-none' 
+                  : 'bg-primary hover:bg-primary-active text-white shadow-blue-500/30'
                 }`}
             >
               {isSubmitting ? 'กำลังดำเนินการ...' : isInsufficientBalance ? 'ยอดเงินไม่พอ' : 'ชำระเงิน'}

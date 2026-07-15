@@ -40,13 +40,13 @@ const App: React.FC = () => {
 
   if (!serverReady) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white p-6 text-center transition-colors duration-300">
+      <div className="flex flex-col justify-center items-center min-h-screen bg-canvas  text-gray-900  p-6 text-center transition-colors duration-300">
         <div className="relative flex justify-center items-center mb-8">
           <div className="absolute animate-ping inline-flex h-20 w-20 rounded-full bg-blue-400 opacity-20"></div>
-          <svg className="animate-spin h-16 w-16 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          <svg className="animate-spin h-16 w-16 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
         </div>
         <h1 className="text-2xl md:text-3xl font-black mb-3">กำลังเชื่อมต่อกับเซิร์ฟเวอร์...</h1>
-        <p className="text-gray-500 dark:text-gray-400 max-w-md text-sm md:text-base font-medium">
+        <p className="text-gray-500  max-w-md text-sm md:text-base font-medium">
           {wakingUp 
             ? "กำลังปลุกระบบฐานข้อมูลและเซิร์ฟเวอร์ (อาจใช้เวลา 30-50 วินาทีในครั้งแรกเนื่องจากระบบประหยัดพลังงาน) กรุณารอสักครู่ ⏳" 
             : "ระบบกำลังเตรียมความพร้อม..."}
@@ -56,7 +56,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <Suspense fallback={<div className="flex justify-center items-center min-h-screen text-xl dark:text-white bg-gray-50 dark:bg-gray-900">กำลังโหลดข้อมูล...</div>}>
+    <Suspense fallback={<div className="flex justify-center items-center min-h-screen text-xl  bg-canvas ">กำลังโหลดข้อมูล...</div>}>
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<LandingPage />} />
