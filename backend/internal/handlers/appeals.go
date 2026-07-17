@@ -8,8 +8,10 @@ import (
 )
 
 type SubmitAppealRequest struct {
-	Email  string `json:"email"`
-	Reason string `json:"reason"`
+	Email   string `json:"email"`
+	Reason  string `json:"reason"`
+	Topic   string `json:"topic"`
+	Message string `json:"message"`
 }
 
 func (h *Handler) SubmitAppeal(w http.ResponseWriter, r *http.Request) {
@@ -19,12 +21,32 @@ func (h *Handler) SubmitAppeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Email == "" || req.Reason == "" {
+	var topic, message string
+	if req.Topic != "" && req.Message != "" {
+		topic = req.Topic
+		message = req.Message
+	} else if req.Email != "" && req.Reason != "" {
+		topic = "Ban Appeal"
+		message = "Email: " + req.Email + "\nReason: " + req.Reason
+	} else {
 		h.writeError(w, http.StatusBadRequest, "กรุณากรอกข้อมูลให้ครบถ้วน")
 		return
 	}
 
-	_, err := h.MallDB.ExecContext(r.Context(), "INSERT INTO user_appeals (email, reason) VALUES ($1, $2)", req.Email, req.Reason)
+	userID := "guest"
+	u := GetUser(r)
+	if u == nil {
+		token := extractTokenFromReq(r)
+		if token != "" {
+			if claims, err := h.parseToken(token); err == nil {
+				userID = GetUserIDStr(&AuthUser{ID: claims.ID, UserID: claims.UserID})
+			}
+		}
+	} else {
+		userID = GetUserIDStr(u)
+	}
+
+	_, err := h.MallDB.ExecContext(r.Context(), "INSERT INTO appeals (user_id, topic, message, status) VALUES ($1, $2, $3, $4)", userID, topic, message, "pending")
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "ไม่สามารถยื่นคำร้องได้ในขณะนี้")
 		return
@@ -39,44 +61,4 @@ type AppealDTO struct {
 	Reason    string    `json:"reason"`
 	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
-}
-type ReviewAppealRequest struct {
-	Status string `json:"status"` // "approved" หรือ "rejected"
-}
-
-func (h *Handler) AdminReviewAppeal(w http.ResponseWriter, r *http.Request) {
-	appealID := chi.URLParam(r, "id")
-	var req ReviewAppealRequest
-	if err := ReadJSON(r, &req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "ข้อมูลไม่ถูกต้อง")
-		return
-	}
-
-	var email string
-	err := h.MallDB.QueryRowContext(r.Context(), "SELECT email FROM user_appeals WHERE id = $1", appealID).Scan(&email)
-	if err != nil {
-		h.writeError(w, http.StatusNotFound, "ไม่พบคำร้อง")
-		return
-	}
-
-	_, err = h.MallDB.ExecContext(r.Context(), "UPDATE user_appeals SET status = $1 WHERE id = $2", req.Status, appealID)
-	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "อัปเดตสถานะล้มเหลว")
-		return
-	}
-
-	// หาก Admin กดอนุมัติ ให้เชื่อมต่อ PureAPI เพื่ออัปเดตสถานะ User กลับมาเป็น active
-	if req.Status == "approved" {
-		var user map[string]any
-		err := h.Pure.Post(r.Context(), "/api/internal/find-user", map[string]any{"email": email}, &user)
-		if err == nil && user["id"] != nil {
-			payload := map[string]any{
-				"id":     user["id"],
-				"status": "active",
-			}
-			h.Pure.Post(r.Context(), "/api/internal/admin/users/update", payload, nil)
-		}
-	}
-
-	WriteJSON(w, http.StatusOK, map[string]string{"message": "ดำเนินการสำเร็จ"})
-}
+}

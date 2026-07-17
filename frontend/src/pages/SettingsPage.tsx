@@ -166,13 +166,9 @@ export default function SettingsPage() {
  const handleRequestOpenShop = async () => {
  setIsRequestingShop(true);
  try {
- const userStr = localStorage.getItem('user');
- const userObj = userStr ? JSON.parse(userStr) : {};
- const email = userObj.email || '';
- 
  await api.post('/api/appeals', {
- email: email,
- reason: `[ขอเปิดร้านค้า] ขออนุญาตเปิดร้านค้าในแพลตฟอร์ม ID/Username: ${profile.username}`
+ topic: 'ขอเปิดร้านค้า (Request to Open Shop)',
+ message: `ขออนุญาตเปิดร้านค้าในแพลตฟอร์ม ID/Username: ${profile.username}`
  });
  alert('ส่งคำขอเปิดร้านค้าเรียบร้อยแล้ว กรุณารอ Admin อนุมัติ');
  } catch (err) { alert('ไม่สามารถส่งคำขอได้ในขณะนี้'); }
