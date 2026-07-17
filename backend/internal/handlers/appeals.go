@@ -3,8 +3,6 @@ package handlers
 import (
 	"net/http"
 	"time"
-
-	"github.com/go-chi/chi/v5"
 )
 
 type SubmitAppealRequest struct {
@@ -39,11 +37,19 @@ func (h *Handler) SubmitAppeal(w http.ResponseWriter, r *http.Request) {
 		token := extractTokenFromReq(r)
 		if token != "" {
 			if claims, err := h.parseToken(token); err == nil {
-				userID = GetUserIDStr(&AuthUser{ID: claims.ID, UserID: claims.UserID})
+				if claims.UserID != "" {
+					userID = claims.UserID
+				} else {
+					userID = claims.ID
+				}
 			}
 		}
 	} else {
-		userID = GetUserIDStr(u)
+		if u.UserID != "" {
+			userID = u.UserID
+		} else {
+			userID = u.ID
+		}
 	}
 
 	_, err := h.MallDB.ExecContext(r.Context(), "INSERT INTO appeals (user_id, topic, message, status) VALUES ($1, $2, $3, $4)", userID, topic, message, "pending")
