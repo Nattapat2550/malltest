@@ -2,17 +2,43 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+:root {
+  --theme-primary: #ff385c;
+  --theme-primary-active: #e00b41;
+  --theme-primary-disabled: #ffd1da;
+  --theme-ink: #222222;
+  --theme-body: #3f3f3f;
+  --theme-muted: #6a6a6a;
+  --theme-canvas: #ffffff;
+  --theme-surface-soft: #f7f7f7;
+  --theme-surface-strong: #f2f2f2;
+  --theme-hairline: #dddddd;
+}
+
+.dark {
+  --theme-primary: #ff385c;
+  --theme-primary-active: #ff5a79;
+  --theme-primary-disabled: #661625;
+  --theme-ink: #F2F2F2;
+  --theme-body: #CCCCCC;
+  --theme-muted: #999999;
+  --theme-canvas: #000000;
+  --theme-surface-soft: #1C1C1E;
+  --theme-surface-strong: #2C2C2E;
+  --theme-hairline: #38383A;
+}
+
 @theme {
-  --color-primary: #ff385c;
-  --color-primary-active: #e00b41;
-  --color-primary-disabled: #ffd1da;
-  --color-ink: #222222;
-  --color-body: #3f3f3f;
-  --color-muted: #6a6a6a;
-  --color-canvas: #ffffff;
-  --color-surface-soft: #f7f7f7;
-  --color-surface-strong: #f2f2f2;
-  --color-hairline: #dddddd;
+  --color-primary: var(--theme-primary);
+  --color-primary-active: var(--theme-primary-active);
+  --color-primary-disabled: var(--theme-primary-disabled);
+  --color-ink: var(--theme-ink);
+  --color-body: var(--theme-body);
+  --color-muted: var(--theme-muted);
+  --color-canvas: var(--theme-canvas);
+  --color-surface-soft: var(--theme-surface-soft);
+  --color-surface-strong: var(--theme-surface-strong);
+  --color-hairline: var(--theme-hairline);
 
   --font-sans: "Inter", "Circular", -apple-system, system-ui, Roboto, sans-serif;
   
@@ -25,19 +51,21 @@
 
 @layer base {
   body {
-    @apply bg-canvas text-ink antialiased;
+    @apply bg-canvas text-ink antialiased transition-colors duration-300;
     font-family: var(--font-sans);
   }
 }
 
 /* SweetAlert2 Airbnb Styles */
 .swal2-popup {
+  background-color: var(--color-canvas) !important;
   border-radius: var(--radius-md) !important;
   font-family: var(--font-sans) !important;
   color: var(--color-ink) !important;
 }
 .swal2-confirm {
   background-color: var(--color-primary) !important;
+  color: white !important;
   border-radius: var(--radius-sm) !important;
   font-weight: 500 !important;
   padding: 14px 24px !important;
@@ -46,9 +74,9 @@
   background-color: var(--color-primary-active) !important;
 }
 .swal2-cancel {
-  background-color: white !important;
+  background-color: transparent !important;
   color: var(--color-ink) !important;
-  border: 1px solid var(--color-ink) !important;
+  border: 1px solid var(--color-hairline) !important;
   border-radius: var(--radius-sm) !important;
   font-weight: 500 !important;
   padding: 13px 23px !important;
