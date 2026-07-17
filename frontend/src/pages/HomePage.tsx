@@ -49,7 +49,7 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-linear-to-br from-gray-50 to-gray-200 dark:from-gray-900 dark:to-black opacity-50"></div>
         <div className="w-full px-6 lg:px-12 2xl:px-20 py-24 lg:py-32 relative z-10 flex flex-col md:flex-row items-center justify-between gap-12">
           <div className="text-center md:text-left flex-1">
-            <span className="inline-block py-1 px-4 rounded-full bg-black/5 /10 text-sm font-semibold tracking-widest uppercase mb-6 border border-black/10 /20 text-gray-600 ">
+            <span className="inline-block py-1 px-4 rounded-full bg-zinc-950/5 /10 text-sm font-semibold tracking-widest uppercase mb-6 border border-black/10 /20 text-gray-600 ">
               The Ultimate Experience
             </span>
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-semibold mb-6 leading-tight tracking-tighter">
@@ -59,7 +59,7 @@ export default function HomePage() {
             <p className="text-lg md:text-2xl text-gray-500  font-medium max-w-2xl mx-auto md:mx-0 mb-10 tracking-tight">
               สัมผัสประสบการณ์การช็อปปิ้งที่ไร้ขีดจำกัด พร้อมโปรโมชันจัดเต็มตลอดปี สินค้าของแท้ 100% ส่งตรงถึงหน้าบ้านคุณ
             </p>
-            <Link to="/products" className="inline-flex items-center gap-2 bg-black  text-white  font-semibold py-4 px-10 rounded-full hover:scale-105 transition-transform duration-300">
+            <Link to="/products" className="inline-flex items-center gap-2 bg-zinc-950  text-white  font-semibold py-4 px-10 rounded-full hover:scale-105 transition-transform duration-300">
               เริ่มช็อปเลย <ChevronRight size={20} />
             </Link>
           </div>
@@ -98,7 +98,7 @@ export default function HomePage() {
                   <button 
                     onClick={() => handleCollectPromo(promo.id)}
                     disabled={isCollected}
-                    className={`w-full py-3 rounded-full font-semibold text-sm transition-all shadow-sm ${isCollected ? 'bg-gray-200  cursor-not-allowed text-gray-500' : 'bg-black  text-white  hover:scale-105'}`}
+                    className={`w-full py-3 rounded-full font-semibold text-sm transition-all shadow-sm ${isCollected ? 'bg-gray-200  cursor-not-allowed text-gray-500' : 'bg-zinc-950  text-white  hover:scale-105'}`}
                   >
                     {isCollected ? 'เก็บแล้ว' : 'เก็บโค้ดเลย'}
                   </button>
@@ -130,10 +130,10 @@ export default function HomePage() {
             
             {carousels.length > 1 && (
               <>
-                <button onClick={() => setCurrentSlide(prev => (prev - 1 + carousels.length) % carousels.length)} className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/50 hover:bg-white /50 dark:hover:bg-black backdrop-blur-md text-black  w-12 h-12 rounded-full transition-all flex items-center justify-center font-bold shadow-lg">
+                <button onClick={() => setCurrentSlide(prev => (prev - 1 + carousels.length) % carousels.length)} className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/50 hover:bg-white /50 dark:hover:bg-zinc-950 backdrop-blur-md text-black  w-12 h-12 rounded-full transition-all flex items-center justify-center font-bold shadow-lg">
                   <ChevronLeft size={24} />
                 </button>
-                <button onClick={() => setCurrentSlide(prev => (prev + 1) % carousels.length)} className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/50 hover:bg-white /50 dark:hover:bg-black backdrop-blur-md text-black  w-12 h-12 rounded-full transition-all flex items-center justify-center font-bold shadow-lg">
+                <button onClick={() => setCurrentSlide(prev => (prev + 1) % carousels.length)} className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/50 hover:bg-white /50 dark:hover:bg-zinc-950 backdrop-blur-md text-black  w-12 h-12 rounded-full transition-all flex items-center justify-center font-bold shadow-lg">
                   <ChevronRight size={24} />
                 </button>
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-3">
