@@ -2,16 +2,16 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
-  withCredentials: true,
+ baseURL: import.meta.env.VITE_API_URL,
+ withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
+ const token = localStorage.getItem('token');
+ if (token) {
+ config.headers.Authorization = `Bearer ${token}`;
+ }
+ return config;
 });
 
 export default api;
@@ -29,14 +29,14 @@ export const addUserAddress = (data: { title: string, address: string }) => api.
 export const getMyOrders = () => api.get('/api/orders');
 
 export const shipmentApi = {
-  updateStatus: (data: {
-    shipment_id: string;
-    status: string;
-    center_id?: string;
-    rider_id?: string;
-    tracking_detail: string;
-    location: string;
-  }) => api.put('/api/orders/shipments/status', data),
+ updateStatus: (data: {
+ shipment_id: string;
+ status: string;
+ center_id?: string;
+ rider_id?: string;
+ tracking_detail: string;
+ location: string;
+ }) => api.put('/api/orders/shipments/status', data),
 };
 
 // ==========================================
@@ -45,63 +45,63 @@ export const shipmentApi = {
 export const adminGetAllOrders = () => api.get('/api/admin/orders');
 
 export const adminUpdateOrderStatus = (id: string, status: string) => 
-  api.put(`/api/admin/orders/${id}/status`, { status });
+ api.put(`/api/admin/orders/${id}/status`, { status });
 
 export const adminUpdateUserWallet = (userId: string, balance: number) => 
-  api.put(`/api/admin/users/${userId}/wallet`, { balance });
+ api.put(`/api/admin/users/${userId}/wallet`, { balance });
 
 export const adminUpdateUserRole = (userId: string, role: string) => 
-  api.put(`/api/admin/users/${userId}/role`, { role });
+ api.put(`/api/admin/users/${userId}/role`, { role });
 
 // ==========================================
 // Owner API
 // ==========================================
 export const ownerApi = {
-  getShop: () => api.get('/api/owner/shop'),
-  updateShop: (data: { name: string; description?: string; banner_url?: string }) => api.put('/api/owner/shop', data),
-  getProducts: () => api.get('/api/owner/products'),
-  createProduct: (data: any) => api.post('/api/owner/products', data),
-  updateProduct: (id: string, data: any) => api.put(`/api/owner/products/${id}`, data),
-  deleteProduct: (id: string) => api.delete(`/api/owner/products/${id}`),
-  getOrders: () => api.get('/api/owner/orders'),
+ getShop: () => api.get('/api/owner/shop'),
+ updateShop: (data: { name: string; description?: string; banner_url?: string }) => api.put('/api/owner/shop', data),
+ getProducts: () => api.get('/api/owner/products'),
+ createProduct: (data: any) => api.post('/api/owner/products', data),
+ updateProduct: (id: string, data: any) => api.put(`/api/owner/products/${id}`, data),
+ deleteProduct: (id: string) => api.delete(`/api/owner/products/${id}`),
+ getOrders: () => api.get('/api/owner/orders'),
 };
 
 // ==========================================
 // Product Comments API
 // ==========================================
 export const commentApi = {
-  getComments: (productId: string) => 
-    api.get(`/api/products/${productId}/comments`),
-  
-  createComment: (productId: string, data: { order_id: string, rating: number, message: string }) => 
-    api.post(`/api/products/${productId}/comments`, data),
-  
-  updateComment: (productId: string, commentId: string, data: { rating: number, message: string }) => 
-    api.patch(`/api/products/${productId}/comments/${commentId}`, data),
-  
-  deleteComment: (productId: string, commentId: string) => 
-    api.delete(`/api/products/${productId}/comments/${commentId}`),
+ getComments: (productId: string) => 
+ api.get(`/api/products/${productId}/comments`),
+ 
+ createComment: (productId: string, data: { order_id: string, rating: number, message: string }) => 
+ api.post(`/api/products/${productId}/comments`, data),
+ 
+ updateComment: (productId: string, commentId: string, data: { rating: number, message: string }) => 
+ api.patch(`/api/products/${productId}/comments/${commentId}`, data),
+ 
+ deleteComment: (productId: string, commentId: string) => 
+ api.delete(`/api/products/${productId}/comments/${commentId}`),
 };
 
 // ==========================================
 // Center API
 // ==========================================
 export const centerApi = {
-  getDashboard: () => api.get('/api/center/dashboard'),
-  updateProfile: (data: { name: string }) => api.put('/api/center/profile', data),
+ getDashboard: () => api.get('/api/center/dashboard'),
+ updateProfile: (data: { name: string }) => api.put('/api/center/profile', data),
 };
 
 // ==========================================
 // Rider API
 // ==========================================
 export const riderApi = {
-  getDashboard: () => api.get('/api/rider/dashboard'),
+ getDashboard: () => api.get('/api/rider/dashboard'),
 };
 
 // ==========================================
 // Shop Public API
 // ==========================================
 export const shopApi = {
-  getShopInfo: (id: string) => api.get(`/api/shops/${id}`),
-  getShopProducts: (id: string) => api.get(`/api/shops/${id}/products`),
+ getShopInfo: (id: string) => api.get(`/api/shops/${id}`),
+ getShopProducts: (id: string) => api.get(`/api/shops/${id}/products`),
 };

@@ -5,162 +5,162 @@ import { addToCart } from '../store/slices/cartSlice';
 import api from '../services/api';
 
 interface Product {
-  id: number;
-  sku: string;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
-  image_url: string;
+ id: number;
+ sku: string;
+ name: string;
+ description: string;
+ price: number;
+ stock: number;
+ image_url: string;
 }
 
 export default function ProductCatalog() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+ const [products, setProducts] = useState<Product[]>([]);
+ const [loading, setLoading] = useState(true);
+ const [search, setSearch] = useState('');
+ const dispatch = useDispatch();
+ const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        const res = await api.get('/api/products');
-        setProducts(res.data || []);
-      } catch (err) {
-        console.error("Failed to load products", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProducts();
-  }, []);
+ useEffect(() => {
+ const fetchProducts = async () => {
+ try {
+ setLoading(true);
+ const res = await api.get('/api/products');
+ setProducts(res.data || []);
+ } catch (err) {
+ console.error("Failed to load products", err);
+ } finally {
+ setLoading(false);
+ }
+ };
+ fetchProducts();
+ }, []);
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(search.toLowerCase()) || 
-    p.sku.toLowerCase().includes(search.toLowerCase())
-  );
+ const filteredProducts = products.filter(p => 
+ p.name.toLowerCase().includes(search.toLowerCase()) || 
+ p.sku.toLowerCase().includes(search.toLowerCase())
+ );
 
-  const handleAddToCart = (e: React.MouseEvent, p: Product) => {
-    e.preventDefault(); // ป้องกันไม่ให้ Link ทำงานเมื่อกดปุ่มซื้อ
-    if (p.stock > 0) {
-      dispatch(addToCart({
-        // แก้ไข Error 2322: แปลง p.id ให้เป็น string ตามที่ cartSlice ต้องการ
-        productId: p.id.toString(),
-        name: p.name,
-        price: p.price,
-        quantity: 1,
-        image_url: p.image_url,
-        stock: p.stock
-      }));
-      // แจ้งเตือนผู้ใช้ (หรือใช้ Toast ถ้ามี)
-      alert(`เพิ่ม ${p.name} ลงตะกร้าแล้ว`);
-    }
-  };
+ const handleAddToCart = (e: React.MouseEvent, p: Product) => {
+ e.preventDefault(); // ป้องกันไม่ให้ Link ทำงานเมื่อกดปุ่มซื้อ
+ if (p.stock > 0) {
+ dispatch(addToCart({
+ // แก้ไข Error 2322: แปลง p.id ให้เป็น string ตามที่ cartSlice ต้องการ
+ productId: p.id.toString(),
+ name: p.name,
+ price: p.price,
+ quantity: 1,
+ image_url: p.image_url,
+ stock: p.stock
+ }));
+ // แจ้งเตือนผู้ใช้ (หรือใช้ Toast ถ้ามี)
+ alert(`เพิ่ม ${p.name} ลงตะกร้าแล้ว`);
+ }
+ };
 
-  return (
-    <div className="w-full min-h-screen bg-canvas  transition-colors duration-300 pt-8 pb-20 px-6 lg:px-12 2xl:px-20 animate-fade-in">
-      
-      <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
-        <div className="text-center md:text-left">
-          <h1 className="text-3xl md:text-4xl font-black text-gray-900  tracking-tight">
-            สินค้าทั้งหมด
-          </h1>
-          <p className="text-gray-500  mt-2 font-medium">
-            เลือกซื้อสินค้าคุณภาพมากมายใน Mall ของเรา
-          </p>
-        </div>
-        
-        <div className="flex gap-4 w-full md:w-auto">
-          <div className="w-full relative">
-            <input 
-              type="text" 
-              placeholder="ค้นหาสินค้าหรือ SKU..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full md:w-80 pl-11 pr-4 py-3.5 rounded-md border border-gray-200  bg-white  text-gray-900  focus:ring-2 focus:ring-blue-500 outline-none shadow-sm transition-all"
-            />
-            <svg className="w-5 h-5 absolute left-4 top-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-          </div>
-          <button 
-            onClick={() => navigate('/cart')}
-            className="shrink-0 bg-primary hover:bg-primary-active text-white px-5 py-3.5 rounded-md shadow-md transition-all font-bold flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-            ตะกร้า
-          </button>
-        </div>
-      </div>
+ return (
+ <div className="w-full min-h-screen bg-canvas transition-colors duration-300 pt-8 pb-20 px-6 lg:px-12 2xl:px-20 animate-fade-in">
+ 
+ <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
+ <div className="text-center md:text-left">
+ <h1 className="text-3xl md:text-4xl font-black text-ink tracking-tight">
+ สินค้าทั้งหมด
+ </h1>
+ <p className="text-muted mt-2 font-medium">
+ เลือกซื้อสินค้าคุณภาพมากมายใน Mall ของเรา
+ </p>
+ </div>
+ 
+ <div className="flex gap-4 w-full md:w-auto">
+ <div className="w-full relative">
+ <input 
+ type="text" 
+ placeholder="ค้นหาสินค้าหรือ SKU..." 
+ value={search}
+ onChange={(e) => setSearch(e.target.value)}
+ className="w-full md:w-80 pl-11 pr-4 py-3.5 rounded-md border border-hairline bg-canvas text-ink focus:ring-2 focus:ring-blue-500 outline-none shadow-sm transition-all"
+ />
+ <svg className="w-5 h-5 absolute left-4 top-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+ </svg>
+ </div>
+ <button 
+ onClick={() => navigate('/cart')}
+ className="shrink-0 bg-primary hover:bg-primary-active text-white px-5 py-3.5 rounded-md shadow-md transition-all font-bold flex items-center gap-2"
+ >
+ <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+ ตะกร้า
+ </button>
+ </div>
+ </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center py-32">
-          <svg className="animate-spin h-16 w-16 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-        </div>
-      ) : filteredProducts.length === 0 ? (
-        <div className="text-center py-24 bg-white  rounded-md border border-gray-200  shadow-sm">
-          <div className="text-7xl mb-6">🛍️</div>
-          <h2 className="text-2xl font-black text-gray-900  mb-2">ไม่พบสินค้าที่คุณค้นหา</h2>
-          <p className="text-gray-500  font-medium">ลองค้นหาด้วยคำอื่น หรือสินค้าอาจจะหมดสต็อกชั่วคราว</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {filteredProducts.map(p => (
-            <Link to={`/products/${p.id}`} key={p.id} className="group bg-white  rounded-md shadow-sm border border-gray-200  overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-1.5 transition-all duration-300 flex flex-col h-full">
-              
-              <div className="relative w-full h-64 bg-surface-soft  overflow-hidden">
-                {p.image_url ? (
-                  <img src={p.image_url} alt={p.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    <span className="font-bold tracking-widest text-sm uppercase">NO IMAGE</span>
-                  </div>
-                )}
-                
-                {p.stock <= 0 ? (
-                  <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur text-white text-xs font-bold px-3 py-1.5 rounded-sm shadow-md border border-red-400/50">
-                    สินค้าหมด
-                  </div>
-                ) : p.stock < 10 ? (
-                  <div className="absolute top-4 left-4 bg-orange-500/90 backdrop-blur text-white text-xs font-bold px-3 py-1.5 rounded-sm shadow-md border border-orange-400/50">
-                    ใกล้หมด ({p.stock} ชิ้น)
-                  </div>
-                ) : null}
-              </div>
+ {loading ? (
+ <div className="flex justify-center items-center py-32">
+ <svg className="animate-spin h-16 w-16 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+ </div>
+ ) : filteredProducts.length === 0 ? (
+ <div className="text-center py-24 bg-canvas rounded-md border border-hairline shadow-sm">
+ <div className="text-7xl mb-6">🛍️</div>
+ <h2 className="text-2xl font-black text-ink mb-2">ไม่พบสินค้าที่คุณค้นหา</h2>
+ <p className="text-muted font-medium">ลองค้นหาด้วยคำอื่น หรือสินค้าอาจจะหมดสต็อกชั่วคราว</p>
+ </div>
+ ) : (
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+ {filteredProducts.map(p => (
+ <Link to={`/products/${p.id}`} key={p.id} className="group bg-canvas rounded-md shadow-sm border border-hairline overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-1.5 transition-all duration-300 flex flex-col h-full">
+ 
+ <div className="relative w-full h-64 bg-surface-soft overflow-hidden">
+ {p.image_url ? (
+ <img src={p.image_url} alt={p.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+ ) : (
+ <div className="w-full h-full flex items-center justify-center text-muted">
+ <span className="font-bold tracking-widest text-sm uppercase">NO IMAGE</span>
+ </div>
+ )}
+ 
+ {p.stock <= 0 ? (
+ <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur text-white text-xs font-bold px-3 py-1.5 rounded-sm shadow-md border border-red-400/50">
+ สินค้าหมด
+ </div>
+ ) : p.stock < 10 ? (
+ <div className="absolute top-4 left-4 bg-orange-500/90 backdrop-blur text-white text-xs font-bold px-3 py-1.5 rounded-sm shadow-md border border-orange-400/50">
+ ใกล้หมด ({p.stock} ชิ้น)
+ </div>
+ ) : null}
+ </div>
 
-              <div className="p-6 flex flex-col flex-1">
-                <div className="text-xs text-primary  font-bold mb-2 tracking-widest uppercase">{p.sku}</div>
-                <h3 className="text-xl font-black text-gray-900  mb-2 line-clamp-2 leading-snug">{p.name}</h3>
-                <p className="text-sm text-gray-500  mb-8 line-clamp-2 leading-relaxed">
-                  {p.description || 'ไม่มีคำอธิบายสำหรับสินค้านี้'}
-                </p>
-                
-                <div className="mt-auto flex items-center justify-between pt-4 border-t border-gray-100 ">
-                  <div className="text-2xl font-black text-green-600 ">
-                    ฿{p.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </div>
-                  
-                  <button 
-                    onClick={(e) => handleAddToCart(e, p)}
-                    disabled={p.stock <= 0}
-                    className={`w-12 h-12 rounded-md flex items-center justify-center transition-all shadow-md ${
-                      p.stock > 0 
-                        ? 'bg-primary hover:bg-primary-active text-white shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-105 active:scale-95' 
-                        : 'bg-gray-200  text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+ <div className="p-6 flex flex-col flex-1">
+ <div className="text-xs text-primary font-bold mb-2 tracking-widest uppercase">{p.sku}</div>
+ <h3 className="text-xl font-black text-ink mb-2 line-clamp-2 leading-snug">{p.name}</h3>
+ <p className="text-sm text-muted mb-8 line-clamp-2 leading-relaxed">
+ {p.description || 'ไม่มีคำอธิบายสำหรับสินค้านี้'}
+ </p>
+ 
+ <div className="mt-auto flex items-center justify-between pt-4 border-t border-hairline ">
+ <div className="text-2xl font-black text-green-600 ">
+ ฿{p.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+ </div>
+ 
+ <button 
+ onClick={(e) => handleAddToCart(e, p)}
+ disabled={p.stock <= 0}
+ className={`w-12 h-12 rounded-md flex items-center justify-center transition-all shadow-md ${
+ p.stock > 0 
+ ? 'bg-primary hover:bg-primary-active text-white shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-105 active:scale-95' 
+ : 'bg-surface-soft text-muted cursor-not-allowed'
+ }`}
+ >
+ <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+ </svg>
+ </button>
+ </div>
+ </div>
+ 
+ </Link>
+ ))}
+ </div>
+ )}
+ </div>
+ );
 }
